@@ -8674,7 +8674,7 @@ function openOnlineMode(){
   }
   // Start listeners once signed in
   _startWorldChatListener();
-  setTimeout(()=>{if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();},2000);
+  setTimeout(()=>{_runFirestoreSetup();if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();},2000);
   if(G._factionId) _startFactionChatListener(G._factionId);
 
   const power = calcPowerRating ? calcPowerRating() : 0;
@@ -10747,6 +10747,35 @@ function switchMarketTab(tab){
   if(tab==='buy'){if(listBody)listBody.style.display='none';if(body)body.style.display='';renderAuctionHouse();}
   else if(tab==='sell'){if(body)body.style.display='none';if(listBody){listBody.style.display='';openListingPanel();}}
   else if(tab==='history'){if(listBody)listBody.style.display='none';if(body)body.style.display='';renderMarketHistory().then(h=>{if(body)body.innerHTML=h;});}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ONE-TIME FIRESTORE SETUP — creates server documents if they don't exist
+// ══════════════════════════════════════════════════════════════════════════════
+async function _runFirestoreSetup(){
+  if(!window.FB) return;
+  try{
+    const {db,doc,getDoc,setDoc} = window.FB;
+    // Check if already set up
+    const check = await getDoc(doc(db,'server','stats'));
+    if(check.exists()) return; // already done
+    console.log('Running first-time Firestore setup...');
+    const batch = [
+      ['server','stats',{totalAscensions:0,totalBossKills:0,totalWins:0,totalSummons:0}],
+      ['server','activeEvent',{id:'',startedAt:0,duration:0}],
+      ['server','boss',{name:'Ancient Void Dragon',emoji:'🐉',maxHp:10000000,currentHp:10000000,level:500,type:'dark',weak:'light'}],
+      ['server','announcement',{id:'',title:'',text:'',emoji:'📢',date:''}],
+      ['server','hallOfFame',{playerOfTheWeek:{name:'',reason:''}}],
+    ];
+    for(const [col,docId,data] of batch){
+      await setDoc(doc(db,col,docId), data);
+    }
+    console.log('Firestore setup complete!');
+    toast('✅ Server database initialized!','ok');
+  }catch(e){
+    console.log('Firestore setup skipped (may need permissions):', e.message);
+  }
 }
 
 // Only register service worker when hosted on a real server (not local file or preview)
