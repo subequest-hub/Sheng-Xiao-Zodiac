@@ -762,17 +762,25 @@ onAuthStateChanged(auth, user => {
         <span class="hub-icon">✨</span><span class="hub-label">Godly Gear</span>
         <span class="hub-sub" id="hubGodlySub">0/24 pieces</span>
       </button>
-      <button class="hub-btn" onclick="closeM('mMore');openMultiplayer()">
-        <span class="hub-icon">🌐</span><span class="hub-label">Multiplayer</span>
+      <button class="hub-btn" onclick="closeM('mMore');openOnlineMode()">
+        <span class="hub-icon">🌐</span><span class="hub-label">Online Mode</span>
         <span class="hub-sub" id="hubMPSub">Sign in</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openWorldProfile()">
+        <span class="hub-icon">👤</span><span class="hub-label">Profile</span>
+        <span class="hub-sub" id="hubProfileSub">World profile</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openFaction()">
+        <span class="hub-icon">🏰</span><span class="hub-label">Faction</span>
+        <span class="hub-sub" id="hubFactionSub">No faction</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openPvpArena()">
+        <span class="hub-icon">⚔️</span><span class="hub-label">PvP Arena</span>
+        <span class="hub-sub" id="hubPvpSub">Rank: —</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');openLeaderboard()">
         <span class="hub-icon">🏆</span><span class="hub-label">Leaderboard</span>
         <span class="hub-sub">Global ranks</span>
-      </button>
-      <button class="hub-btn" onclick="closeM('mMore');openChat()">
-        <span class="hub-icon">💬</span><span class="hub-label">Chat</span>
-        <span class="hub-sub" id="hubChatSub">Global chat</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');showTab('settings')">
         <span class="hub-icon">⚙️</span><span class="hub-label">Settings</span>
@@ -1091,13 +1099,52 @@ function toggleLog(){
 }
 function switchLogTab(tab){
   G._activeLogTab=tab;
-  ['battle','rewards','events'].forEach(t=>{
+  const allTabs=['battle','rewards','events','world','guild','trading'];
+  allTabs.forEach(t=>{
     const btn=document.getElementById('ltab-'+t);
     const content=document.getElementById('logContent-'+t);
     if(btn)btn.className='log-tab'+(t===tab?' on':'');
     if(content)content.style.display=t===tab?'block':'none';
   });
-  renderLogTab(tab);
+  if(tab==='world'||tab==='guild'||tab==='trading'){
+    renderChatTab(tab);
+  } else {
+    renderLogTab(tab);
+  }
+}
+function renderChatTab(tab){
+  const el=document.getElementById('logContent-'+tab);if(!el)return;
+  if(tab==='world'){
+    el.innerHTML='<div id="worldChatFeed" style="display:flex;flex-direction:column;gap:3px;"></div>'
+      +'<div style="display:flex;gap:4px;margin-top:6px;">'
+      +'<input id="worldChatInput" type="text" maxlength="120" placeholder="World chat..." '
+      +'style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:5px 8px;color:var(--txt);font-size:11px;"'
+      +' onkeydown="if(event.key===\'Enter\')sendWorldChat()">'
+      +'<button class="btn bp" style="font-size:10px;padding:5px 10px;" onclick="sendWorldChat()">↑</button></div>';
+    // Populate existing messages
+    const feed=document.getElementById('worldChatFeed');
+    if(feed&&window._worldChatMsgs){
+      window._worldChatMsgs.forEach(m=>_appendChatMsg(feed,m));
+      feed.scrollTop=feed.scrollHeight;
+    }
+  } else if(tab==='guild'){
+    if(!fbReady()||!G._factionId){
+      el.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);font-size:10px;">Join a Faction to use faction chat</div>';
+    } else {
+      el.innerHTML='<div id="guildChatFeed" style="display:flex;flex-direction:column;gap:3px;"></div>'
+        +'<div style="display:flex;gap:4px;margin-top:6px;">'
+        +'<input id="guildChatInput" type="text" maxlength="120" placeholder="Faction chat..." '
+        +'style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:5px 8px;color:var(--txt);font-size:11px;"'
+        +' onkeydown="if(event.key===\'Enter\')sendFactionChat()">'
+        +'<button class="btn bp" style="font-size:10px;padding:5px 10px;" onclick="sendFactionChat()">↑</button></div>';
+      if(window._guildChatMsgs){
+        const feed=document.getElementById('guildChatFeed');
+        if(feed)window._guildChatMsgs.forEach(m=>_appendChatMsg(feed,m));
+      }
+    }
+  } else if(tab==='trading'){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);font-size:10px;">🏪 Trading chat — coming with the marketplace update</div>';
+  }
 }
 function renderLogTab(tab){
   const el=document.getElementById('logContent-'+tab);if(!el)return;
@@ -4782,6 +4829,8 @@ function onWin(sMult=1){
 }
 function onLose(){if(!G.alive)return;G.alive=false;G.streak=0;
   if(G.bossRushActive)G._bossRushFainted=true;
+  if(G._pvpActive){G._pvpActive=false;G._pvpQueue=[];_onPvpLoss();return;}
+  if(G.enemy?.isFactionBoss){G._factionBossHp=G.enemy?.hp||0;save();toast('💀 Faction boss survived! Your damage was saved.','er');setTimeout(()=>spawnEnemy(),1500);return;}
   if(_guildRankTestActive){_onRankTestLose();return;}
   if(G.mirrorFightActive){
     G.mirrorFightActive=false;G.mirrorSnapshot=null;G.mirrorFightQueue=[];_mirrorCallback=null;
@@ -5190,6 +5239,8 @@ function updateModeBadge(){
   else if(G.bossRushActive){mb.textContent='👑 Boss Rush — '+(G.bossRushFloor+1);mb.style.display='block';}
   else if(G.inDungeon&&G.dungeonData){mb.textContent='💎 '+G.dungeonData.name;mb.style.display='block';}
   else if(G.nightmareMode){mb.textContent='⚠️ Nightmare ×'+(G.ascensionMult||1);mb.style.display='block';}
+  else if(G._pvpActive){mb.textContent=`⚔️ PvP Battle vs ${_pvpOpponent?.name||'Opponent'}`;mb.style.display='block';mb.style.background='linear-gradient(135deg,#dc2626,#7f1d1d)';mb.style.color='#fca5a5';}
+  else if(G.enemy?.isFactionBoss){mb.textContent='💀 FACTION BOSS BATTLE';mb.style.display='block';mb.style.background='linear-gradient(135deg,#7f1d1d,#450a0a)';mb.style.color='#fca5a5';}
   else if(_guildRankTestActive){mb.textContent=`⚔️ Guild Rank Trial — ${GUILD_RANK_TESTS[_guildRankTestId||'']?.name||'Rank Test'}`;mb.style.display='block';mb.style.background='linear-gradient(135deg,#b45309,#92400e)';mb.style.color='#fde68a';}
   else if(G.mirrorFightActive){mb.textContent='⚔️ Mirror Battle — Defeat your past self!';mb.style.display='block';mb.style.background='linear-gradient(135deg,#7c3aed,#1e3a8a)';mb.style.color='#e9d5ff';}
   else{mb.style.display='none';}
@@ -8469,6 +8520,776 @@ async function mpSignOut(){
 // Hook into existing onWin — sync every 25 wins
 // Leaderboard sync is hooked directly into onWin above
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ONLINE MODE SYSTEM
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── WORLD CHAT ────────────────────────────────────────────────────────────────
+window._worldChatMsgs = [];
+window._guildChatMsgs = [];
+
+function _appendChatMsg(feed, msg){
+  if(!feed)return;
+  const isMe = msg.uid === fbUID();
+  const div = document.createElement('div');
+  div.style.cssText = `display:flex;align-items:flex-start;gap:5px;${isMe?'flex-direction:row-reverse;':''}`;
+  const time = msg.ts ? new Date(msg.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+  div.innerHTML = `
+    ${msg.avatar?`<img src="${msg.avatar}" style="width:20px;height:20px;border-radius:50%;flex-shrink:0;" onerror="this.style.display='none'">`:'<span style="font-size:14px;flex-shrink:0;">🐲</span>'}
+    <div style="max-width:80%;">
+      <div style="font-size:8px;color:var(--txt2);${isMe?'text-align:right;':''}">${escHtml(msg.name||'Anon')} · ${time}</div>
+      <div style="background:${isMe?'rgba(245,158,11,.2)':'rgba(28,38,56,.9)'};border:1px solid ${isMe?'rgba(245,158,11,.3)':'rgba(71,85,105,.3)'};
+        border-radius:${isMe?'10px 10px 3px 10px':'10px 10px 10px 3px'};padding:5px 8px;font-size:11px;word-break:break-word;">
+        ${escHtml(msg.text||'')}
+      </div>
+    </div>`;
+  feed.appendChild(div);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function _startWorldChatListener(){
+  if(!FB||window._worldChatListening)return;
+  window._worldChatListening = true;
+  try{
+    const {rtdb,ref,rtQuery,limitToLast,onChildAdded} = FB;
+    const q = rtQuery(ref(rtdb,'globalChat'), limitToLast(50));
+    onChildAdded(q, snap => {
+      const msg = snap.val();
+      window._worldChatMsgs.push(msg);
+      if(window._worldChatMsgs.length > 100) window._worldChatMsgs.shift();
+      const feed = document.getElementById('worldChatFeed');
+      if(feed) _appendChatMsg(feed, msg);
+      // Unread badge
+      const activeTab = G._activeLogTab;
+      if(activeTab !== 'world'){
+        const btn = document.getElementById('ltab-world');
+        if(btn) btn.style.background = 'rgba(245,158,11,.3)';
+      }
+    });
+  }catch(e){ console.warn('World chat listener failed:', e); }
+}
+
+function _startFactionChatListener(factionId){
+  if(!FB||!factionId||window._factionChatListening)return;
+  window._factionChatListening = true;
+  try{
+    const {rtdb,ref,rtQuery,limitToLast,onChildAdded} = FB;
+    const q = rtQuery(ref(rtdb,`factionChat/${factionId}`), limitToLast(50));
+    onChildAdded(q, snap => {
+      const msg = snap.val();
+      window._guildChatMsgs.push(msg);
+      const feed = document.getElementById('guildChatFeed');
+      if(feed) _appendChatMsg(feed, msg);
+      if(G._activeLogTab !== 'guild'){
+        const btn = document.getElementById('ltab-guild');
+        if(btn) btn.style.background = 'rgba(245,158,11,.3)';
+      }
+    });
+  }catch(e){ console.warn('Faction chat listener failed:', e); }
+}
+
+async function sendWorldChat(){
+  if(!fbReady()){toast('Sign in to chat!','er');return;}
+  const inp = document.getElementById('worldChatInput');
+  const text = (inp?.value||'').trim();
+  if(!text) return;
+  if(text.length > 120){toast('Max 120 chars','er');return;}
+  if(inp) inp.value = '';
+  try{
+    const {rtdb,ref,push} = FB;
+    await push(ref(rtdb,'globalChat'),{uid:fbUID(),name:fbName(),avatar:fbAvatar()||'',text,ts:Date.now()});
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function sendFactionChat(){
+  if(!fbReady()||!G._factionId){toast('Join a faction first!','er');return;}
+  const inp = document.getElementById('guildChatInput');
+  const text = (inp?.value||'').trim();
+  if(!text) return;
+  if(inp) inp.value = '';
+  try{
+    const {rtdb,ref,push} = FB;
+    await push(ref(rtdb,`factionChat/${G._factionId}`),{uid:fbUID(),name:fbName(),avatar:fbAvatar()||'',text,ts:Date.now()});
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// ── ONLINE MODE PANEL ─────────────────────────────────────────────────────────
+function openOnlineMode(){
+  const body = document.getElementById('onlineModeBody');
+  if(!body) return;
+  const user = window._fbUser;
+  if(!user){
+    body.innerHTML = `
+      <div style="text-align:center;padding:20px 10px;">
+        <div style="font-size:40px;margin-bottom:12px;">🌐</div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px;">Online Mode</div>
+        <div style="font-size:11px;color:var(--txt2);margin-bottom:20px;">Sign in to unlock all online features: World Profile, Faction, PvP Arena, Global Chat, Cloud Saves and Leaderboard.</div>
+        <button class="btn bp mb2" style="width:100%;font-size:13px;" onclick="mpSignInGoogle().then(()=>{closeM('mOnlineMode');openOnlineMode();})">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;">
+          Sign in with Google
+        </button>
+        <button class="btn bs bblk" style="width:100%;font-size:12px;" onclick="mpSignInGuest().then(()=>{closeM('mOnlineMode');openOnlineMode();})">
+          👤 Play as Guest (limited features)
+        </button>
+      </div>`;
+    openM('mOnlineMode');
+    return;
+  }
+  // Start listeners once signed in
+  _startWorldChatListener();
+  if(G._factionId) _startFactionChatListener(G._factionId);
+
+  const power = calcPowerRating ? calcPowerRating() : 0;
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;margin-bottom:12px;">
+      ${user.photoURL?`<img src="${user.photoURL}" style="width:44px;height:44px;border-radius:50%;">`:'<span style="font-size:36px;">🐲</span>'}
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13px;">${user.displayName||'Anonymous'}</div>
+        <div style="font-size:9px;color:var(--txt2);">${user.isAnonymous?'Guest account':user.email}</div>
+        <div style="font-size:10px;color:var(--acc);">⚡${fmt(power)} · 🏆${fmt(G.wins||0)} wins · 📈Asc.${G.ascension||0}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openWorldProfile()">👤 My Profile</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openFaction()">🏰 Faction</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openPvpArena()">⚔️ PvP Arena</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openLeaderboard()">🏆 Leaderboard</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="syncSaveToCloud().then(()=>toast('☁️ Synced!','ok'))">☁️ Sync Save</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="loadFromCloud()">📥 Load Cloud</button>
+    </div>
+    <button class="btn bd bblk" style="width:100%;font-size:11px;" onclick="mpSignOut()">🚪 Sign Out</button>`;
+  openM('mOnlineMode');
+}
+
+// ── WORLD PROFILE ─────────────────────────────────────────────────────────────
+const PVP_RANKS = [
+  {id:'bronze',  name:'Bronze',   emoji:'🥉', minPts:0,    color:'#cd7f32'},
+  {id:'silver',  name:'Silver',   emoji:'🥈', minPts:100,  color:'#a8a9ad'},
+  {id:'gold',    name:'Gold',     emoji:'🥇', minPts:300,  color:'#ffd700'},
+  {id:'platinum',name:'Platinum', emoji:'💎', minPts:600,  color:'#e5e4e2'},
+  {id:'diamond', name:'Diamond',  emoji:'💠', minPts:1000, color:'#b9f2ff'},
+  {id:'master',  name:'Master',   emoji:'🔮', minPts:1500, color:'#9333ea'},
+  {id:'legend',  name:'Legend',   emoji:'🌟', minPts:2000, color:'#f59e0b'},
+  {id:'eternal', name:'Eternal',  emoji:'♾️',  minPts:3000, color:'#ec4899'},
+];
+function getPvpRank(pts){
+  let r = PVP_RANKS[0];
+  for(const rank of PVP_RANKS) if((pts||0) >= rank.minPts) r = rank;
+  return r;
+}
+
+async function openWorldProfile(uid){
+  const body = document.getElementById('worldProfileBody');
+  if(!body) return;
+  body.innerHTML = '<div style="text-align:center;padding:20px;">Loading...</div>';
+  openM('mWorldProfile');
+  if(!fbReady()){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to view profiles</div>';return;}
+  const targetUid = uid || fbUID();
+  const isMe = targetUid === fbUID();
+  try{
+    const {db,doc,getDoc} = FB;
+    const snap = await getDoc(doc(db,'players',targetUid));
+    const p = snap.exists() ? snap.data() : null;
+    if(!p){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Player not found</div>';return;}
+    const pvpRank = getPvpRank(p.pvpPoints||0);
+    const guildRankName = GUILD_RANKS?.[p.guildRank||0]?.name||'Recruit';
+    body.innerHTML = `
+      <div style="text-align:center;padding:16px;background:linear-gradient(180deg,rgba(245,158,11,.08) 0%,transparent 100%);border-radius:12px;margin-bottom:14px;">
+        ${p.avatar?`<img src="${p.avatar}" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--acc);margin-bottom:8px;">`:'<div style="font-size:48px;margin-bottom:8px;">🐲</div>'}
+        <div style="font-weight:900;font-size:16px;">${escHtml(p.name||'Anonymous')}</div>
+        <div style="font-size:10px;color:var(--txt2);margin-bottom:6px;">${p.isAnonymous?'Guest':'Verified Player'}</div>
+        <div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;">
+          <span style="background:${pvpRank.color}22;border:1px solid ${pvpRank.color}44;border-radius:6px;padding:2px 8px;font-size:10px;color:${pvpRank.color};">${pvpRank.emoji} ${pvpRank.name}</span>
+          <span style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:2px 8px;font-size:10px;color:var(--acc);">📈 Asc.${p.ascension||0}</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px;">
+        <div style="background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:18px;">⚡</div><div style="font-weight:700;font-size:13px;">${fmt(p.power||0)}</div><div style="font-size:9px;color:var(--txt2);">Power</div>
+        </div>
+        <div style="background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:18px;">🏆</div><div style="font-weight:700;font-size:13px;">${fmt(p.wins||0)}</div><div style="font-size:9px;color:var(--txt2);">Wins</div>
+        </div>
+        <div style="background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:18px;">🗼</div><div style="font-weight:700;font-size:13px;">${p.towerBest||0}</div><div style="font-size:9px;color:var(--txt2);">Best Floor</div>
+        </div>
+        <div style="background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:18px;">⚔️</div><div style="font-weight:700;font-size:13px;">${fmt(p.pvpPoints||0)}</div><div style="font-size:9px;color:var(--txt2);">PvP Points</div>
+        </div>
+      </div>
+      ${p.factionName?`<div style="padding:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:10px;font-size:11px;">🏰 Faction: <b>${escHtml(p.factionName)}</b></div>`:''}
+      ${isMe?`<button class="btn bp" style="width:100%;font-size:11px;" onclick="openEditProfile()">✏️ Edit Profile</button>`:''}
+    `;
+  }catch(e){body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+}
+
+async function openEditProfile(){
+  if(!fbReady())return;
+  const newName = prompt('Enter your display name (max 20 chars):');
+  if(!newName||!newName.trim())return;
+  const trimmed = newName.trim().substring(0,20);
+  try{
+    const {auth,updateProfile,db,doc,updateDoc} = FB;
+    await updateProfile(auth.currentUser,{displayName:trimmed});
+    await updateDoc(doc(db,'players',fbUID()),{name:trimmed});
+    G.playerName = trimmed;
+    save();
+    toast(`✅ Name updated to: ${trimmed}`,'ok');
+    openWorldProfile();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FACTION SYSTEM
+// ══════════════════════════════════════════════════════════════════════════════
+const FACTION_UPGRADES = [
+  {id:'goldBoost',   name:'Gold Blessing',    emoji:'💰', desc:'+5% gold for all members',     cost:500,  maxLevel:10, stat:'goldBonus',   val:0.05},
+  {id:'xpBoost',     name:'Wisdom Aura',      emoji:'📚', desc:'+5% XP for all members',       cost:500,  maxLevel:10, stat:'xpBonus',     val:0.05},
+  {id:'atkBoost',    name:'War Banner',        emoji:'⚔️', desc:'+3% ATK for all members',      cost:800,  maxLevel:10, stat:'atkBonus',    val:0.03},
+  {id:'defBoost',    name:'Iron Wall',         emoji:'🛡️', desc:'+3% DEF for all members',      cost:800,  maxLevel:10, stat:'defBonus',    val:0.03},
+  {id:'hpBoost',     name:'Life Font',         emoji:'❤️', desc:'+5% HP for all members',       cost:800,  maxLevel:10, stat:'hpBonus',     val:0.05},
+  {id:'starBoost',   name:'Star Altar',        emoji:'⭐', desc:'+1 star from bosses',           cost:1000, maxLevel:5,  stat:'starBonus',   val:1},
+  {id:'dropBoost',   name:'Loot Shrine',       emoji:'🎁', desc:'+5% gear drop rate',           cost:600,  maxLevel:5,  stat:'eqDropBonus', val:0.05},
+  {id:'bossReduct',  name:'Titan Slayer',      emoji:'💀', desc:'Faction boss HP -10%',         cost:1200, maxLevel:5,  stat:'bossDmgMult', val:0.10},
+];
+
+const FACTION_BOSS_SCHEDULE = [
+  {id:'fb1', name:'Shadow Colossus',  emoji:'🌑', hpBase:50000,  atkBase:2000,  type:'dark',  weak:'light', rewardCoins:200,  rewardStars:5},
+  {id:'fb2', name:'Flame Wyvern',     emoji:'🔥', hpBase:80000,  atkBase:3000,  type:'fire',  weak:'water', rewardCoins:300,  rewardStars:8},
+  {id:'fb3', name:'Void Leviathan',   emoji:'🌀', hpBase:120000, atkBase:4500,  type:'dark',  weak:'light', rewardCoins:500,  rewardStars:12},
+  {id:'fb4', name:'Storm Titan',      emoji:'⚡', hpBase:200000, atkBase:7000,  type:'air',   weak:'earth', rewardCoins:800,  rewardStars:20},
+  {id:'fb5', name:'Ancient Sovereign',emoji:'👑', hpBase:500000, atkBase:15000, type:'earth', weak:'air',   rewardCoins:2000, rewardStars:50},
+];
+
+let _currentFactionTab = 'overview';
+
+function openFaction(){
+  if(!fbReady()){toast('Sign in to use Factions!','er');openOnlineMode();return;}
+  switchFactionTab('overview');
+  openM('mFaction');
+}
+
+function switchFactionTab(tab){
+  _currentFactionTab = tab;
+  ['overview','members','boss','upgrades','checkin'].forEach(t=>{
+    const btn = document.getElementById('ftab-'+t);
+    if(btn) btn.className = 'log-tab'+(t===tab?' on':'');
+  });
+  renderFactionTab(tab);
+}
+
+async function renderFactionTab(tab){
+  const body = document.getElementById('factionBody'); if(!body) return;
+  const coins = G._factionCoins || 0;
+  const badge = document.getElementById('factionCurrencyBadge');
+  if(badge) badge.textContent = `🪙 ${fmt(coins)} Faction Coins`;
+
+  if(!G._factionId){
+    // Not in a faction — show create/join
+    body.innerHTML = await renderFactionLobby(); return;
+  }
+
+  if(tab==='overview') body.innerHTML = await renderFactionOverview();
+  else if(tab==='members') body.innerHTML = await renderFactionMembers();
+  else if(tab==='boss') body.innerHTML = renderFactionBoss();
+  else if(tab==='upgrades') body.innerHTML = renderFactionUpgrades();
+  else if(tab==='checkin') body.innerHTML = renderFactionCheckin();
+}
+
+async function renderFactionLobby(){
+  let html = `<div style="text-align:center;padding:12px 0;margin-bottom:12px;">
+    <div style="font-size:32px;">🏰</div>
+    <div style="font-weight:700;font-size:14px;margin-bottom:4px;">Join a Faction</div>
+    <div style="font-size:10px;color:var(--txt2);">Fight faction bosses, earn coins, upgrade your faction for permanent bonuses shared by all members.</div>
+  </div>
+  <button class="btn bp mb2" style="width:100%;" onclick="createFaction()">🏰 Create New Faction</button>
+  <div style="font-size:10px;font-weight:700;margin-bottom:6px;">🔍 Open Factions</div>`;
+
+  try{
+    const {db,collection,query,where,limit,getDocs,orderBy} = FB;
+    const q = query(collection(db,'factions'), where('open','==',true), orderBy('memberCount','desc'), limit(10));
+    const snap = await getDocs(q);
+    snap.forEach(d=>{
+      const f = d.data();
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.3);border-radius:8px;margin-bottom:5px;">
+        <span style="font-size:20px;">${f.emoji||'🏰'}</span>
+        <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${escHtml(f.name||'?')}</div>
+        <div style="font-size:9px;color:var(--txt2);">👥 ${f.memberCount||1}/${f.maxMembers||20} · Lv.${f.level||1}</div></div>
+        <button class="btn bp" style="font-size:9px;padding:4px 10px;" onclick="joinFaction('${d.id}')">Join</button>
+      </div>`;
+    });
+    if(!snap.size) html += '<div style="text-align:center;color:var(--txt2);font-size:10px;padding:10px;">No open factions yet — create one!</div>';
+  }catch(e){ html += `<div style="color:#ef4444;font-size:10px;">Error loading factions</div>`; }
+  return html;
+}
+
+async function renderFactionOverview(){
+  if(!FB||!G._factionId) return '';
+  try{
+    const {db,doc,getDoc} = FB;
+    const snap = await getDoc(doc(db,'factions',G._factionId));
+    const f = snap.exists() ? snap.data() : {};
+    const level = f.level||1;
+    const xpPct = Math.min(100,Math.floor(((f.xp||0)/(level*1000))*100));
+    return `
+      <div style="text-align:center;padding:12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:12px;margin-bottom:12px;">
+        <div style="font-size:36px;">${f.emoji||'🏰'}</div>
+        <div style="font-weight:900;font-size:16px;color:var(--acc);">${escHtml(f.name||'?')}</div>
+        <div style="font-size:10px;color:var(--txt2);">Level ${level} Faction · ${f.memberCount||1} members</div>
+        <div style="height:4px;background:var(--bg3);border-radius:2px;margin:8px 0;"><div style="height:100%;width:${xpPct}%;background:var(--acc);border-radius:2px;"></div></div>
+        <div style="font-size:9px;color:var(--txt2);">${fmt(f.xp||0)} / ${fmt(level*1000)} XP to Lv.${level+1}</div>
+      </div>
+      <div style="font-size:10px;color:var(--txt2);padding:8px;background:rgba(28,38,56,.5);border-radius:8px;margin-bottom:8px;">
+        ${f.description ? escHtml(f.description) : 'No description set.'}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div style="text-align:center;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;">
+          <div style="font-size:14px;">💰</div><div style="font-weight:700;">${fmt(f.totalCoins||0)}</div><div style="font-size:8px;color:var(--txt2);">Total Coins Earned</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;">
+          <div style="font-size:14px;">💀</div><div style="font-weight:700;">${f.bossKills||0}</div><div style="font-size:8px;color:var(--txt2);">Boss Kills</div>
+        </div>
+      </div>`;
+  }catch(e){ return `<div style="color:#ef4444;font-size:10px;">Error: ${e.message}</div>`; }
+}
+
+async function renderFactionMembers(){
+  if(!FB||!G._factionId) return '';
+  try{
+    const {db,collection,query,where,getDocs} = FB;
+    const q = query(collection(db,'players'), where('factionId','==',G._factionId));
+    const snap = await getDocs(q);
+    let html = `<div style="font-size:10px;color:var(--txt2);margin-bottom:8px;">${snap.size} members</div>`;
+    const members = []; snap.forEach(d=>members.push({id:d.id,...d.data()}));
+    members.sort((a,b)=>(b.power||0)-(a.power||0));
+    members.forEach((m,i)=>{
+      const isMe = m.id === fbUID();
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${isMe?'rgba(245,158,11,.08)':'rgba(28,38,56,.5)'};border:1px solid ${isMe?'rgba(245,158,11,.3)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:4px;cursor:pointer;" onclick="openWorldProfile('${m.id}')">
+        <span style="font-size:11px;color:var(--txt2);min-width:18px;">${i+1}</span>
+        ${m.avatar?`<img src="${m.avatar}" style="width:28px;height:28px;border-radius:50%;">`:'<span style="font-size:20px;">🐲</span>'}
+        <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${isMe?'⭐ ':''} ${escHtml(m.name||'Anon')}</div>
+        <div style="font-size:9px;color:var(--txt2);">⚡${fmt(m.power||0)} · Asc.${m.ascension||0}</div></div>
+        ${m.isLeader?'<span style="font-size:10px;">👑</span>':''}
+      </div>`;
+    });
+    return html||'<div style="text-align:center;color:var(--txt2);padding:20px;">No members found</div>';
+  }catch(e){ return `<div style="color:#ef4444;font-size:10px;">Error: ${e.message}</div>`; }
+}
+
+function renderFactionBoss(){
+  const bossIdx = (G._factionBossIndex||0) % FACTION_BOSS_SCHEDULE.length;
+  const boss = FACTION_BOSS_SCHEDULE[bossIdx];
+  const scale = 1 + (G.ascension||0)*0.5;
+  const hp = Math.floor(boss.hpBase * scale);
+  const savedHp = G._factionBossHp ?? hp;
+  const pct = Math.min(100, Math.floor(savedHp/hp*100));
+  const lastAttack = G._factionBossLastAttack ? new Date(G._factionBossLastAttack).toLocaleString() : 'Never';
+  return `
+    <div style="text-align:center;padding:12px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:48px;">${boss.emoji}</div>
+      <div style="font-weight:900;font-size:15px;color:#f87171;">${boss.name}</div>
+      <div style="font-size:9px;color:var(--txt2);">Faction Boss · ${boss.type} type · Weak: ${boss.weak}</div>
+      <div style="height:8px;background:rgba(220,38,38,.2);border-radius:4px;margin:8px 0;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#dc2626,#ef4444);border-radius:4px;transition:width 1s;"></div>
+      </div>
+      <div style="font-size:10px;">${fmt(savedHp)} / ${fmt(hp)} HP</div>
+    </div>
+    <div style="font-size:9px;color:var(--txt2);margin-bottom:10px;">Your last attack: ${lastAttack}</div>
+    <button class="btn bp" style="width:100%;margin-bottom:8px;" onclick="startFactionBossFight()">⚔️ Attack Boss!</button>
+    <div style="padding:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;font-size:10px;">
+      🎁 Defeat rewards: 🪙${boss.rewardCoins} faction coins · ⭐${boss.rewardStars} stars (split among participants)
+    </div>`;
+}
+
+function renderFactionUpgrades(){
+  const factionLevel = G._factionLevel || 1;
+  let html = `<div style="font-size:10px;color:var(--txt2);margin-bottom:10px;">Faction upgrades benefit ALL members permanently. Cost is in Faction Coins.</div>`;
+  FACTION_UPGRADES.forEach(upg=>{
+    const level = (G._factionUpgrades||{})[upg.id] || 0;
+    const maxed = level >= upg.maxLevel;
+    const cost = Math.floor(upg.cost * Math.pow(1.5, level));
+    const coins = G._factionCoins || 0;
+    const canBuy = !maxed && coins >= cost;
+    const totalBonus = (level * upg.val * 100).toFixed(0);
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:5px;">
+      <span style="font-size:20px;">${upg.emoji}</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:11px;">${upg.name} <span style="color:var(--acc);">Lv.${level}/${upg.maxLevel}</span></div>
+        <div style="font-size:9px;color:var(--txt2);">${upg.desc} · Now: +${totalBonus}%</div>
+        <div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${Math.floor(level/upg.maxLevel*100)}%;background:var(--acc);border-radius:2px;"></div></div>
+      </div>
+      ${maxed
+        ? '<span style="font-size:10px;color:var(--ok);">MAX</span>'
+        : `<button class="btn ${canBuy?'bp':'bs bblk'}" style="font-size:9px;padding:4px 8px;" ${canBuy?'':'disabled'} onclick="buyFactionUpgrade('${upg.id}')">🪙${fmt(cost)}</button>`}
+    </div>`;
+  });
+  return html;
+}
+
+function renderFactionCheckin(){
+  const today = new Date().toDateString();
+  const lastCheckin = G._factionLastCheckin || '';
+  const alreadyChecked = lastCheckin === today;
+  const streak = G._factionCheckinStreak || 0;
+  const streakBonus = Math.min(7, streak);
+  const coinsReward = 50 + streakBonus * 20;
+  const starsReward = streak >= 7 ? 2 : streak >= 3 ? 1 : 0;
+  return `
+    <div style="text-align:center;padding:16px;">
+      <div style="font-size:40px;margin-bottom:8px;">${alreadyChecked?'✅':'📅'}</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${alreadyChecked?'Checked in today!':'Daily Check-in'}</div>
+      <div style="font-size:10px;color:var(--txt2);margin-bottom:12px;">Streak: ${streak} day${streak!==1?'s':''} 🔥</div>
+      <div style="display:flex;justify-content:center;gap:4px;margin-bottom:16px;">
+        ${[1,2,3,4,5,6,7].map(d=>`<div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:${d<=streak?'rgba(245,158,11,.3)':'rgba(28,38,56,.6)'};border:1px solid ${d<=streak?'rgba(245,158,11,.5)':'rgba(71,85,105,.3)'};">${d<=streak?'✅':d}</div>`).join('')}
+      </div>
+      <div style="padding:10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;margin-bottom:16px;">
+        Today's reward: <b>🪙${coinsReward} coins</b>${starsReward?` · <b>⭐${starsReward} stars</b>`:''}
+      </div>
+      ${alreadyChecked
+        ? '<div style="font-size:10px;color:var(--ok);">✅ Come back tomorrow for your next reward!</div>'
+        : `<button class="btn bp" style="width:100%;font-size:13px;" onclick="doFactionCheckin()">📅 Check In Now!</button>`}
+    </div>`;
+}
+
+async function createFaction(){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  const name = prompt('Faction name (max 24 chars):');
+  if(!name||!name.trim())return;
+  const emoji = prompt('Faction emoji (1 emoji):')||'🏰';
+  const desc = prompt('Short description (max 80 chars):')||'';
+  try{
+    const {db,collection,addDoc,serverTimestamp} = FB;
+    const ref = await addDoc(collection(db,'factions'),{
+      name:name.trim().substring(0,24),
+      emoji:emoji.trim().substring(0,2)||'🏰',
+      description:desc.trim().substring(0,80),
+      leaderId:fbUID(),leaderName:fbName(),
+      memberCount:1,maxMembers:20,level:1,xp:0,
+      open:true,bossKills:0,totalCoins:0,
+      upgrades:{},createdAt:serverTimestamp(),
+    });
+    G._factionId = ref.id;
+    G._factionCoins = 0;
+    G._factionUpgrades = {};
+    G._factionLevel = 1;
+    // Update player record
+    const {doc,updateDoc} = FB;
+    await updateDoc(doc(db,'players',fbUID()),{factionId:ref.id,factionName:name.trim().substring(0,24),isLeader:true});
+    save();
+    toast(`🏰 Faction "${name}" created!`,'ok');
+    _startFactionChatListener(ref.id);
+    switchFactionTab('overview');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function joinFaction(factionId){
+  if(!fbReady())return;
+  try{
+    const {db,doc,getDoc,updateDoc,increment} = FB;
+    const fSnap = await getDoc(doc(db,'factions',factionId));
+    if(!fSnap.exists()){toast('Faction not found','er');return;}
+    const f = fSnap.data();
+    if((f.memberCount||0)>=(f.maxMembers||20)){toast('Faction is full!','er');return;}
+    G._factionId = factionId;G._factionCoins=0;G._factionUpgrades={...f.upgrades||{}};G._factionLevel=f.level||1;
+    await updateDoc(doc(db,'factions',factionId),{memberCount:increment(1)});
+    await updateDoc(doc(db,'players',fbUID()),{factionId,factionName:f.name,isLeader:false});
+    save();
+    toast(`🏰 Joined faction: ${f.name}!`,'ok');
+    _startFactionChatListener(factionId);
+    switchFactionTab('overview');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function buyFactionUpgrade(upgradeId){
+  const upg = FACTION_UPGRADES.find(u=>u.id===upgradeId);if(!upg)return;
+  const level = (G._factionUpgrades||{})[upgradeId]||0;
+  if(level>=upg.maxLevel){toast('Already maxed!','er');return;}
+  const cost = Math.floor(upg.cost*Math.pow(1.5,level));
+  if((G._factionCoins||0)<cost){toast(`Need 🪙${fmt(cost)} faction coins!`,'er');return;}
+  G._factionCoins -= cost;
+  if(!G._factionUpgrades)G._factionUpgrades={};
+  G._factionUpgrades[upgradeId] = level+1;
+  // Sync to faction doc
+  try{
+    const {db,doc,updateDoc} = FB;
+    await updateDoc(doc(db,'factions',G._factionId),{[`upgrades.${upgradeId}`]:level+1});
+  }catch(e){}
+  save();
+  toast(`⬆️ ${upg.name} upgraded to Lv.${level+1}!`,'ok');
+  renderFactionTab('upgrades');
+}
+
+function doFactionCheckin(){
+  const today = new Date().toDateString();
+  if(G._factionLastCheckin===today){toast('Already checked in today!','er');return;}
+  const streak = (G._factionCheckinStreak||0)+1;
+  G._factionCheckinStreak = streak;
+  G._factionLastCheckin = today;
+  const coins = 50+Math.min(7,streak)*20;
+  const stars = streak>=7?2:streak>=3?1:0;
+  G._factionCoins = (G._factionCoins||0)+coins;
+  if(stars)G.stars=(G.stars||0)+stars;
+  save();updateHdr();
+  toast(`📅 Checked in! +🪙${coins}${stars?' +⭐'+stars:''}  (Day ${streak})!`,'ok');
+  renderFactionTab('checkin');
+}
+
+function startFactionBossFight(){
+  if(!G._factionId){toast('Join a faction first!','er');return;}
+  const bossIdx = (G._factionBossIndex||0)%FACTION_BOSS_SCHEDULE.length;
+  const boss = FACTION_BOSS_SCHEDULE[bossIdx];
+  const scale = 1+(G.ascension||0)*0.5;
+  const hp = G._factionBossHp??Math.floor(boss.hpBase*scale);
+  if(hp<=0){toast('Boss already defeated! Wait for next reset.','ok');return;}
+  closeAllM();
+  G.enemy={
+    id:'faction_boss_'+boss.id,name:boss.name,emoji:boss.emoji,
+    type:boss.type,weak:boss.weak,boss:true,isFactionBoss:true,
+    level:50+(G.ascension||0)*10,
+    maxHp:hp,hp,
+    atk:Math.floor(boss.atkBase*scale),
+    gold:0,xp:0,hpM:1,atkM:1,skills:[],phases:[
+      {threshold:0.7,msg:'⚠️ Enraged!',atkBoost:1.3},
+      {threshold:0.3,msg:'💀 FINAL STAND!',atkBoost:1.8},
+    ],
+  };
+  G._factionBossLastAttack = Date.now();
+  G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;
+  G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
+  G._battleStartTime=Date.now();G._phoenixUsedThisBattle=false;
+  renderEnemy();renderBattleCards();buildTurns();
+  setMsg(`💀 FACTION BOSS: ${boss.emoji} ${boss.name}!`,`Defeat for 🪙${boss.rewardCoins} coins + ⭐${boss.rewardStars}!`,'');
+  if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PVP ARENA SYSTEM
+// ══════════════════════════════════════════════════════════════════════════════
+let _pvpTab = 'arena';
+let _pvpOpponent = null;
+
+function openPvpArena(){
+  if(!fbReady()){toast('Sign in for PvP!','er');openOnlineMode();return;}
+  const rank = getPvpRank(G._pvpPoints||0);
+  const badge = document.getElementById('pvpRankBadge');
+  if(badge) badge.textContent = `${rank.emoji} ${rank.name} · ${G._pvpPoints||0} pts`;
+  switchPvpTab('arena');
+  openM('mPvpArena');
+}
+
+function switchPvpTab(tab){
+  _pvpTab = tab;
+  ['arena','ranking','history'].forEach(t=>{
+    const btn = document.getElementById('pvptab-'+t);
+    if(btn) btn.className='log-tab'+(t===tab?' on':'');
+  });
+  renderPvpTab(tab);
+}
+
+async function renderPvpTab(tab){
+  const body = document.getElementById('pvpBody');if(!body)return;
+  if(tab==='arena') body.innerHTML = await renderPvpArena();
+  else if(tab==='ranking') body.innerHTML = await renderPvpRanking();
+  else if(tab==='history') body.innerHTML = renderPvpHistory();
+}
+
+async function renderPvpArena(){
+  const myPts = G._pvpPoints||0;
+  const myRank = getPvpRank(myPts);
+  const nextRank = PVP_RANKS.find(r=>r.minPts > myPts);
+  const ptsToNext = nextRank ? nextRank.minPts - myPts : 0;
+  let html = `
+    <div style="text-align:center;padding:12px;background:${myRank.color}11;border:1px solid ${myRank.color}33;border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:36px;">${myRank.emoji}</div>
+      <div style="font-weight:900;font-size:16px;color:${myRank.color};">${myRank.name}</div>
+      <div style="font-size:12px;color:var(--acc);font-weight:700;">${myPts} PvP Points</div>
+      ${nextRank?`<div style="font-size:9px;color:var(--txt2);">${ptsToNext} pts to ${nextRank.emoji} ${nextRank.name}</div>`:'<div style="font-size:9px;color:#ec4899;">👑 Maximum Rank!</div>'}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+      <div style="text-align:center;padding:8px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;">
+        <div style="font-weight:700;color:var(--ok);">${G._pvpWins||0}</div><div style="font-size:9px;color:var(--txt2);">Wins</div>
+      </div>
+      <div style="text-align:center;padding:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;">
+        <div style="font-weight:700;color:#f87171;">${G._pvpLosses||0}</div><div style="font-size:9px;color:var(--txt2);">Losses</div>
+      </div>
+    </div>
+    <button class="btn bp" style="width:100%;font-size:13px;margin-bottom:8px;" onclick="findPvpOpponent()">⚔️ Find Opponent</button>
+    <div id="pvpOpponentArea"></div>`;
+  return html;
+}
+
+async function findPvpOpponent(){
+  const area = document.getElementById('pvpOpponentArea');
+  if(area) area.innerHTML = '<div style="text-align:center;padding:16px;color:var(--txt2);">🔍 Searching for opponent...</div>';
+  if(!FB){if(area)area.innerHTML='<div style="color:#ef4444;font-size:10px;">Not connected</div>';return;}
+  try{
+    const {db,collection,query,orderBy,limit,getDocs,where} = FB;
+    const myPts = G._pvpPoints||0;
+    // Find players with similar rank
+    const q = query(collection(db,'players'),
+      where('pvpPoints','>=',Math.max(0,myPts-200)),
+      where('pvpPoints','<=',myPts+200),
+      limit(10));
+    const snap = await getDocs(q);
+    const candidates = [];
+    snap.forEach(d=>{ if(d.id!==fbUID()) candidates.push({id:d.id,...d.data()}); });
+    if(!candidates.length){
+      // Fallback: any player
+      const q2 = query(collection(db,'players'),orderBy('pvpPoints','desc'),limit(20));
+      const snap2 = await getDocs(q2);
+      snap2.forEach(d=>{ if(d.id!==fbUID()) candidates.push({id:d.id,...d.data()}); });
+    }
+    if(!candidates.length){
+      if(area) area.innerHTML='<div style="text-align:center;color:var(--txt2);padding:16px;font-size:10px;">No opponents found yet. Come back when more players join!</div>';
+      return;
+    }
+    _pvpOpponent = candidates[Math.floor(Math.random()*Math.min(candidates.length,5))];
+    const oppRank = getPvpRank(_pvpOpponent.pvpPoints||0);
+    const winPts = Math.max(10, 25 - Math.floor((_pvpOpponent.pvpPoints||0)/100));
+    const losePts = 15;
+    if(area) area.innerHTML = `
+      <div style="padding:12px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:10px;margin-top:8px;">
+        <div style="font-weight:700;font-size:11px;margin-bottom:8px;">Opponent Found:</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          ${_pvpOpponent.avatar?`<img src="${_pvpOpponent.avatar}" style="width:36px;height:36px;border-radius:50%;">`:'<span style="font-size:28px;">🐲</span>'}
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:12px;">${escHtml(_pvpOpponent.name||'Anon')}</div>
+            <div style="font-size:9px;color:${oppRank.color};">${oppRank.emoji} ${oppRank.name} · ${_pvpOpponent.pvpPoints||0} pts</div>
+            <div style="font-size:9px;color:var(--txt2);">⚡${fmt(_pvpOpponent.power||0)} · Asc.${_pvpOpponent.ascension||0}</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:var(--txt2);margin-bottom:8px;">Win: +${winPts} pts · Lose: -${losePts} pts</div>
+        <button class="btn bp" style="width:100%;" onclick="startPvpBattle()">⚔️ Fight!</button>
+      </div>`;
+  }catch(e){if(area)area.innerHTML=`<div style="color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+}
+
+function startPvpBattle(){
+  if(!_pvpOpponent){toast('Find an opponent first!','er');return;}
+  closeAllM();
+  // Simulate opponent team using their saved stats
+  const opp = _pvpOpponent;
+  const sc = 1+(opp.ascension||0)*0.5;
+  const power = opp.power||1000;
+  // Build 3 enemy fighters from opponent power
+  const oppTeam = [
+    {name:opp.name+' (Rat)',    emoji:'🐀',type:'water',weak:'earth',level:Math.floor(50*sc),hpM:1.2,atkM:1.1,boss:false,gold:0,xp:0,isPvp:true},
+    {name:opp.name+' (Dragon)', emoji:'🐉',type:'fire', weak:'water',level:Math.floor(55*sc),hpM:1.5,atkM:1.3,boss:false,gold:0,xp:0,isPvp:true},
+    {name:opp.name+' (Tiger)',  emoji:'🐅',type:'fire', weak:'water',level:Math.floor(60*sc),hpM:2.0,atkM:1.5,boss:true, gold:0,xp:0,isPvp:true},
+  ];
+  G._pvpQueue = [...oppTeam];
+  G._pvpActive = true;
+  G._pvpOpponentData = opp;
+  const first = G._pvpQueue.shift();
+  _spawnPvpEnemy(first);
+}
+
+function _spawnPvpEnemy(fighter){
+  if(!fighter)return;
+  const sc = 1+((_pvpOpponent?.power||1000)/10000);
+  G.enemy = {
+    ...fighter,
+    maxHp:Math.floor(220*fighter.hpM*sc*20),
+    hp:Math.floor(220*fighter.hpM*sc*20),
+    atk:Math.floor(40*fighter.atkM*sc*15),
+    skills:[],phases:[],
+  };
+  G._hordeQueue = [...G._pvpQueue];
+  G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;
+  G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
+  G._battleStartTime=Date.now();G._phoenixUsedThisBattle=false;
+  renderEnemy();renderBattleCards();buildTurns();
+  setMsg(`⚔️ PvP vs ${_pvpOpponent?.name||'Opponent'}!`,`Fighter ${fighter.emoji} ${fighter.name}`,'');
+  if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}
+}
+
+async function _onPvpWin(){
+  G._pvpActive = false;
+  const opp = _pvpOpponent;_pvpOpponent=null;
+  const myPts = G._pvpPoints||0;
+  const winPts = Math.max(10,25-Math.floor((opp?.pvpPoints||0)/100));
+  G._pvpPoints = myPts+winPts;
+  G._pvpWins = (G._pvpWins||0)+1;
+  if(!G._pvpHistory) G._pvpHistory=[];
+  G._pvpHistory.unshift({vs:opp?.name||'?',result:'win',pts:winPts,ts:Date.now()});
+  if(G._pvpHistory.length>20) G._pvpHistory.length=20;
+  // Stars reward based on rank
+  const rank = getPvpRank(G._pvpPoints);
+  const starsEarned = rank.id==='legend'?3:rank.id==='master'?2:1;
+  G.stars=(G.stars||0)+starsEarned;
+  // Update leaderboard
+  try{
+    const {db,doc,updateDoc} = FB;
+    await updateDoc(doc(db,'players',fbUID()),{pvpPoints:G._pvpPoints,pvpWins:G._pvpWins});
+  }catch(e){}
+  save();updateHdr();
+  vib&&vib([100,50,200,100,300]);
+  const newRank = getPvpRank(G._pvpPoints);
+  toast(`🏆 PvP Win! +${winPts} pts → ${newRank.emoji} ${newRank.name} · +⭐${starsEarned}`,'ok');
+  setTimeout(()=>spawnEnemy(),1500);
+}
+
+async function _onPvpLoss(){
+  G._pvpActive = false;
+  const opp = _pvpOpponent;_pvpOpponent=null;
+  const losePts = 15;
+  G._pvpPoints = Math.max(0,(G._pvpPoints||0)-losePts);
+  G._pvpLosses = (G._pvpLosses||0)+1;
+  if(!G._pvpHistory) G._pvpHistory=[];
+  G._pvpHistory.unshift({vs:opp?.name||'?',result:'loss',pts:-losePts,ts:Date.now()});
+  if(G._pvpHistory.length>20) G._pvpHistory.length=20;
+  try{
+    const {db,doc,updateDoc} = FB;
+    await updateDoc(doc(db,'players',fbUID()),{pvpPoints:G._pvpPoints,pvpLosses:G._pvpLosses});
+  }catch(e){}
+  save();
+  toast(`💀 PvP Loss! -${losePts} pts`,'er');
+  setTimeout(()=>spawnEnemy(),1500);
+}
+
+async function renderPvpRanking(){
+  if(!FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see rankings</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs} = FB;
+    const q = query(collection(db,'players'),orderBy('pvpPoints','desc'),limit(50));
+    const snap = await getDocs(q);
+    const players=[];snap.forEach(d=>players.push({id:d.id,...d.data()}));
+    let html='';
+    players.forEach((p,i)=>{
+      const isMe=p.id===fbUID();
+      const rank=getPvpRank(p.pvpPoints||0);
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+      html+=`<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:${isMe?'rgba(245,158,11,.1)':'rgba(28,38,56,.5)'};border:1px solid ${isMe?'rgba(245,158,11,.4)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:3px;">
+        <span style="font-size:13px;min-width:22px;">${medal}</span>
+        ${p.avatar?`<img src="${p.avatar}" style="width:26px;height:26px;border-radius:50%;">`:'<span style="font-size:18px;">🐲</span>'}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${isMe?'⭐ ':''} ${escHtml(p.name||'Anon')}</div>
+          <div style="font-size:8px;color:${rank.color};">${rank.emoji} ${rank.name}</div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--acc);">${fmt(p.pvpPoints||0)}</div>
+      </div>`;
+    });
+    return html||'<div style="text-align:center;color:var(--txt2);padding:20px;">No players yet</div>';
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+}
+
+function renderPvpHistory(){
+  const hist = G._pvpHistory||[];
+  if(!hist.length) return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No PvP battles yet</div>';
+  return hist.map(h=>{
+    const time=new Date(h.ts).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${h.result==='win'?'rgba(34,197,94,.08)':'rgba(239,68,68,.08)'};border:1px solid ${h.result==='win'?'rgba(34,197,94,.2)':'rgba(239,68,68,.2)'};border-radius:8px;margin-bottom:4px;">
+      <span style="font-size:16px;">${h.result==='win'?'🏆':'💀'}</span>
+      <div style="flex:1;"><div style="font-size:11px;font-weight:700;">vs ${escHtml(h.vs||'?')}</div>
+      <div style="font-size:9px;color:var(--txt2);">${time}</div></div>
+      <div style="font-size:11px;font-weight:700;color:${h.pts>0?'var(--ok)':'#f87171'};">${h.pts>0?'+':''}${h.pts} pts</div>
+    </div>`;
+  }).join('');
+}
+
 // Only register service worker when hosted on a real server (not local file or preview)
 if('serviceWorker' in navigator && location.protocol === 'https:' && !location.hostname.includes('claudeusercontent')){
   window.addEventListener('load', () => {
@@ -8539,6 +9360,61 @@ function triggerPWAInstall(){
       <button class="btn bp" style="font-size:11px;padding:8px 12px;" onclick="sendChatMsg()">Send</button>
     </div>
     <div style="font-size:8px;color:var(--txt2);margin-top:4px;">Be respectful · No spam</div>
+  </div>
+</div>
+
+
+<!-- ═══ ONLINE MODE MODAL ═══ -->
+<div id="mOnlineMode" class="modal" style="display:none;">
+  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
+    <button class="modal-close" onclick="closeM('mOnlineMode')">✕</button>
+    <div class="sec-t mb2">🌐 Online Mode</div>
+    <div id="onlineModeBody" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
+
+<!-- ═══ WORLD PROFILE MODAL ═══ -->
+<div id="mWorldProfile" class="modal" style="display:none;">
+  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
+    <button class="modal-close" onclick="closeM('mWorldProfile')">✕</button>
+    <div class="sec-t mb2">👤 World Profile</div>
+    <div id="worldProfileBody" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
+
+<!-- ═══ FACTION MODAL ═══ -->
+<div id="mFaction" class="modal" style="display:none;">
+  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
+    <button class="modal-close" onclick="closeM('mFaction')">✕</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="sec-t" style="margin:0;">🏰 Faction</div>
+      <div id="factionCurrencyBadge" style="font-size:10px;color:#fbbf24;font-weight:700;"></div>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;">
+      <button class="log-tab on" id="ftab-overview" onclick="switchFactionTab('overview')">🏰 Home</button>
+      <button class="log-tab" id="ftab-members" onclick="switchFactionTab('members')">👥 Members</button>
+      <button class="log-tab" id="ftab-boss" onclick="switchFactionTab('boss')">💀 Boss</button>
+      <button class="log-tab" id="ftab-upgrades" onclick="switchFactionTab('upgrades')">⬆️ Upgrades</button>
+      <button class="log-tab" id="ftab-checkin" onclick="switchFactionTab('checkin')">📅 Check-in</button>
+    </div>
+    <div id="factionBody" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
+
+<!-- ═══ PVP ARENA MODAL ═══ -->
+<div id="mPvpArena" class="modal" style="display:none;">
+  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
+    <button class="modal-close" onclick="closeM('mPvpArena')">✕</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="sec-t" style="margin:0;">⚔️ PvP Arena</div>
+      <div id="pvpRankBadge" style="font-size:10px;color:var(--acc);font-weight:700;"></div>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:8px;">
+      <button class="log-tab on" id="pvptab-arena"   onclick="switchPvpTab('arena')">⚔️ Arena</button>
+      <button class="log-tab"    id="pvptab-ranking" onclick="switchPvpTab('ranking')">🏆 Ranking</button>
+      <button class="log-tab"    id="pvptab-history" onclick="switchPvpTab('history')">📜 History</button>
+    </div>
+    <div id="pvpBody" style="overflow-y:auto;flex:1;"></div>
   </div>
 </div>
 
