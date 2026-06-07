@@ -1,0 +1,26 @@
+{
+  "name": "Sheng Xiao Zodiac",
+  "short_name": "Sheng Xiao",
+  "description": "Deep idle RPG battle game based on the Chinese Zodiac.",
+  "start_url": "/zodiac_battle_v2-56.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#f59e0b",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
