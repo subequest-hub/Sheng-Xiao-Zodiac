@@ -835,6 +835,10 @@ onAuthStateChanged(auth, user => {
         <span class="hub-icon">⚙️</span><span class="hub-label">Settings</span>
         <span class="hub-sub">Config & save</span>
       </button>
+      <button class="hub-btn hub-btn-special" id="gmHubBtn" onclick="closeM('mMore');openGMPanel()" style="display:none;border-color:#a855f7 !important;background:rgba(88,28,135,.3);">
+        <span class="hub-icon">🛡️</span><span class="hub-label">GM Panel</span>
+        <span class="hub-sub">Developer</span>
+      </button>
     </div>
   </div>
 
@@ -8275,6 +8279,9 @@ window._onFBSignIn = function(user){
   if(sub)sub.textContent=user.displayName||'Online';
   const profSub=document.getElementById('hubProfileSub');
   if(profSub)profSub.textContent=user.displayName||'View profile';
+  // Show GM button if developer
+  const gmBtn=document.getElementById('gmHubBtn');
+  if(gmBtn)gmBtn.style.display=isGM()?'':'none';
   // Sync save to cloud on sign-in
   setTimeout(()=>syncSaveToCloud(),2000);
   // Start leaderboard listener
@@ -8674,7 +8681,7 @@ function openOnlineMode(){
   }
   // Start listeners once signed in
   _startWorldChatListener();
-  setTimeout(()=>{_runFirestoreSetup();if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();},2000);
+  setTimeout(()=>{_runFirestoreSetup();_checkGlobalReward();if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();},2000);
   if(G._factionId) _startFactionChatListener(G._factionId);
 
   const power = calcPowerRating ? calcPowerRating() : 0;
@@ -10778,6 +10785,388 @@ async function _runFirestoreSetup(){
   }
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GM / DEVELOPER MODE
+// Locked to developer Google account. Set your UID after first sign-in.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Your UID — set this after your first sign-in (check Firebase Auth console)
+// Or leave as email check for now (more flexible)
+const GM_EMAILS = ['subequest@gmail.com'];
+const GM_UIDS = []; // Add your UID here after first sign-in for extra security
+
+function isGM(){
+  const user = window._fbUser;
+  if(!user) return false;
+  if(GM_UIDS.length && GM_UIDS.includes(user.uid)) return true;
+  if(GM_EMAILS.includes(user.email)) return true;
+  return false;
+}
+
+function openGMPanel(){
+  if(!isGM()){toast('Access denied.','er');return;}
+  renderGMPanel();
+  openM('mGMPanel');
+}
+
+let _gmTab = 'events';
+function switchGMTab(tab){
+  _gmTab = tab;
+  ['events','boss','announce','players','server','world'].forEach(t=>{
+    const btn = document.getElementById('gmtab-'+t);
+    if(btn) btn.className = 'log-tab'+(t===tab?' on':'');
+  });
+  renderGMPanel();
+}
+
+async function renderGMPanel(){
+  const body = document.getElementById('gmPanelBody');
+  if(!body||!isGM()) return;
+  if(_gmTab==='events')      body.innerHTML = renderGMEvents();
+  else if(_gmTab==='boss')   body.innerHTML = await renderGMBoss();
+  else if(_gmTab==='announce') body.innerHTML = renderGMAnnounce();
+  else if(_gmTab==='players')  body.innerHTML = await renderGMPlayers();
+  else if(_gmTab==='server')   body.innerHTML = await renderGMServer();
+  else if(_gmTab==='world')    body.innerHTML = renderGMWorld();
+}
+
+// ── EVENTS TAB ───────────────────────────────────────────────────────────────
+function renderGMEvents(){
+  const active = window._activeWorldEvent;
+  let html = `
+    <div style="padding:10px;background:${active?'rgba(34,197,94,.1)':'rgba(28,38,56,.5)'};border:1px solid ${active?'rgba(34,197,94,.3)':'rgba(71,85,105,.3)'};border-radius:8px;margin-bottom:12px;">
+      <div style="font-size:10px;font-weight:700;margin-bottom:4px;">${active?'🟢 Event Active: '+active.id:'⚫ No Active Event'}</div>
+      ${active?`<div style="font-size:9px;color:var(--txt2);">Ends: ${new Date(active.startedAt+active.duration).toLocaleString()}</div>
+      <button class="btn bd bblk" style="font-size:10px;margin-top:6px;" onclick="gmEndEvent()">⏹ End Event Now</button>`:''}
+    </div>
+    <div style="font-size:10px;font-weight:700;margin-bottom:8px;">Start a World Event:</div>`;
+  WORLD_EVENTS.forEach(ev=>{
+    html+=`<div style="padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:5px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:20px;">${ev.emoji}</span>
+        <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${ev.name}</div>
+        <div style="font-size:9px;color:var(--txt2);">${ev.desc}</div></div>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="btn bp" style="font-size:9px;flex:1;" onclick="gmStartEvent('${ev.id}',${ev.duration})">▶ ${Math.floor(ev.duration/3600000)}h</button>
+        <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmStartEvent('${ev.id}',${ev.duration*2})">▶ ${Math.floor(ev.duration/3600000*2)}h</button>
+      </div>
+    </div>`;
+  });
+  return html;
+}
+
+async function gmStartEvent(eventId, duration){
+  if(!window.FB||!isGM()) return;
+  try{
+    const {db,doc,setDoc} = window.FB;
+    const ev = WORLD_EVENTS.find(e=>e.id===eventId);
+    await setDoc(doc(db,'server','activeEvent'),{id:eventId,startedAt:Date.now(),duration,name:ev?.name||eventId});
+    window._activeWorldEvent = {id:eventId,startedAt:Date.now(),duration,...(ev?.mult?{mult:ev.mult}:{})};
+    _applyWorldEventBonuses(window._activeWorldEvent);
+    toast(`🌍 Event started: ${ev?.emoji||''} ${ev?.name||eventId}!`,'ok');
+    _pushTicker(`🌍 WORLD EVENT: ${ev?.emoji||''} ${ev?.name||eventId} is now LIVE!`);
+    _pushActivity('🌍',`World Event started: ${ev?.name||eventId}!`,'#f59e0b');
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function gmEndEvent(){
+  if(!window.FB||!isGM()) return;
+  try{
+    const {db,doc,setDoc} = window.FB;
+    await setDoc(doc(db,'server','activeEvent'),{id:'',startedAt:0,duration:0});
+    window._activeWorldEvent = null;
+    window._worldEventXpMult=1;window._worldEventGoldMult=1;window._worldEventStarMult=1;
+    toast('Event ended.','ok');
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// ── BOSS TAB ─────────────────────────────────────────────────────────────────
+async function renderGMBoss(){
+  if(!window.FB) return '<div style="color:var(--txt2);padding:12px;">Not connected</div>';
+  try{
+    const {db,doc,getDoc} = window.FB;
+    const snap = await getDoc(doc(db,'server','boss'));
+    const b = snap.exists() ? snap.data() : {};
+    return `
+      <div style="font-size:10px;font-weight:700;margin-bottom:10px;">🐉 Server Boss Settings</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Boss Name</div>
+          <input id="gmBossName" type="text" value="${escHtml(b.name||'')}" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;"></div>
+        <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Boss Emoji</div>
+          <input id="gmBossEmoji" type="text" value="${b.emoji||'🐉'}" maxlength="2" style="width:80px;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:20px;"></div>
+        <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Max HP</div>
+          <input id="gmBossMaxHp" type="number" value="${b.maxHp||10000000}" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;"></div>
+        <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Current HP</div>
+          <input id="gmBossHp" type="number" value="${b.currentHp||10000000}" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;"></div>
+        <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Element Type</div>
+          <select id="gmBossType" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+            ${Object.keys(EI).map(el=>`<option value="${el}" ${b.type===el?'selected':''}>${EI[el]} ${el}</option>`).join('')}
+          </select></div>
+        <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Weak To</div>
+          <select id="gmBossWeak" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+            ${Object.keys(EI).map(el=>`<option value="${el}" ${b.weak===el?'selected':''}>${EI[el]} ${el}</option>`).join('')}
+          </select></div>
+        <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Level</div>
+          <input id="gmBossLevel" type="number" value="${b.level||500}" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;"></div>
+        <button class="btn bp" style="width:100%;" onclick="gmSaveBoss()">💾 Save Boss</button>
+        <button class="btn bs bblk" style="width:100%;" onclick="gmResetBoss()">🔄 Reset HP to Full</button>
+      </div>`;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
+}
+
+async function gmSaveBoss(){
+  if(!window.FB||!isGM()) return;
+  try{
+    const {db,doc,updateDoc} = window.FB;
+    const maxHp = parseInt(document.getElementById('gmBossMaxHp')?.value||10000000);
+    await updateDoc(doc(db,'server','boss'),{
+      name: document.getElementById('gmBossName')?.value||'Ancient Void Dragon',
+      emoji: document.getElementById('gmBossEmoji')?.value||'🐉',
+      maxHp,
+      currentHp: parseInt(document.getElementById('gmBossHp')?.value||maxHp),
+      type: document.getElementById('gmBossType')?.value||'dark',
+      weak: document.getElementById('gmBossWeak')?.value||'light',
+      level: parseInt(document.getElementById('gmBossLevel')?.value||500),
+    });
+    toast('✅ Boss updated!','ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function gmResetBoss(){
+  if(!window.FB||!isGM()) return;
+  try{
+    const {db,doc,getDoc,updateDoc} = window.FB;
+    const snap = await getDoc(doc(db,'server','boss'));
+    if(snap.exists()){
+      const maxHp = snap.data().maxHp||10000000;
+      await updateDoc(doc(db,'server','boss'),{currentHp:maxHp});
+      toast('🔄 Boss HP reset to full!','ok');
+      renderGMPanel();
+    }
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// ── ANNOUNCE TAB ──────────────────────────────────────────────────────────────
+function renderGMAnnounce(){
+  return `
+    <div style="font-size:10px;font-weight:700;margin-bottom:10px;">📢 Server Announcement</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Emoji</div>
+        <input id="gmAnnEmoji" type="text" value="📢" maxlength="2" style="width:60px;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:20px;"></div>
+      <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Title</div>
+        <input id="gmAnnTitle" type="text" placeholder="Announcement title..." maxlength="60" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;"></div>
+      <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Message</div>
+        <textarea id="gmAnnText" maxlength="500" placeholder="Write your announcement..." rows="4" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;resize:vertical;box-sizing:border-box;"></textarea></div>
+      <div><div style="font-size:9px;color:var(--txt2);margin-bottom:3px;">Date label (optional)</div>
+        <input id="gmAnnDate" type="text" placeholder="e.g. June 2026 Update" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;"></div>
+      <button class="btn bp" style="width:100%;" onclick="gmPostAnnouncement()">📢 Post Announcement</button>
+      <button class="btn bs bblk" style="width:100%;" onclick="gmClearAnnouncement()">🗑️ Clear Announcement</button>
+    </div>
+    <div style="margin-top:12px;font-size:10px;font-weight:700;margin-bottom:6px;">📣 Broadcast to Chat</div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <textarea id="gmChatMsg" maxlength="120" placeholder="Message to world chat..." rows="2" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;resize:none;box-sizing:border-box;"></textarea>
+      <button class="btn bp" style="width:100%;" onclick="gmBroadcast()">📡 Broadcast to World Chat</button>
+    </div>`;
+}
+
+async function gmPostAnnouncement(){
+  if(!window.FB||!isGM()) return;
+  const title=document.getElementById('gmAnnTitle')?.value?.trim();
+  const text=document.getElementById('gmAnnText')?.value?.trim();
+  if(!title||!text){toast('Title and message required!','er');return;}
+  try{
+    const {db,doc,setDoc} = window.FB;
+    const id='ann_'+Date.now();
+    await setDoc(doc(db,'server','announcement'),{
+      id, title, text,
+      emoji: document.getElementById('gmAnnEmoji')?.value||'📢',
+      date: document.getElementById('gmAnnDate')?.value||'',
+      postedAt: Date.now(),
+    });
+    toast('📢 Announcement posted! All players will see it on next login.','ok');
+    _pushTicker(`📢 New announcement from the developers!`);
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function gmClearAnnouncement(){
+  if(!window.FB||!isGM()) return;
+  try{
+    const {db,doc,setDoc} = window.FB;
+    await setDoc(doc(db,'server','announcement'),{id:'',title:'',text:'',emoji:'📢',date:''});
+    toast('🗑️ Announcement cleared.','ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function gmBroadcast(){
+  if(!window.FB||!isGM()) return;
+  const msg = document.getElementById('gmChatMsg')?.value?.trim();
+  if(!msg){toast('Enter a message!','er');return;}
+  try{
+    const {rtdb,ref,push} = window.FB;
+    await push(ref(rtdb,'globalChat'),{uid:'SYSTEM',name:'🛡️ GM',avatar:'',text:`[GM] ${msg}`,ts:Date.now()});
+    await push(ref(rtdb,'ticker'),{text:`📡 [GM]: ${msg}`,uid:'SYSTEM',ts:Date.now()});
+    document.getElementById('gmChatMsg').value='';
+    toast('📡 Broadcast sent!','ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// ── PLAYERS TAB ──────────────────────────────────────────────────────────────
+async function renderGMPlayers(){
+  if(!window.FB) return '<div style="color:var(--txt2);padding:12px;">Not connected</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs} = window.FB;
+    const snap = await getDocs(query(collection(db,'players'),orderBy('lastSeen','desc'),limit(20)));
+    let html=`<div style="font-size:10px;font-weight:700;margin-bottom:8px;">👥 Recent Players (${snap.size})</div>`;
+    snap.forEach(d=>{
+      const p=d.data();
+      const lastSeen=p.lastSeen?.toDate?new Date(p.lastSeen.toDate()).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'?';
+      html+=`<div style="padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          ${p.avatar?`<img src="${p.avatar}" style="width:24px;height:24px;border-radius:50%;">`:'<span style="font-size:16px;">🐲</span>'}
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.name||'?')}</div>
+            <div style="font-size:8px;color:var(--txt2);">⚡${fmt(p.power||0)} · 🏆${fmt(p.wins||0)} · Asc.${p.ascension||0} · ${lastSeen}</div>
+          </div>
+        </div>
+      </div>`;
+    });
+    return html;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
+}
+
+// ── SERVER TAB ────────────────────────────────────────────────────────────────
+async function renderGMServer(){
+  if(!window.FB) return '<div style="color:var(--txt2);padding:12px;">Not connected</div>';
+  try{
+    const {db,doc,getDoc} = window.FB;
+    const [statsSnap,bossSnap] = await Promise.all([
+      getDoc(doc(db,'server','stats')),
+      getDoc(doc(db,'server','boss')),
+    ]);
+    const stats = statsSnap.exists()?statsSnap.data():{};
+    const boss = bossSnap.exists()?bossSnap.data():{};
+    const bossHpPct = boss.maxHp?Math.floor((boss.currentHp/boss.maxHp)*100):0;
+    return `
+      <div style="font-size:10px;font-weight:700;margin-bottom:8px;">📊 Server Statistics</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+        <div style="padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;text-align:center;">
+          <div style="font-size:14px;">📈</div><div style="font-weight:700;">${fmt(stats.totalAscensions||0)}</div><div style="font-size:8px;color:var(--txt2);">Ascensions</div>
+        </div>
+        <div style="padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;text-align:center;">
+          <div style="font-size:14px;">💀</div><div style="font-weight:700;">${fmt(stats.totalBossKills||0)}</div><div style="font-size:8px;color:var(--txt2);">Boss Kills</div>
+        </div>
+        <div style="padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;text-align:center;">
+          <div style="font-size:14px;">🏆</div><div style="font-weight:700;">${fmt(stats.totalWins||0)}</div><div style="font-size:8px;color:var(--txt2);">Total Wins</div>
+        </div>
+        <div style="padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;text-align:center;">
+          <div style="font-size:14px;">🌟</div><div style="font-weight:700;">${fmt(stats.totalSummons||0)}</div><div style="font-size:8px;color:var(--txt2);">Summons</div>
+        </div>
+      </div>
+      <div style="font-size:10px;font-weight:700;margin-bottom:6px;">🐉 Server Boss Status</div>
+      <div style="padding:10px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:8px;margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px;">${boss.emoji||'🐉'} ${escHtml(boss.name||'?')}</div>
+        <div style="height:6px;background:rgba(220,38,38,.2);border-radius:3px;margin-bottom:4px;overflow:hidden;">
+          <div style="height:100%;width:${bossHpPct}%;background:#dc2626;border-radius:3px;"></div>
+        </div>
+        <div style="font-size:9px;color:var(--txt2);">${fmt(boss.currentHp||0)} / ${fmt(boss.maxHp||0)} HP (${bossHpPct}%)</div>
+      </div>
+      <button class="btn bp" style="width:100%;margin-bottom:6px;" onclick="gmResetBoss()">🔄 Reset Server Boss HP</button>
+      <button class="btn bs bblk" style="width:100%;" onclick="gmResetStats()">⚠️ Reset Server Stats</button>`;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
+}
+
+async function gmResetStats(){
+  if(!window.FB||!isGM()) return;
+  if(!confirm('Reset all server stats to 0? This cannot be undone.')) return;
+  try{
+    const {db,doc,setDoc} = window.FB;
+    await setDoc(doc(db,'server','stats'),{totalAscensions:0,totalBossKills:0,totalWins:0,totalSummons:0});
+    toast('Stats reset.','ok');renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// ── WORLD TAB ────────────────────────────────────────────────────────────────
+function renderGMWorld(){
+  return `
+    <div style="font-size:10px;font-weight:700;margin-bottom:10px;">🌍 World Controls</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;margin-bottom:6px;">📣 Ticker Message</div>
+        <input id="gmTickerMsg" type="text" maxlength="100" placeholder="Custom ticker message..." style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;margin-bottom:6px;">
+        <button class="btn bp" style="width:100%;font-size:10px;" onclick="gmSendTicker()">📡 Send Ticker</button>
+      </div>
+      <div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;margin-bottom:6px;">🎁 Give Reward to All</div>
+        <div style="font-size:9px;color:var(--txt2);margin-bottom:6px;">Next time each player signs in:</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('stars',10)">⭐×10</button>
+          <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('gold',100000)">💰×100K</button>
+          <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('stars',50)">⭐×50</button>
+        </div>
+      </div>
+      <div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;margin-bottom:6px;">🏆 Set Player of the Week</div>
+        <input id="gmPotwName" type="text" maxlength="30" placeholder="Player name..." style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;margin-bottom:6px;">
+        <input id="gmPotwReason" type="text" maxlength="80" placeholder="Reason (e.g. First to ascend!)" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;margin-bottom:6px;">
+        <button class="btn bp" style="width:100%;font-size:10px;" onclick="gmSetPOTW()">👑 Set Player of the Week</button>
+      </div>
+    </div>`;
+}
+
+function gmSendTicker(){
+  const msg = document.getElementById('gmTickerMsg')?.value?.trim();
+  if(!msg){toast('Enter a message!','er');return;}
+  _pushTicker(`📡 [GM] ${msg}`);
+  document.getElementById('gmTickerMsg').value='';
+  toast('Ticker sent!','ok');
+}
+
+async function gmSetGlobalReward(type, amount){
+  if(!window.FB||!isGM()) return;
+  try{
+    const {db,doc,setDoc} = window.FB;
+    await setDoc(doc(db,'server','globalReward'),{type,amount,id:'reward_'+Date.now(),postedAt:Date.now()});
+    toast(`🎁 Global reward set: +${amount} ${type}! Players claim on next login.`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function gmSetPOTW(){
+  if(!window.FB||!isGM()) return;
+  const name=document.getElementById('gmPotwName')?.value?.trim();
+  const reason=document.getElementById('gmPotwReason')?.value?.trim();
+  if(!name){toast('Enter player name!','er');return;}
+  try{
+    const {db,doc,updateDoc} = window.FB;
+    await updateDoc(doc(db,'server','hallOfFame'),{playerOfTheWeek:{name,reason:reason||'Outstanding player!'}});
+    toast(`👑 ${name} set as Player of the Week!`,'ok');
+    _pushTicker(`👑 Player of the Week: ${name}! ${reason||''}`);
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+
+async function _checkGlobalReward(){
+  if(!window.FB||!fbReady()) return;
+  try{
+    const {db,doc,getDoc} = window.FB;
+    const snap = await getDoc(doc(db,'server','globalReward'));
+    if(!snap.exists()) return;
+    const r = snap.data();
+    if(!r.id||!r.type||!r.amount) return;
+    const claimed = G._claimedGlobalRewards||[];
+    if(claimed.includes(r.id)) return;
+    if(!G._claimedGlobalRewards) G._claimedGlobalRewards=[];
+    G._claimedGlobalRewards.push(r.id);
+    if(r.type==='stars') G.stars=(G.stars||0)+r.amount;
+    else if(r.type==='gold'){G.gold+=r.amount;G.totalGold+=r.amount;}
+    save();updateHdr();
+    toast(`🎁 GM Gift: +${fmt(r.amount)} ${r.type==='stars'?'⭐':'💰'}! Enjoy!`,'ok');
+  }catch(e){}
+}
+
 // Only register service worker when hosted on a real server (not local file or preview)
 if('serviceWorker' in navigator && location.protocol === 'https:' && !location.hostname.includes('claudeusercontent')){
   window.addEventListener('load', () => {
@@ -10887,6 +11276,10 @@ function triggerPWAInstall(){
 
 <!-- ═══ RECRUITMENT BOARD ═══ -->
 <div class="modal" id="mRecruitment"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏰 Faction Recruitment</span><button class="xbtn" onclick="closeM('mRecruitment')">✕</button></div><div class="pb" id="recruitmentBody"></div></div></div>
+
+
+<!-- ═══ GM PANEL ═══ -->
+<div class="modal" id="mGMPanel"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:#a855f7;font-size:14px;">🛡️ GM Panel</span><button class="xbtn" onclick="closeM('mGMPanel')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="gmtab-events" onclick="switchGMTab('events')">🌍 Events</button><button class="log-tab" id="gmtab-boss" onclick="switchGMTab('boss')">🐉 Boss</button><button class="log-tab" id="gmtab-announce" onclick="switchGMTab('announce')">📢 Announce</button><button class="log-tab" id="gmtab-players" onclick="switchGMTab('players')">👥 Players</button><button class="log-tab" id="gmtab-server" onclick="switchGMTab('server')">📊 Server</button><button class="log-tab" id="gmtab-world" onclick="switchGMTab('world')">🌍 World</button></div><div id="gmPanelBody"></div></div></div></div>
 
 </body>
 </html>
