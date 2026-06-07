@@ -273,6 +273,62 @@ body[data-dmg-theme="colorblind"] .dmg.mc{color:#ee3322;}
 body[data-dmg-theme="colorblind"] .dmg.sc{color:#ee6611;}
 body[data-dmg-theme="colorblind"] .dmg.miss{color:#999999;}
 </style>
+
+<!-- ═══ FIREBASE SDK ═══ -->
+<script type="module">
+// ── Firebase imports (CDN, no npm needed) ────────────────────────────────────
+import { initializeApp }                          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, signInWithPopup, signInAnonymously,
+         GoogleAuthProvider, onAuthStateChanged,
+         updateProfile }                          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, setDoc, getDoc,
+         collection, query, orderBy, limit,
+         onSnapshot, getDocs, updateDoc,
+         serverTimestamp, increment,
+         where, addDoc, deleteDoc }               from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getDatabase, ref, push, onChildAdded,
+         serverTimestamp as rtServerTimestamp,
+         query as rtQuery, limitToLast,
+         onValue, set, remove }                   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAHRfFf2TmojXnBbzcw1PTwOYSqipIX4c4",
+  authDomain: "sheng-xiao-zodiac.firebaseapp.com",
+  projectId: "sheng-xiao-zodiac",
+  storageBucket: "sheng-xiao-zodiac.firebasestorage.app",
+  messagingSenderId: "612504376239",
+  appId: "1:612504376239:web:a25741a7e3d2261539955a",
+  databaseURL: "https://sheng-xiao-zodiac-default-rtdb.firebaseio.com",
+};
+
+const fbApp  = initializeApp(firebaseConfig);
+const auth   = getAuth(fbApp);
+const db     = getFirestore(fbApp);
+const rtdb   = getDatabase(fbApp);
+const gprov  = new GoogleAuthProvider();
+
+// ── Expose to global scope so non-module code can call ────────────────────────
+window.FB = { auth, db, rtdb, gprov,
+  signInWithPopup, signInAnonymously, GoogleAuthProvider,
+  onAuthStateChanged, updateProfile,
+  doc, setDoc, getDoc, collection, query, orderBy, limit,
+  onSnapshot, getDocs, updateDoc, serverTimestamp, increment,
+  where, addDoc, deleteDoc,
+  ref, push, onChildAdded, rtServerTimestamp,
+  rtQuery, limitToLast, onValue, set, remove };
+
+// ── AUTH STATE ────────────────────────────────────────────────────────────────
+onAuthStateChanged(auth, user => {
+  window._fbUser = user;
+  if (user) {
+    console.log('Signed in:', user.displayName || user.uid);
+    window._onFBSignIn && window._onFBSignIn(user);
+  } else {
+    window._onFBSignOut && window._onFBSignOut();
+  }
+});
+</script>
+
 </head>
 <body>
 <div class="loading" id="ls">
@@ -705,6 +761,18 @@ body[data-dmg-theme="colorblind"] .dmg.miss{color:#999999;}
       <button class="hub-btn" onclick="closeM('mMore');renderGodlyIntel();openM('mGodlyIntel');">
         <span class="hub-icon">✨</span><span class="hub-label">Godly Gear</span>
         <span class="hub-sub" id="hubGodlySub">0/24 pieces</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openMultiplayer()">
+        <span class="hub-icon">🌐</span><span class="hub-label">Multiplayer</span>
+        <span class="hub-sub" id="hubMPSub">Sign in</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openLeaderboard()">
+        <span class="hub-icon">🏆</span><span class="hub-label">Leaderboard</span>
+        <span class="hub-sub">Global ranks</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openChat()">
+        <span class="hub-icon">💬</span><span class="hub-label">Chat</span>
+        <span class="hub-sub" id="hubChatSub">Global chat</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');showTab('settings')">
         <span class="hub-icon">⚙️</span><span class="hub-label">Settings</span>
@@ -8108,6 +8176,299 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 
 <script>
+// ══════════════════════════════════════════════════════════════════════════════
+// MULTIPLAYER SYSTEM — Firebase backend
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fbReady(){return !!(window.FB&&window._fbUser);}
+function fbUID(){return window._fbUser?.uid||null;}
+function fbName(){return window._fbUser?.displayName||window._fbUser?.email||'Anonymous';}
+function fbAvatar(){return window._fbUser?.photoURL||null;}
+
+// ── Sign-in callbacks ─────────────────────────────────────────────────────────
+window._onFBSignIn = function(user){
+  // Update hub badge
+  const sub=document.getElementById('hubMPSub');
+  if(sub)sub.textContent=user.displayName||'Signed in';
+  // Sync save to cloud on sign-in
+  setTimeout(()=>syncSaveToCloud(),2000);
+  // Start leaderboard listener
+  _startLeaderboardListener();
+};
+window._onFBSignOut = function(){
+  const sub=document.getElementById('hubMPSub');
+  if(sub)sub.textContent='Sign in';
+};
+
+// ── CLOUD SAVE ────────────────────────────────────────────────────────────────
+async function syncSaveToCloud(){
+  if(!fbReady())return;
+  try{
+    const {db,doc,setDoc,serverTimestamp}=FB;
+    const snapshot={
+      uid:fbUID(),
+      name:G.playerName||fbName(),
+      power:calcPowerRating?calcPowerRating():0,
+      wins:G.wins||0,
+      ascension:G.ascension||0,
+      stars:G.stars||0,
+      gold:G.gold||0,
+      towerBest:G.towerBestFloor||0,
+      guildRank:G.guildRank||0,
+      avatar:fbAvatar()||'',
+      lastSeen:serverTimestamp(),
+      // Full save (compressed) for restore
+      saveData:JSON.stringify(G).substring(0,900000),// Firestore 1MB limit
+    };
+    await setDoc(doc(db,'players',fbUID()),snapshot,{merge:true});
+    console.log('Save synced to cloud');
+  }catch(e){console.warn('Cloud save failed:',e.message);}
+}
+
+async function loadFromCloud(){
+  if(!fbReady())return false;
+  try{
+    const {db,doc,getDoc}=FB;
+    const snap=await getDoc(doc(db,'players',fbUID()));
+    if(snap.exists()&&snap.data().saveData){
+      const cloud=JSON.parse(snap.data().saveData);
+      // Only load if cloud save is newer/better
+      if((cloud.wins||0)>(G.wins||0)||(cloud.ascension||0)>(G.ascension||0)){
+        Object.assign(G,cloud);
+        save();updateHdr();renderSquad();
+        try{spawnEnemy();}catch(e){}
+        toast('☁️ Cloud save loaded!','ok');
+        return true;
+      }
+    }
+  }catch(e){console.warn('Cloud load failed:',e.message);}
+  return false;
+}
+
+// Auto-sync every 5 minutes when signed in
+setInterval(()=>{if(fbReady())syncSaveToCloud();},5*60*1000);
+
+// ── LEADERBOARD ───────────────────────────────────────────────────────────────
+let _lbTab='power';
+let _lbUnsub=null;
+
+function _startLeaderboardListener(){
+  // Keep leaderboard fresh in background
+  if(!FB||_lbUnsub)return;
+  try{
+    const {db,collection,query,orderBy,limit,onSnapshot}=FB;
+    const q=query(collection(db,'players'),orderBy('power','desc'),limit(50));
+    _lbUnsub=onSnapshot(q,()=>{
+      // Silently refresh if leaderboard is open
+      const lb=document.getElementById('mLeaderboard');
+      if(lb&&lb.style.display!=='none')renderLeaderboard();
+    });
+  }catch(e){}
+}
+
+async function openLeaderboard(){
+  openM('mLeaderboard');
+  switchLBTab('power');
+}
+
+async function switchLBTab(tab){
+  _lbTab=tab;
+  ['power','wins','asc'].forEach(t=>{
+    const btn=document.getElementById('lbTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn)btn.style.background=t===tab?'var(--acc)':'';
+  });
+  await renderLeaderboard();
+}
+
+async function renderLeaderboard(){
+  const body=document.getElementById('lbBody');if(!body)return;
+  if(!FB){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see leaderboard</div>';return;}
+  body.innerHTML='<div style="text-align:center;padding:20px;">Loading...</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs}=FB;
+    const fieldMap={power:'power',wins:'wins',asc:'ascension'};
+    const field=fieldMap[_lbTab]||'power';
+    const q=query(collection(db,'players'),orderBy(field,'desc'),limit(50));
+    const snap=await getDocs(q);
+    const players=[];
+    snap.forEach(d=>players.push({id:d.id,...d.data()}));
+    
+    if(!players.length){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">No players yet — be the first!</div>';return;}
+    
+    const myUID=fbUID();
+    let html='';
+    players.forEach((p,i)=>{
+      const isMe=p.id===myUID;
+      const val=_lbTab==='power'?fmt(p.power||0):_lbTab==='wins'?fmt(p.wins||0):`Asc.${p.ascension||0}`;
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+        background:${isMe?'rgba(245,158,11,.1)':'rgba(28,38,56,.5)'};
+        border:1px solid ${isMe?'rgba(245,158,11,.4)':'rgba(71,85,105,.2)'};
+        border-radius:8px;margin-bottom:4px;">
+        <span style="font-size:14px;min-width:24px;">${medal}</span>
+        ${p.avatar?`<img src="${p.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">`:'<span style="font-size:20px;">🐲</span>'}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isMe?'var(--acc)':'var(--txt)'};">${isMe?'⭐ ':''} ${p.name||'Anonymous'}</div>
+          <div style="font-size:9px;color:var(--txt2);">Tower ${p.towerBest||0} · Asc.${p.ascension||0}</div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--acc);">${val}</div>
+      </div>`;
+    });
+    body.innerHTML=html;
+  }catch(e){body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────────────────
+let _chatListening=false;
+let _chatMsgCount=0;
+
+function openChat(){
+  if(!fbReady()){
+    toast('Sign in to use chat!','er');
+    openMultiplayer();return;
+  }
+  openM('mChat');
+  if(!_chatListening)_startChatListener();
+}
+
+function _startChatListener(){
+  if(!FB||_chatListening)return;
+  _chatListening=true;
+  try{
+    const {rtdb,ref,rtQuery,limitToLast,onChildAdded}=FB;
+    const msgsRef=rtQuery(ref(rtdb,'globalChat'),limitToLast(50));
+    onChildAdded(msgsRef,snap=>{
+      const msg=snap.val();
+      _renderChatMsg(msg);
+      _chatMsgCount++;
+      // Badge on hub button
+      const sub=document.getElementById('hubChatSub');
+      const chatOpen=document.getElementById('mChat')?.style?.display!=='none';
+      if(sub&&!chatOpen)sub.textContent=`${_chatMsgCount} new`;
+    });
+  }catch(e){console.warn('Chat listener failed:',e);}
+}
+
+function _renderChatMsg(msg){
+  const box=document.getElementById('chatMessages');if(!box)return;
+  const isMe=msg.uid===fbUID();
+  const div=document.createElement('div');
+  div.style.cssText=`display:flex;flex-direction:${isMe?'row-reverse':'row'};align-items:flex-end;gap:6px;`;
+  const time=msg.ts?new Date(msg.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'';
+  div.innerHTML=`
+    ${msg.avatar?`<img src="${msg.avatar}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;" onerror="this.style.display='none'">`:'<span style="font-size:16px;flex-shrink:0;">🐲</span>'}
+    <div style="max-width:75%;">
+      <div style="font-size:8px;color:var(--txt2);margin-bottom:2px;${isMe?'text-align:right;':''}">${msg.name||'Anonymous'} · ${time}</div>
+      <div style="background:${isMe?'rgba(245,158,11,.2)':'rgba(28,38,56,.8)'};border:1px solid ${isMe?'rgba(245,158,11,.3)':'rgba(71,85,105,.3)'};
+        border-radius:${isMe?'12px 12px 4px 12px':'12px 12px 12px 4px'};padding:6px 10px;font-size:11px;word-break:break-word;">
+        ${escHtml(msg.text||'')}
+      </div>
+    </div>`;
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function sendChatMsg(){
+  if(!fbReady()){toast('Sign in to chat!','er');return;}
+  const inp=document.getElementById('chatInput');if(!inp)return;
+  const text=(inp.value||'').trim();
+  if(!text)return;
+  if(text.length>120){toast('Max 120 characters','er');return;}
+  inp.value='';
+  try{
+    const {rtdb,ref,push,rtServerTimestamp}=FB;
+    await push(ref(rtdb,'globalChat'),{
+      uid:fbUID(),
+      name:fbName(),
+      avatar:fbAvatar()||'',
+      text,
+      ts:Date.now(),
+    });
+    // Reset unread badge
+    const sub=document.getElementById('hubChatSub');
+    if(sub)sub.textContent='Global chat';
+    _chatMsgCount=0;
+  }catch(e){toast('Send failed: '+e.message,'er');}
+}
+
+// ── MULTIPLAYER PANEL ─────────────────────────────────────────────────────────
+function openMultiplayer(){
+  renderMPPanel();
+  openM('mMultiplayer');
+}
+
+function renderMPPanel(){
+  const body=document.getElementById('mpBody');if(!body)return;
+  const user=window._fbUser;
+  if(!user){
+    body.innerHTML=`
+      <div style="text-align:center;padding:20px 10px;">
+        <div style="font-size:40px;margin-bottom:12px;">🌐</div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px;">Join the Community</div>
+        <div style="font-size:11px;color:var(--txt2);margin-bottom:20px;">Sign in to access leaderboards, global chat, cloud saves, and more.</div>
+        <button class="btn bp mb2" style="width:100%;font-size:13px;" onclick="mpSignInGoogle()">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;">
+          Sign in with Google
+        </button>
+        <button class="btn bs bblk" style="width:100%;font-size:12px;" onclick="mpSignInGuest()">
+          👤 Play as Guest
+        </button>
+        <div style="font-size:9px;color:var(--txt2);margin-top:12px;">Guest saves are local only. Sign in with Google to sync across devices.</div>
+      </div>`;
+    return;
+  }
+  const power=calcPowerRating?calcPowerRating():0;
+  body.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;margin-bottom:14px;">
+      ${user.photoURL?`<img src="${user.photoURL}" style="width:44px;height:44px;border-radius:50%;">`:'<span style="font-size:36px;">🐲</span>'}
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13px;">${user.displayName||'Anonymous'}</div>
+        <div style="font-size:9px;color:var(--txt2);">${user.email||'Guest account'}</div>
+        <div style="font-size:10px;color:var(--acc);">⚡ ${fmt(power)} power · 🏆 ${fmt(G.wins||0)} wins · 📈 Asc.${G.ascension||0}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mMultiplayer');openLeaderboard()">🏆 Leaderboard</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mMultiplayer');openChat()">💬 Global Chat</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="syncSaveToCloud().then(()=>toast('☁️ Synced!','ok'))">☁️ Sync Save</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="loadFromCloud()">📥 Load Cloud</button>
+    </div>
+    <button class="btn bd bblk" style="width:100%;font-size:11px;" onclick="mpSignOut()">🚪 Sign Out</button>`;
+}
+
+async function mpSignInGoogle(){
+  if(!FB){toast('Firebase not ready','er');return;}
+  try{
+    await FB.signInWithPopup(FB.auth,FB.gprov);
+    renderMPPanel();
+    toast('✅ Signed in with Google!','ok');
+  }catch(e){toast('Sign in failed: '+e.message,'er');}
+}
+async function mpSignInGuest(){
+  if(!FB){toast('Firebase not ready','er');return;}
+  try{
+    await FB.signInAnonymously(FB.auth);
+    renderMPPanel();
+    toast('👤 Playing as Guest','ok');
+  }catch(e){toast('Guest sign in failed: '+e.message,'er');}
+}
+async function mpSignOut(){
+  if(!FB)return;
+  try{
+    await FB.auth.signOut();
+    window._fbUser=null;
+    renderMPPanel();
+    toast('Signed out','ok');
+  }catch(e){}
+}
+
+// ── AUTO PUSH TO LEADERBOARD ON WIN ──────────────────────────────────────────
+// Hook into existing onWin — sync every 25 wins
+// Leaderboard sync is hooked directly into onWin above
+
 // Only register service worker when hosted on a real server (not local file or preview)
 if('serviceWorker' in navigator && location.protocol === 'https:' && !location.hostname.includes('claudeusercontent')){
   window.addEventListener('load', () => {
@@ -8141,5 +8502,45 @@ function triggerPWAInstall(){
   }
 }
 </script>
+
+<!-- ═══ MULTIPLAYER / ACCOUNT MODAL ═══ -->
+<div id="mMultiplayer" class="modal" style="display:none;">
+  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
+    <button class="modal-close" onclick="closeM('mMultiplayer')">✕</button>
+    <div class="sec-t mb2">🌐 Multiplayer</div>
+    <div id="mpBody" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
+
+<!-- ═══ LEADERBOARD MODAL ═══ -->
+<div id="mLeaderboard" class="modal" style="display:none;">
+  <div class="modal-box" style="max-width:380px;max-height:88vh;display:flex;flex-direction:column;">
+    <button class="modal-close" onclick="closeM('mLeaderboard')">✕</button>
+    <div class="sec-t mb2">🏆 Global Leaderboard</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <button class="btn bs bblk" id="lbTabPower"  onclick="switchLBTab('power')"  style="flex:1;font-size:10px;">⚡ Power</button>
+      <button class="btn bs bblk" id="lbTabWins"   onclick="switchLBTab('wins')"   style="flex:1;font-size:10px;">🏆 Wins</button>
+      <button class="btn bs bblk" id="lbTabAsc"    onclick="switchLBTab('asc')"    style="flex:1;font-size:10px;">📈 Ascension</button>
+    </div>
+    <div id="lbBody" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
+
+<!-- ═══ GLOBAL CHAT MODAL ═══ -->
+<div id="mChat" class="modal" style="display:none;">
+  <div class="modal-box" style="max-width:380px;max-height:88vh;display:flex;flex-direction:column;">
+    <button class="modal-close" onclick="closeM('mChat')">✕</button>
+    <div class="sec-t mb2">💬 Global Chat</div>
+    <div id="chatMessages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:8px;min-height:200px;max-height:400px;"></div>
+    <div style="display:flex;gap:6px;">
+      <input id="chatInput" type="text" maxlength="120" placeholder="Say something..." 
+        style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:8px;padding:8px;color:var(--txt);font-size:12px;"
+        onkeydown="if(event.key==='Enter')sendChatMsg()">
+      <button class="btn bp" style="font-size:11px;padding:8px 12px;" onclick="sendChatMsg()">Send</button>
+    </div>
+    <div style="font-size:8px;color:var(--txt2);margin-top:4px;">Be respectful · No spam</div>
+  </div>
+</div>
+
 </body>
 </html>
