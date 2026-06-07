@@ -384,7 +384,7 @@ onAuthStateChanged(auth, user => {
       <span style="font-size:12px;">⭐</span>
       <div><div style="font-size:9px;font-weight:700;color:var(--txt);" id="hStarVal">0</div><div style="font-size:6px;color:var(--txt2);">Stars</div></div>
     </div>
-    <div onclick="openM('mShop')" style="display:flex;align-items:center;gap:2px;background:rgba(30,41,59,.7);border:1px solid rgba(71,85,105,.3);border-radius:8px;padding:3px 4px;cursor:pointer;">
+    <div onclick="renderShop();openM('mShop')" style="display:flex;align-items:center;gap:2px;background:rgba(30,41,59,.7);border:1px solid rgba(71,85,105,.3);border-radius:8px;padding:3px 4px;cursor:pointer;">
       <span style="font-size:12px;">💰</span>
       <div style="min-width:0;overflow:hidden;"><div style="font-size:9px;font-weight:700;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="hG">0</div><div style="font-size:6px;color:var(--txt2);">Gold</div></div>
     </div>
@@ -554,6 +554,10 @@ onAuthStateChanged(auth, user => {
   <div id="blogHist" style="display:none;"></div>
   <div id="blogExpandHint" style="display:none;"></div>
 </div>
+<div id="tickerBar" style="background:rgba(0,0,0,.7);border-top:1px solid rgba(245,158,11,.2);padding:3px 10px;font-size:9px;color:var(--acc);white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:6px;">
+  <span style="font-size:10px;flex-shrink:0;">📢</span>
+  <span id="globalTicker" style="flex:1;overflow:hidden;text-overflow:ellipsis;transition:opacity .3s;">Welcome to Sheng Xiao Zodiac!</span>
+</div>
 <div id="nav" role="navigation">
     <button class="nbtn on" id="nb-battle" onclick="showTab('battle')">⚔️<span>Fight</span></button>
     <button class="nbtn" id="nb-squad" onclick="showTab('squad')">🐲<span>Squad</span></button>
@@ -718,6 +722,71 @@ onAuthStateChanged(auth, user => {
     </div>
   </div>
 
+  <!-- PROGRESS (Online moved below here) -->
+
+  <!-- ONLINE -->
+  <div class="hub-section">
+    <div class="hub-title">🌐 Online</div>
+    <div class="hub-grid">
+      <button class="hub-btn" onclick="closeM('mMore');openOnlineMode()">
+        <span class="hub-icon">🔑</span><span class="hub-label">Sign In</span>
+        <span class="hub-sub" id="hubMPSub">Sign in</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openWorldProfile()">
+        <span class="hub-icon">👤</span><span class="hub-label">My Profile</span>
+        <span class="hub-sub" id="hubProfileSub">World profile</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openFaction()">
+        <span class="hub-icon">🏰</span><span class="hub-label">Faction</span>
+        <span class="hub-sub" id="hubFactionSub">No faction</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openPvpArena()">
+        <span class="hub-icon">⚔️</span><span class="hub-label">PvP Arena</span>
+        <span class="hub-sub" id="hubPvpSub">Rank: —</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openLeaderboard()">
+        <span class="hub-icon">🏆</span><span class="hub-label">Leaderboard</span>
+        <span class="hub-sub">Global ranks</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');document.getElementById('dailyChallengeBody').innerHTML=renderDailyChallengePanel();openM('mDailyChallenge')">
+        <span class="hub-icon">🎯</span><span class="hub-label">Daily Challenge</span>
+        <span class="hub-sub" id="hubDailyCh">Today's goal</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');renderActivityFeed().then(h=>{document.getElementById('activityFeedBody').innerHTML=h;openM('mActivityFeed')})">
+        <span class="hub-icon">📢</span><span class="hub-label">Activity</span>
+        <span class="hub-sub">Community feed</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');renderFriendsList();openM('mFriends')">
+        <span class="hub-icon">👥</span><span class="hub-label">Friends</span>
+        <span class="hub-sub">Friend list</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');renderServerBoss();openM('mServerBoss')">
+        <span class="hub-icon">🐉</span><span class="hub-label">Server Boss</span>
+        <span class="hub-sub">All vs one</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');switchMarketTab('buy');openM('mAuctionHouse')">
+        <span class="hub-icon">🏪</span><span class="hub-label">Market</span>
+        <span class="hub-sub" id="essenceBadge2">💎 0 Essence</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');renderBountyBoard().then(h=>{document.getElementById('bountyBody').innerHTML=h;openM('mBountyBoard')})">
+        <span class="hub-icon">💀</span><span class="hub-label">Bounties</span>
+        <span class="hub-sub">Wanted board</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');document.getElementById('seasonalDungeonBody').innerHTML=renderSeasonalDungeon();openM('mSeasonalDungeon')">
+        <span class="hub-icon">🗡️</span><span class="hub-label">Seasonal</span>
+        <span class="hub-sub">Limited dungeon</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');document.getElementById('seasonalStoryBody').innerHTML=renderSeasonalStory();openM('mSeasonalStory')">
+        <span class="hub-icon">📜</span><span class="hub-label">Story</span>
+        <span class="hub-sub">Seasonal quest</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');renderRecruitmentBoard().then(h=>{document.getElementById('recruitmentBody').innerHTML=h;openM('mRecruitment')})">
+        <span class="hub-icon">🏰</span><span class="hub-label">Recruit</span>
+        <span class="hub-sub">Find factions</span>
+      </button>
+    </div>
+  </div>
+
   <!-- STATS & TOOLS -->
   <div class="hub-section">
     <div class="hub-title">📊 Intel</div>
@@ -761,26 +830,6 @@ onAuthStateChanged(auth, user => {
       <button class="hub-btn" onclick="closeM('mMore');renderGodlyIntel();openM('mGodlyIntel');">
         <span class="hub-icon">✨</span><span class="hub-label">Godly Gear</span>
         <span class="hub-sub" id="hubGodlySub">0/24 pieces</span>
-      </button>
-      <button class="hub-btn" onclick="closeM('mMore');openOnlineMode()">
-        <span class="hub-icon">🌐</span><span class="hub-label">Online Mode</span>
-        <span class="hub-sub" id="hubMPSub">Sign in</span>
-      </button>
-      <button class="hub-btn" onclick="closeM('mMore');openWorldProfile()">
-        <span class="hub-icon">👤</span><span class="hub-label">Profile</span>
-        <span class="hub-sub" id="hubProfileSub">World profile</span>
-      </button>
-      <button class="hub-btn" onclick="closeM('mMore');openFaction()">
-        <span class="hub-icon">🏰</span><span class="hub-label">Faction</span>
-        <span class="hub-sub" id="hubFactionSub">No faction</span>
-      </button>
-      <button class="hub-btn" onclick="closeM('mMore');openPvpArena()">
-        <span class="hub-icon">⚔️</span><span class="hub-label">PvP Arena</span>
-        <span class="hub-sub" id="hubPvpSub">Rank: —</span>
-      </button>
-      <button class="hub-btn" onclick="closeM('mMore');openLeaderboard()">
-        <span class="hub-icon">🏆</span><span class="hub-label">Leaderboard</span>
-        <span class="hub-sub">Global ranks</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');showTab('settings')">
         <span class="hub-icon">⚙️</span><span class="hub-label">Settings</span>
@@ -3894,7 +3943,11 @@ function showAscensionPanel(){
       G.dailyDate='';G.nextWeeklyReset=0;G.nextMonthlyReset=0;
       initDailyQuests();initWeeklyQuests();initMonthlyQuests();
       checkAchievs();save();updateHdr();renderSquad();spawnEnemy();
-      toast(`🌟 Ascension ${G.ascension}! ×${G.ascensionMult} stats. Starting fresh as ${startZ.emoji} ${startName}!`,'ok');
+      if(typeof awardAscensionEssence==='function') awardAscensionEssence();
+  toast(`🌟 Ascension ${G.ascension}! ×${G.ascensionMult} stats. Starting fresh as ${startZ.emoji} ${startName}!`,'ok');
+  if(typeof _pushActivity==='function')_pushActivity('📈',`${G.playerName||fbName()||'A player'} reached Ascension ${G.ascension}!`,'#a78bfa');
+  if(typeof _updateServerStats==='function')_updateServerStats('totalAscensions',1);
+  if(typeof _pushTicker==='function')_pushTicker(`📈 ${G.playerName||'A player'} just ascended to level ${G.ascension}!`);
     }
   );
 }
@@ -4157,6 +4210,7 @@ function init(){
   try{spawnEnemy();}catch(e){console.warn('spawnEnemy:',e.message);shuffleQ();try{spawnEnemy();}catch(e2){console.error('spawnEnemy retry:',e2.message);}}
   try{renderSquad();}catch(e){console.warn('renderSquad:',e.message);}
   if(!G.seasonStart)G.seasonStart=Date.now();
+  setTimeout(()=>{if(typeof _startTicker==='function')_startTicker();},3000);
   try{updateHdr();}catch(e){}
   try{updateDmgPreview();}catch(e){}
   document.addEventListener('keydown',onKey);unlockSpeedButtons();
@@ -4546,7 +4600,7 @@ function doAttack(){
   const isSuperCrit=!isMegaCrit&&critRoll<0.04+(f.trait==='lucky'?.03:0);
   const isCrit=!isMegaCrit&&!isSuperCrit&&critRoll<(0.15+(f.trait==='lucky'?.1:0));
   const _fEl2=getZodiacElement(f.zodiac);const isWeak=_fEl2===e.weak;
-  const xpGain=Math.floor((B.XP_HIT+Math.floor(e.level*.25))*(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp')));
+  const xpGain=Math.floor((B.XP_HIT+Math.floor(e.level*.25))*(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(getWorldEventMult?getWorldEventMult('xp'):1));
   const sMult=1+G.streak*B.STREAK_BONUS;
   const atkBuff=getAtkBuff(f.zodiac)*skillBoost.atk;
   const weatherMult=getWeatherMult(getZodiacElement(f.zodiac));
@@ -4732,7 +4786,7 @@ function onWin(sMult=1){
   const eqStatsW=getEquipmentStats(G.active);
   const goldTouchBonus=getAwakeningBonuses(G.active).gold_touch?0.50:0;
   const goldFindMult=1+(eqStatsW.goldFind||0)/100+(G.prestigeShop?.goldFindBonus||0)+goldTouchBonus+getPetBonus('gold')+getHouseBonus('goldFind')+getHouseBonus('goldAll');
-  let gold=Math.floor(e.gold*sMult*goldFindMult);
+  let gold=Math.floor(e.gold*sMult*goldFindMult*(getWorldEventMult?getWorldEventMult('gold'):1));
   // Feature 3: finisher bonus gold
   if(G.finisherBonus){gold=Math.floor(gold*1.5);G.finisherBonus=false;toast('💀 FINISHER! +50% gold!','ok');}
   // #3 Overkill rewards: excess damage → bonus gold/xp
@@ -4771,7 +4825,9 @@ function onWin(sMult=1){
     rollGodlyDrop();G._convergenceNotified=false;// allow re-triggering
   }
   if(G._trialActive){onTrialWaveWin();return;}
-  if(e.boss||e.isAreaBoss||e.isMiniBoss){G.bossKills++;G.bossToday=(G.bossToday||0)+1;G.bossWeek=(G.bossWeek||0)+1;G.bossMonth=(G.bossMonth||0)+1;updateQuestProgress('bossToday',1);updateQuestProgress('bossWeek',1);updateQuestProgress('bossMonth',1);if(e.boss||e.isAreaBoss)starsEarned+=STAR_REWARDS.bossKill+(G.prestigeShop?.starBonus||0);}
+  if(e.boss||e.isAreaBoss||e.isMiniBoss){G.bossKills++;
+  if(typeof _updateServerStats==='function')_updateServerStats('totalBossKills',1);
+  if(typeof updateDailyChallengeProgress==='function')updateDailyChallengeProgress('boss',1);G.bossToday=(G.bossToday||0)+1;G.bossWeek=(G.bossWeek||0)+1;G.bossMonth=(G.bossMonth||0)+1;updateQuestProgress('bossToday',1);updateQuestProgress('bossWeek',1);updateQuestProgress('bossMonth',1);if(e.boss||e.isAreaBoss)starsEarned+=STAR_REWARDS.bossKill+(G.prestigeShop?.starBonus||0);}
   // Area progression
   // Dungeon progression
   if(G.inDungeon&&G.dungeonData){
@@ -8190,41 +8246,16 @@ window.addEventListener('DOMContentLoaded', function(){
   }
 });</script>
 
-<!-- ═══ SESSION TIMER MODAL ═══ -->
-<div id="mSeasonTimer" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:340px;">
-    <button class="modal-close" onclick="closeM('mSeasonTimer')">✕</button>
-    <div class="sec-t mb2">⏱️ Session Timer</div>
-    <div id="seasonTimerBody" style="font-size:11px;"></div>
-  </div>
-</div>
+<div class="modal" id="mSeasonTimer"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">⏱️ Session Timer</span><button class="xbtn" onclick="closeM('mSeasonTimer')">✕</button></div><div class="pb" id="seasonTimerBody"></div></div></div>
 
 <!-- ═══ GODLY EQUIPMENT INTEL ═══ -->
-<div id="mGodlyIntel" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:380px;max-height:88vh;display:flex;flex-direction:column;">
-    <button class="modal-close" onclick="closeM('mGodlyIntel')">✕</button>
-    <div class="sec-t" style="margin-bottom:4px;">✨ Godly Equipment</div>
-    <div id="godlyIntelSubtitle" style="font-size:10px;color:var(--txt2);margin-bottom:10px;"></div>
-    <div id="godlyIntelBody" style="overflow-y:auto;flex:1;"></div>
-  </div>
-</div>
+<div class="modal" id="mGodlyIntel"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">✨ Godly Equipment</span><button class="xbtn" onclick="closeM('mGodlyIntel')">✕</button></div><div class="pb" id="godlyIntelBody"></div></div></div>
 
 <!-- ═══ ELEMENT PICKER ═══ -->
-<div id="mElementPicker" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:300px;">
-    <button class="modal-close" onclick="closeM('mElementPicker')">✕</button>
-    <div class="sec-t mb2">🌟 Change Element</div>
-    <div id="elementPickerBody"></div>
-  </div>
-</div>
+<div class="modal" id="mElementPicker"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🌟 Change Element</span><button class="xbtn" onclick="closeM('mElementPicker')">✕</button></div><div class="pb" id="elementPickerBody"></div></div></div>
 
 <!-- ═══ ASCENSION REQUIREMENTS ═══ -->
-<div id="mAscReq" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:360px;">
-    <button class="modal-close" onclick="closeM('mAscReq')">✕</button>
-    <div id="ascReqBody"></div>
-  </div>
-</div>
+<div class="modal" id="mAscReq"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">⬆️ Ascension</span><button class="xbtn" onclick="closeM('mAscReq')">✕</button></div><div class="pb" id="ascReqBody"></div></div></div>
 
 <script>
 // ══════════════════════════════════════════════════════════════════════════════
@@ -8232,16 +8263,18 @@ window.addEventListener('DOMContentLoaded', function(){
 // ══════════════════════════════════════════════════════════════════════════════
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function fbReady(){return !!(window.FB&&window._fbUser);}
+function fbReady(){return !!(window.FB&&window._fbUser&&window.FB.auth);}
 function fbUID(){return window._fbUser?.uid||null;}
 function fbName(){return window._fbUser?.displayName||window._fbUser?.email||'Anonymous';}
 function fbAvatar(){return window._fbUser?.photoURL||null;}
 
 // ── Sign-in callbacks ─────────────────────────────────────────────────────────
 window._onFBSignIn = function(user){
-  // Update hub badge
+  // Update hub Online section badges
   const sub=document.getElementById('hubMPSub');
-  if(sub)sub.textContent=user.displayName||'Signed in';
+  if(sub)sub.textContent=user.displayName||'Online';
+  const profSub=document.getElementById('hubProfileSub');
+  if(profSub)profSub.textContent=user.displayName||'View profile';
   // Sync save to cloud on sign-in
   setTimeout(()=>syncSaveToCloud(),2000);
   // Start leaderboard listener
@@ -8306,7 +8339,7 @@ let _lbUnsub=null;
 
 function _startLeaderboardListener(){
   // Keep leaderboard fresh in background
-  if(!FB||_lbUnsub)return;
+  if(!window.FB||_lbUnsub)return;
   try{
     const {db,collection,query,orderBy,limit,onSnapshot}=FB;
     const q=query(collection(db,'players'),orderBy('power','desc'),limit(50));
@@ -8325,20 +8358,21 @@ async function openLeaderboard(){
 
 async function switchLBTab(tab){
   _lbTab=tab;
-  ['power','wins','asc'].forEach(t=>{
+  ['power','wins','asc','tower','pvp','hof'].forEach(t=>{
     const btn=document.getElementById('lbTab'+t.charAt(0).toUpperCase()+t.slice(1));
-    if(btn)btn.style.background=t===tab?'var(--acc)':'';
+    if(btn)btn.className='log-tab'+(t===tab?' on':'');
   });
   await renderLeaderboard();
 }
 
 async function renderLeaderboard(){
   const body=document.getElementById('lbBody');if(!body)return;
-  if(!FB){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see leaderboard</div>';return;}
+  if(!window.FB){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see leaderboard</div>';return;}
   body.innerHTML='<div style="text-align:center;padding:20px;">Loading...</div>';
   try{
+    if(_lbTab==='hof'){body.innerHTML=await renderHallOfFame();return;}
     const {db,collection,query,orderBy,limit,getDocs}=FB;
-    const fieldMap={power:'power',wins:'wins',asc:'ascension'};
+    const fieldMap={power:'power',wins:'wins',asc:'ascension',tower:'towerBest',pvp:'pvpPoints'};
     const field=fieldMap[_lbTab]||'power';
     const q=query(collection(db,'players'),orderBy(field,'desc'),limit(50));
     const snap=await getDocs(q);
@@ -8351,7 +8385,8 @@ async function renderLeaderboard(){
     let html='';
     players.forEach((p,i)=>{
       const isMe=p.id===myUID;
-      const val=_lbTab==='power'?fmt(p.power||0):_lbTab==='wins'?fmt(p.wins||0):`Asc.${p.ascension||0}`;
+      const valMap={power:fmt(p.power||0),wins:fmt(p.wins||0),asc:`Asc.${p.ascension||0}`,tower:`F${p.towerBest||0}`,pvp:`${p.pvpPoints||0}pts`};
+      const val=valMap[_lbTab]||fmt(p.power||0);
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
       html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
         background:${isMe?'rgba(245,158,11,.1)':'rgba(28,38,56,.5)'};
@@ -8384,7 +8419,7 @@ function openChat(){
 }
 
 function _startChatListener(){
-  if(!FB||_chatListening)return;
+  if(!window.FB||_chatListening)return;
   _chatListening=true;
   try{
     const {rtdb,ref,rtQuery,limitToLast,onChildAdded}=FB;
@@ -8491,25 +8526,25 @@ function renderMPPanel(){
 }
 
 async function mpSignInGoogle(){
-  if(!FB){toast('Firebase not ready','er');return;}
+  if(!window.FB){toast('Firebase not ready','er');return;}
   try{
-    await FB.signInWithPopup(FB.auth,FB.gprov);
+    await window.FB.signInWithPopup(window.FB.auth,window.FB.gprov);
     renderMPPanel();
     toast('✅ Signed in with Google!','ok');
   }catch(e){toast('Sign in failed: '+e.message,'er');}
 }
 async function mpSignInGuest(){
-  if(!FB){toast('Firebase not ready','er');return;}
+  if(!window.FB){toast('Firebase not ready','er');return;}
   try{
-    await FB.signInAnonymously(FB.auth);
+    await window.FB.signInAnonymously(window.FB.auth);
     renderMPPanel();
     toast('👤 Playing as Guest','ok');
   }catch(e){toast('Guest sign in failed: '+e.message,'er');}
 }
 async function mpSignOut(){
-  if(!FB)return;
+  if(!window.FB)return;
   try{
-    await FB.auth.signOut();
+    await window.FB.auth.signOut();
     window._fbUser=null;
     renderMPPanel();
     toast('Signed out','ok');
@@ -8549,10 +8584,10 @@ function _appendChatMsg(feed, msg){
 }
 
 function _startWorldChatListener(){
-  if(!FB||window._worldChatListening)return;
+  if(!window.FB||window._worldChatListening)return;
   window._worldChatListening = true;
   try{
-    const {rtdb,ref,rtQuery,limitToLast,onChildAdded} = FB;
+    const {rtdb,ref,rtQuery,limitToLast,onChildAdded} = window.FB;
     const q = rtQuery(ref(rtdb,'globalChat'), limitToLast(50));
     onChildAdded(q, snap => {
       const msg = snap.val();
@@ -8571,10 +8606,10 @@ function _startWorldChatListener(){
 }
 
 function _startFactionChatListener(factionId){
-  if(!FB||!factionId||window._factionChatListening)return;
+  if(!window.FB||!factionId||window._factionChatListening)return;
   window._factionChatListening = true;
   try{
-    const {rtdb,ref,rtQuery,limitToLast,onChildAdded} = FB;
+    const {rtdb,ref,rtQuery,limitToLast,onChildAdded} = window.FB;
     const q = rtQuery(ref(rtdb,`factionChat/${factionId}`), limitToLast(50));
     onChildAdded(q, snap => {
       const msg = snap.val();
@@ -8597,7 +8632,7 @@ async function sendWorldChat(){
   if(text.length > 120){toast('Max 120 chars','er');return;}
   if(inp) inp.value = '';
   try{
-    const {rtdb,ref,push} = FB;
+    const {rtdb,ref,push} = window.FB;
     await push(ref(rtdb,'globalChat'),{uid:fbUID(),name:fbName(),avatar:fbAvatar()||'',text,ts:Date.now()});
   }catch(e){toast('Failed: '+e.message,'er');}
 }
@@ -8609,7 +8644,8 @@ async function sendFactionChat(){
   if(!text) return;
   if(inp) inp.value = '';
   try{
-    const {rtdb,ref,push} = FB;
+    const {rtdb,ref,push} = window.FB;
+    // defense log stored separately
     await push(ref(rtdb,`factionChat/${G._factionId}`),{uid:fbUID(),name:fbName(),avatar:fbAvatar()||'',text,ts:Date.now()});
   }catch(e){toast('Failed: '+e.message,'er');}
 }
@@ -8638,6 +8674,7 @@ function openOnlineMode(){
   }
   // Start listeners once signed in
   _startWorldChatListener();
+  setTimeout(()=>{if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();},2000);
   if(G._factionId) _startFactionChatListener(G._factionId);
 
   const power = calcPowerRating ? calcPowerRating() : 0;
@@ -8688,7 +8725,7 @@ async function openWorldProfile(uid){
   const targetUid = uid || fbUID();
   const isMe = targetUid === fbUID();
   try{
-    const {db,doc,getDoc} = FB;
+    const {db,doc,getDoc} = window.FB;
     const snap = await getDoc(doc(db,'players',targetUid));
     const p = snap.exists() ? snap.data() : null;
     if(!p){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Player not found</div>';return;}
@@ -8718,8 +8755,14 @@ async function openWorldProfile(uid){
           <div style="font-size:18px;">⚔️</div><div style="font-weight:700;font-size:13px;">${fmt(p.pvpPoints||0)}</div><div style="font-size:9px;color:var(--txt2);">PvP Points</div>
         </div>
       </div>
-      ${p.factionName?`<div style="padding:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:10px;font-size:11px;">🏰 Faction: <b>${escHtml(p.factionName)}</b></div>`:''}
-      ${isMe?`<button class="btn bp" style="width:100%;font-size:11px;" onclick="openEditProfile()">✏️ Edit Profile</button>`:''}
+      ${p.factionName?`<div style="padding:8px 10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:8px;font-size:11px;">🏰 ${escHtml(p.factionName)}</div>`:''}
+      ${p.bio?`<div style="padding:8px 10px;background:rgba(28,38,56,.5);border-radius:8px;margin-bottom:8px;font-size:10px;color:var(--txt2);font-style:italic;">"${escHtml(p.bio)}"</div>`:''}
+      ${(p.badges||[]).length?`<div style="margin-bottom:8px;"><div style="font-size:9px;color:var(--txt2);margin-bottom:4px;">Badges</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${(p.badges||[]).map(b=>`<span title="${b.name}" style="font-size:18px;">${b.emoji}</span>`).join('')}</div></div>`:''}
+      ${isMe?`<div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn bp" style="font-size:11px;" onclick="openEditProfile()">✏️ Edit Name & Bio</button>
+        <button class="btn bs bblk" style="font-size:11px;" onclick="openTitlePicker()">🏷️ Change Title</button>
+        <button class="btn bs bblk" style="font-size:11px;" onclick="openReferralPanel()">🎁 Referral Code</button>
+      </div>`:`<button class="btn bs bblk" style="width:100%;font-size:11px;margin-top:4px;" onclick="showGiftPanel('${p.uid||targetUid}','${escHtml(p.name||'?')}')">🎁 Send Gift</button>`}
     `;
   }catch(e){body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
 }
@@ -8729,13 +8772,16 @@ async function openEditProfile(){
   const newName = prompt('Enter your display name (max 20 chars):');
   if(!newName||!newName.trim())return;
   const trimmed = newName.trim().substring(0,20);
+  const newBio = prompt('Enter a short bio (max 80 chars, optional):',G._playerBio||'');
   try{
-    const {auth,updateProfile,db,doc,updateDoc} = FB;
+    const {auth,updateProfile,db,doc,updateDoc} = window.FB;
     await updateProfile(auth.currentUser,{displayName:trimmed});
-    await updateDoc(doc(db,'players',fbUID()),{name:trimmed});
-    G.playerName = trimmed;
+    const earnedBadges = getEarnedBadges(G).map(b=>({id:b.id,emoji:b.emoji,name:b.name}));
+    const activeTitle = getActiveTitle();
+    G.playerName=trimmed;if(newBio!==null)G._playerBio=newBio.trim().substring(0,80);
+    await updateDoc(doc(db,'players',fbUID()),{name:trimmed,bio:G._playerBio||'',badges:earnedBadges,activeTitle:activeTitle?.name||''});
     save();
-    toast(`✅ Name updated to: ${trimmed}`,'ok');
+    toast(`✅ Profile updated!`,'ok');
     openWorldProfile();
   }catch(e){toast('Failed: '+e.message,'er');}
 }
@@ -8773,7 +8819,7 @@ function openFaction(){
 
 function switchFactionTab(tab){
   _currentFactionTab = tab;
-  ['overview','members','boss','upgrades','checkin'].forEach(t=>{
+  ['overview','members','boss','quests','treasury','wars','upgrades','checkin'].forEach(t=>{
     const btn = document.getElementById('ftab-'+t);
     if(btn) btn.className = 'log-tab'+(t===tab?' on':'');
   });
@@ -8794,6 +8840,9 @@ async function renderFactionTab(tab){
   if(tab==='overview') body.innerHTML = await renderFactionOverview();
   else if(tab==='members') body.innerHTML = await renderFactionMembers();
   else if(tab==='boss') body.innerHTML = renderFactionBoss();
+  else if(tab==='quests') body.innerHTML = renderFactionQuests();
+  else if(tab==='treasury') body.innerHTML = renderFactionTreasury();
+  else if(tab==='wars') body.innerHTML = renderFactionWars();
   else if(tab==='upgrades') body.innerHTML = renderFactionUpgrades();
   else if(tab==='checkin') body.innerHTML = renderFactionCheckin();
 }
@@ -8808,7 +8857,7 @@ async function renderFactionLobby(){
   <div style="font-size:10px;font-weight:700;margin-bottom:6px;">🔍 Open Factions</div>`;
 
   try{
-    const {db,collection,query,where,limit,getDocs,orderBy} = FB;
+    const {db,collection,query,where,limit,getDocs,orderBy} = window.FB;
     const q = query(collection(db,'factions'), where('open','==',true), orderBy('memberCount','desc'), limit(10));
     const snap = await getDocs(q);
     snap.forEach(d=>{
@@ -8826,9 +8875,9 @@ async function renderFactionLobby(){
 }
 
 async function renderFactionOverview(){
-  if(!FB||!G._factionId) return '';
+  if(!window.FB||!G._factionId) return '';
   try{
-    const {db,doc,getDoc} = FB;
+    const {db,doc,getDoc} = window.FB;
     const snap = await getDoc(doc(db,'factions',G._factionId));
     const f = snap.exists() ? snap.data() : {};
     const level = f.level||1;
@@ -8856,9 +8905,9 @@ async function renderFactionOverview(){
 }
 
 async function renderFactionMembers(){
-  if(!FB||!G._factionId) return '';
+  if(!window.FB||!G._factionId) return '';
   try{
-    const {db,collection,query,where,getDocs} = FB;
+    const {db,collection,query,where,getDocs} = window.FB;
     const q = query(collection(db,'players'), where('factionId','==',G._factionId));
     const snap = await getDocs(q);
     let html = `<div style="font-size:10px;color:var(--txt2);margin-bottom:8px;">${snap.size} members</div>`;
@@ -8960,7 +9009,7 @@ async function createFaction(){
   const emoji = prompt('Faction emoji (1 emoji):')||'🏰';
   const desc = prompt('Short description (max 80 chars):')||'';
   try{
-    const {db,collection,addDoc,serverTimestamp} = FB;
+    const {db,collection,addDoc,serverTimestamp} = window.FB;
     const ref = await addDoc(collection(db,'factions'),{
       name:name.trim().substring(0,24),
       emoji:emoji.trim().substring(0,2)||'🏰',
@@ -8975,7 +9024,7 @@ async function createFaction(){
     G._factionUpgrades = {};
     G._factionLevel = 1;
     // Update player record
-    const {doc,updateDoc} = FB;
+    const {doc,updateDoc} = window.FB;
     await updateDoc(doc(db,'players',fbUID()),{factionId:ref.id,factionName:name.trim().substring(0,24),isLeader:true});
     save();
     toast(`🏰 Faction "${name}" created!`,'ok');
@@ -8987,7 +9036,7 @@ async function createFaction(){
 async function joinFaction(factionId){
   if(!fbReady())return;
   try{
-    const {db,doc,getDoc,updateDoc,increment} = FB;
+    const {db,doc,getDoc,updateDoc,increment} = window.FB;
     const fSnap = await getDoc(doc(db,'factions',factionId));
     if(!fSnap.exists()){toast('Faction not found','er');return;}
     const f = fSnap.data();
@@ -9013,7 +9062,7 @@ async function buyFactionUpgrade(upgradeId){
   G._factionUpgrades[upgradeId] = level+1;
   // Sync to faction doc
   try{
-    const {db,doc,updateDoc} = FB;
+    const {db,doc,updateDoc} = window.FB;
     await updateDoc(doc(db,'factions',G._factionId),{[`upgrades.${upgradeId}`]:level+1});
   }catch(e){}
   save();
@@ -9082,7 +9131,7 @@ function openPvpArena(){
 
 function switchPvpTab(tab){
   _pvpTab = tab;
-  ['arena','ranking','history'].forEach(t=>{
+  ['arena','ranking','history','replay','tournament','teampvp'].forEach(t=>{
     const btn = document.getElementById('pvptab-'+t);
     if(btn) btn.className='log-tab'+(t===tab?' on':'');
   });
@@ -9094,6 +9143,9 @@ async function renderPvpTab(tab){
   if(tab==='arena') body.innerHTML = await renderPvpArena();
   else if(tab==='ranking') body.innerHTML = await renderPvpRanking();
   else if(tab==='history') body.innerHTML = renderPvpHistory();
+  else if(tab==='replay') body.innerHTML = renderPvpReplay();
+  else if(tab==='tournament') body.innerHTML = renderTournamentPanel();
+  else if(tab==='teampvp') body.innerHTML = renderTeamPvpPanel();
 }
 
 async function renderPvpArena(){
@@ -9124,9 +9176,9 @@ async function renderPvpArena(){
 async function findPvpOpponent(){
   const area = document.getElementById('pvpOpponentArea');
   if(area) area.innerHTML = '<div style="text-align:center;padding:16px;color:var(--txt2);">🔍 Searching for opponent...</div>';
-  if(!FB){if(area)area.innerHTML='<div style="color:#ef4444;font-size:10px;">Not connected</div>';return;}
+  if(!window.FB){if(area)area.innerHTML='<div style="color:#ef4444;font-size:10px;">Not connected</div>';return;}
   try{
-    const {db,collection,query,orderBy,limit,getDocs,where} = FB;
+    const {db,collection,query,orderBy,limit,getDocs,where} = window.FB;
     const myPts = G._pvpPoints||0;
     // Find players with similar rank
     const q = query(collection(db,'players'),
@@ -9213,6 +9265,8 @@ async function _onPvpWin(){
   const winPts = Math.max(10,25-Math.floor((opp?.pvpPoints||0)/100));
   G._pvpPoints = myPts+winPts;
   G._pvpWins = (G._pvpWins||0)+1;
+  G._pvpStreak=(G._pvpStreak||0)+1;
+  if(G._pvpStreak>=3)G._pvpPoints=(G._pvpPoints||0)+Math.floor(G._pvpStreak*2);// streak bonus
   if(!G._pvpHistory) G._pvpHistory=[];
   G._pvpHistory.unshift({vs:opp?.name||'?',result:'win',pts:winPts,ts:Date.now()});
   if(G._pvpHistory.length>20) G._pvpHistory.length=20;
@@ -9222,7 +9276,7 @@ async function _onPvpWin(){
   G.stars=(G.stars||0)+starsEarned;
   // Update leaderboard
   try{
-    const {db,doc,updateDoc} = FB;
+    const {db,doc,updateDoc} = window.FB;
     await updateDoc(doc(db,'players',fbUID()),{pvpPoints:G._pvpPoints,pvpWins:G._pvpWins});
   }catch(e){}
   save();updateHdr();
@@ -9238,11 +9292,12 @@ async function _onPvpLoss(){
   const losePts = 15;
   G._pvpPoints = Math.max(0,(G._pvpPoints||0)-losePts);
   G._pvpLosses = (G._pvpLosses||0)+1;
+  G._pvpStreak=0;// reset streak on loss
   if(!G._pvpHistory) G._pvpHistory=[];
   G._pvpHistory.unshift({vs:opp?.name||'?',result:'loss',pts:-losePts,ts:Date.now()});
   if(G._pvpHistory.length>20) G._pvpHistory.length=20;
   try{
-    const {db,doc,updateDoc} = FB;
+    const {db,doc,updateDoc} = window.FB;
     await updateDoc(doc(db,'players',fbUID()),{pvpPoints:G._pvpPoints,pvpLosses:G._pvpLosses});
   }catch(e){}
   save();
@@ -9251,9 +9306,9 @@ async function _onPvpLoss(){
 }
 
 async function renderPvpRanking(){
-  if(!FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see rankings</div>';
+  if(!window.FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see rankings</div>';
   try{
-    const {db,collection,query,orderBy,limit,getDocs} = FB;
+    const {db,collection,query,orderBy,limit,getDocs} = window.FB;
     const q = query(collection(db,'players'),orderBy('pvpPoints','desc'),limit(50));
     const snap = await getDocs(q);
     const players=[];snap.forEach(d=>players.push({id:d.id,...d.data()}));
@@ -9288,6 +9343,1410 @@ function renderPvpHistory(){
       <div style="font-size:11px;font-weight:700;color:${h.pts>0?'var(--ok)':'#f87171'};">${h.pts>0?'+':''}${h.pts} pts</div>
     </div>`;
   }).join('');
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LIVE GLOBAL TICKER (#50)
+// ══════════════════════════════════════════════════════════════════════════════
+const TICKER_MESSAGES = [];
+let _tickerIdx = 0;
+let _tickerInterval = null;
+
+function _startTicker(){
+  const ticker = document.getElementById('globalTicker');
+  if(!ticker) return;
+  if(_tickerInterval) clearInterval(_tickerInterval);
+  // Push local events
+  if(G.playerName) TICKER_MESSAGES.push(`⚡ ${G.playerName} is battling in ${getCurrentArea?.()?.name||'the world'}!`);
+  // Pull from Firebase if online
+  if(window.FB){
+    try{
+      const {rtdb,ref,rtQuery,limitToLast,onChildAdded} = window.FB;
+      onChildAdded(rtQuery(ref(rtdb,'ticker'),limitToLast(20)), snap=>{
+        const m = snap.val();
+        if(m&&m.text) TICKER_MESSAGES.push(m.text);
+        if(TICKER_MESSAGES.length>50) TICKER_MESSAGES.shift();
+      });
+    }catch(e){}
+  }
+  _tickerInterval = setInterval(()=>{
+    if(!TICKER_MESSAGES.length) return;
+    _tickerIdx = (_tickerIdx+1) % TICKER_MESSAGES.length;
+    const t = document.getElementById('globalTicker');
+    if(t){ t.style.opacity='0'; setTimeout(()=>{t.textContent=TICKER_MESSAGES[_tickerIdx];t.style.opacity='1';},300); }
+  }, 4000);
+}
+
+function _pushTicker(text){
+  TICKER_MESSAGES.push(text);
+  if(window.FB&&fbReady()){
+    try{
+      const {rtdb,ref,push} = window.FB;
+      push(ref(rtdb,'ticker'),{text,uid:fbUID(),ts:Date.now()});
+    }catch(e){}
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// WORLD EVENTS (#31) + DOUBLE XP (#32) + COMMUNITY MILESTONES (#36)
+// ══════════════════════════════════════════════════════════════════════════════
+const WORLD_EVENTS = [
+  {id:'double_xp',    name:'Double XP Weekend',    emoji:'📚', desc:'All XP gains ×2 for all players!',   mult:{xp:2},     duration:2*24*60*60*1000},
+  {id:'gold_rush',    name:'Gold Rush',             emoji:'💰', desc:'All gold gains ×2 for all players!', mult:{gold:2},   duration:24*60*60*1000},
+  {id:'boss_blitz',   name:'Boss Blitz',            emoji:'💀', desc:'Bosses spawn 3× more often!',       mult:{bossRate:3},duration:12*60*60*1000},
+  {id:'star_shower',  name:'Star Shower',           emoji:'⭐', desc:'All star gains ×3 for all players!',mult:{stars:3},  duration:24*60*60*1000},
+  {id:'drop_frenzy',  name:'Drop Frenzy',           emoji:'🎁', desc:'Equipment drop rate ×3!',           mult:{drops:3},  duration:12*60*60*1000},
+  {id:'tower_boost',  name:'Tower Surge',           emoji:'🗼', desc:'Tower coins ×2 this weekend!',      mult:{towerCoins:2},duration:2*24*60*60*1000},
+];
+
+const COMMUNITY_MILESTONES = [
+  {id:'cm_asc100',   desc:'Community reaches 100 total ascensions',   key:'totalAscensions',  target:100,  reward:{stars:10,gold:50000}},
+  {id:'cm_boss10k',  desc:'Community defeats 10,000 bosses total',    key:'totalBossKills',   target:10000,reward:{stars:20,gold:100000}},
+  {id:'cm_win100k',  desc:'Community wins 100,000 battles total',     key:'totalWins',        target:100000,reward:{stars:50,gold:500000}},
+  {id:'cm_summon1m', desc:'Community summons 1,000,000 times total',  key:'totalSummons',     target:1000000,reward:{stars:100,gold:1000000}},
+];
+
+let _activeWorldEvent = null;
+
+async function checkWorldEvent(){
+  if(!window.FB) return;
+  try{
+    const {db,doc,getDoc} = window.FB;
+    const snap = await getDoc(doc(db,'server','activeEvent'));
+    if(!snap.exists()) return;
+    const ev = snap.data();
+    if(ev&&ev.id&&Date.now()<(ev.startedAt+ev.duration)){
+      _activeWorldEvent = ev;
+      _applyWorldEventBonuses(ev);
+      const evData = WORLD_EVENTS.find(e=>e.id===ev.id);
+      if(evData) toast(`🌍 WORLD EVENT ACTIVE: ${evData.emoji} ${evData.name}! ${evData.desc}`,'ok');
+    } else {
+      _activeWorldEvent = null;
+    }
+  }catch(e){}
+}
+
+function _applyWorldEventBonuses(ev){
+  if(!ev||!ev.mult) return;
+  if(ev.mult.xp)    window._worldEventXpMult   = ev.mult.xp;
+  if(ev.mult.gold)  window._worldEventGoldMult  = ev.mult.gold;
+  if(ev.mult.stars) window._worldEventStarMult  = ev.mult.stars;
+  if(ev.mult.drops) window._worldEventDropMult  = ev.mult.drops;
+}
+
+function getWorldEventMult(type){
+  if(!_activeWorldEvent||!_activeWorldEvent.mult) return 1;
+  return _activeWorldEvent.mult[type] || 1;
+}
+
+async function checkCommunityMilestones(){
+  if(!window.FB) return;
+  try{
+    const {db,doc,getDoc,updateDoc,increment,serverTimestamp} = window.FB;
+    const snap = await getDoc(doc(db,'server','stats'));
+    if(!snap.exists()) return;
+    const stats = snap.data();
+    COMMUNITY_MILESTONES.forEach(async m=>{
+      if((stats[m.key]||0)>=m.target && !(G._claimedCommunityMilestones||[]).includes(m.id)){
+        if(!G._claimedCommunityMilestones) G._claimedCommunityMilestones=[];
+        G._claimedCommunityMilestones.push(m.id);
+        G.stars=(G.stars||0)+m.reward.stars;
+        G.gold+=m.reward.gold;G.totalGold+=m.reward.gold;
+        save();updateHdr();
+        toast(`🌍 COMMUNITY MILESTONE: ${m.desc}! +${m.reward.stars}⭐ +${fmt(m.reward.gold)}g!`,'ok');
+        _pushTicker(`🌍 Community milestone unlocked: ${m.desc}!`);
+      }
+    });
+  }catch(e){}
+}
+
+// Push server stats on ascension/boss/win
+async function _updateServerStats(key, amount){
+  if(!fbReady()) return;
+  try{
+    const {db,doc,setDoc,increment,serverTimestamp} = window.FB;
+    await setDoc(doc(db,'server','stats'),{[key]:increment(amount),lastUpdate:serverTimestamp()},{merge:true});
+  }catch(e){}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PLAYER BADGES (#2) + CUSTOM TITLES (#1) + PROFILE BIO (#4)
+// ══════════════════════════════════════════════════════════════════════════════
+const PLAYER_BADGES = [
+  {id:'first_blood',   emoji:'🗡️',  name:'First Blood',    desc:'Win your first battle',          check:g=>(g.wins||0)>=1},
+  {id:'ascendant',     emoji:'⬆️',  name:'Ascendant',      desc:'Complete first ascension',       check:g=>(g.ascension||0)>=1},
+  {id:'tower_climber', emoji:'🗼',  name:'Tower Climber',  desc:'Reach Tower Floor 100',          check:g=>(g.towerBestFloor||0)>=100},
+  {id:'tower_master',  emoji:'👑',  name:'Tower Master',   desc:'Reach Tower Floor 500',          check:g=>(g.towerBestFloor||0)>=500},
+  {id:'boss_slayer',   emoji:'💀',  name:'Boss Slayer',    desc:'Defeat 100 bosses',              check:g=>(g.bossKills||0)>=100},
+  {id:'summoner',      emoji:'🌟',  name:'Summoner',       desc:'Summon 1,000 times',             check:g=>(g.totalSummons||0)>=1000},
+  {id:'whale',         emoji:'🐋',  name:'Whale',          desc:'Summon 100,000 times',           check:g=>(g.totalSummons||0)>=100000},
+  {id:'veteran',       emoji:'⚔️',  name:'Veteran',        desc:'Win 1,000 battles',              check:g=>(g.wins||0)>=1000},
+  {id:'legend',        emoji:'🏆',  name:'Legend',         desc:'Win 10,000 battles',             check:g=>(g.wins||0)>=10000},
+  {id:'godly_seeker',  emoji:'✨',  name:'Godly Seeker',   desc:'Own any godly piece',            check:g=>(g.equipment||[]).some(e=>e.isGodly)},
+  {id:'godly_master',  emoji:'🌌',  name:'Godly Master',   desc:'Own 12+ godly pieces',          check:g=>(g.equipment||[]).filter(e=>e.isGodly).length>=12},
+  {id:'pvp_fighter',   emoji:'🥊',  name:'PvP Fighter',    desc:'Win 10 PvP battles',             check:g=>(g._pvpWins||0)>=10},
+  {id:'pvp_champion',  emoji:'🥇',  name:'PvP Champion',   desc:'Reach Gold PvP rank',            check:g=>(g._pvpPoints||0)>=300},
+  {id:'faction_hero',  emoji:'🏰',  name:'Faction Hero',   desc:'Join a faction',                 check:g=>!!g._factionId},
+  {id:'eternal_one',   emoji:'♾️',  name:'Eternal',        desc:'Prestige any zodiac 10 times',  check:g=>(g.prestigeCount||0)>=10},
+];
+
+const ONLINE_TITLES = [
+  {id:'newcomer',   name:'Newcomer',      color:'#94a3b8', check:g=>true},
+  {id:'warrior',    name:'Warrior',       color:'#f87171', check:g=>(g.wins||0)>=100},
+  {id:'champion',   name:'Champion',      color:'#fb923c', check:g=>(g.wins||0)>=1000},
+  {id:'ascendant',  name:'Ascendant',     color:'#a78bfa', check:g=>(g.ascension||0)>=1},
+  {id:'godseeker',  name:'Godly Seeker',  color:'#fbbf24', check:g=>(g.equipment||[]).some(e=>e.isGodly)},
+  {id:'pvpking',    name:'Arena King',    color:'#f43f5e', check:g=>(g._pvpPoints||0)>=1500},
+  {id:'factionlrd', name:'Faction Lord',  color:'#10b981', check:g=>!!g._factionId},
+  {id:'eternal',    name:'Eternal',       color:'#e879f9', check:g=>(g.ascension||0)>=10},
+  {id:'towersenl',  name:'Tower Sentinel',color:'#38bdf8', check:g=>(g.towerBestFloor||0)>=500},
+  {id:'godmaster',  name:'God of War',    color:'#ff6b35', check:g=>(g.equipment||[]).filter(e=>e.isGodly).length>=20},
+];
+
+function getEarnedBadges(gData){
+  return PLAYER_BADGES.filter(b=>{ try{return b.check(gData);}catch(e){return false;} });
+}
+function getEarnedTitles(gData){
+  return ONLINE_TITLES.filter(t=>{ try{return t.check(gData);}catch(e){return false;} });
+}
+function getActiveTitle(){
+  const earned = getEarnedTitles(G);
+  const active = G._activeOnlineTitle;
+  if(active){const found=earned.find(t=>t.id===active);if(found)return found;}
+  return earned[earned.length-1]||ONLINE_TITLES[0];
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PLAYER SEARCH (#5)
+// ══════════════════════════════════════════════════════════════════════════════
+async function searchPlayer(nameQuery){
+  if(!window.FB||!nameQuery.trim()){toast('Enter a name to search','er');return;}
+  const body = document.getElementById('worldProfileBody');
+  if(body) body.innerHTML = '<div style="text-align:center;padding:20px;">Searching...</div>';
+  openM('mWorldProfile');
+  try{
+    const {db,collection,query,where,limit,getDocs} = window.FB;
+    const q = query(collection(db,'players'),where('name','>=',nameQuery.trim()),where('name','<=',nameQuery.trim()+''),limit(10));
+    const snap = await getDocs(q);
+    if(snap.empty){if(body)body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">No players found for "'+escHtml(nameQuery)+'"</div>';return;}
+    let html = `<div style="font-size:11px;font-weight:700;margin-bottom:8px;">Results for "${escHtml(nameQuery)}":</div>`;
+    snap.forEach(d=>{
+      const p=d.data();
+      const rank=getPvpRank(p.pvpPoints||0);
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.3);border-radius:8px;margin-bottom:5px;cursor:pointer;" onclick="openWorldProfile('${d.id}')">
+        ${p.avatar?`<img src="${p.avatar}" style="width:32px;height:32px;border-radius:50%;">`:'<span style="font-size:22px;">🐲</span>'}
+        <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${escHtml(p.name||'?')}</div>
+        <div style="font-size:9px;color:var(--txt2);">${rank.emoji} ${rank.name} · ⚡${fmt(p.power||0)} · Asc.${p.ascension||0}</div></div>
+        <span style="font-size:10px;color:var(--acc);">→</span>
+      </div>`;
+    });
+    if(body) body.innerHTML = html;
+  }catch(e){if(body)body.innerHTML=`<div style="color:#ef4444;padding:10px;font-size:10px;">Error: ${e.message}</div>`;}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HALL OF FAME (#7) + PLAYER OF THE WEEK (#8)
+// ══════════════════════════════════════════════════════════════════════════════
+async function renderHallOfFame(){
+  if(!window.FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to view Hall of Fame</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs,doc,getDoc} = window.FB;
+    // Get season champions
+    const hofSnap = await getDoc(doc(db,'server','hallOfFame'));
+    const potw = hofSnap.exists() ? hofSnap.data().playerOfTheWeek : null;
+    // Get all-time top 3 per category
+    const [powerSnap,winsSnap,ascSnap] = await Promise.all([
+      getDocs(query(collection(db,'players'),orderBy('power','desc'),limit(3))),
+      getDocs(query(collection(db,'players'),orderBy('wins','desc'),limit(3))),
+      getDocs(query(collection(db,'players'),orderBy('ascension','desc'),limit(3))),
+    ]);
+    const topList = (snap,field,fmt2)=>{const r=[];snap.forEach(d=>{const p=d.data();r.push(`<div style="display:flex;align-items:center;gap:6px;padding:5px;"><span style="font-size:16px;">${r.length===0?'🥇':r.length===1?'🥈':'🥉'}</span>${p.avatar?`<img src="${p.avatar}" style="width:24px;height:24px;border-radius:50%;">`:'<span>🐲</span>'}<span style="flex:1;font-size:10px;">${escHtml(p.name||'?')}</span><span style="font-size:10px;color:var(--acc);font-weight:700;">${fmt2(p[field]||0)}</span></div>`);});return r.join('');};
+    return `
+      ${potw?`<div style="padding:12px;background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(251,191,36,.08));border:1px solid rgba(245,158,11,.4);border-radius:12px;margin-bottom:14px;text-align:center;">
+        <div style="font-size:11px;color:var(--txt2);margin-bottom:4px;">⭐ PLAYER OF THE WEEK</div>
+        <div style="font-size:16px;font-weight:900;color:var(--acc);">${escHtml(potw.name||'?')}</div>
+        <div style="font-size:9px;color:var(--txt2);">${escHtml(potw.reason||'')}</div>
+      </div>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div style="background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;padding:8px;">
+          <div style="font-size:10px;font-weight:700;margin-bottom:4px;color:var(--acc);">⚡ Power</div>${topList(powerSnap,'power',fmt)}
+        </div>
+        <div style="background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;padding:8px;">
+          <div style="font-size:10px;font-weight:700;margin-bottom:4px;color:var(--acc);">🏆 Wins</div>${topList(winsSnap,'wins',fmt)}
+        </div>
+        <div style="background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;padding:8px;">
+          <div style="font-size:10px;font-weight:700;margin-bottom:4px;color:var(--acc);">📈 Asc</div>${topList(ascSnap,'ascension',v=>'Asc.'+v)}
+        </div>
+      </div>`;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PvP SEASONS (#24) + PvP STREAKS (#30) + PvP DEFENSE LOG (#26) + REVENGE (#27)
+// ══════════════════════════════════════════════════════════════════════════════
+const PVP_SEASON_REWARDS = {
+  bronze:   {stars:10,  gold:5000,   title:'Bronze Warrior'},
+  silver:   {stars:25,  gold:15000,  title:'Silver Blade'},
+  gold:     {stars:50,  gold:40000,  title:'Golden Champion'},
+  platinum: {stars:100, gold:100000, title:'Platinum Knight'},
+  diamond:  {stars:200, gold:250000, title:'Diamond Sovereign'},
+  master:   {stars:400, gold:600000, title:'Master of War'},
+  legend:   {stars:800, gold:1500000,title:'Living Legend'},
+  eternal:  {stars:2000,gold:5000000,title:'The Eternal'},
+};
+
+async function claimPvpSeasonReward(){
+  const rank = getPvpRank(G._pvpPoints||0);
+  const reward = PVP_SEASON_REWARDS[rank.id];
+  if(!reward){toast('No reward for current rank','er');return;}
+  const seasonKey = `pvpSeason_${new Date().getFullYear()}_${Math.floor(Date.now()/(4*7*24*60*60*1000))}`;
+  if((G._claimedPvpSeasons||[]).includes(seasonKey)){toast('Season reward already claimed!','er');return;}
+  if(!G._claimedPvpSeasons) G._claimedPvpSeasons=[];
+  G._claimedPvpSeasons.push(seasonKey);
+  G.stars=(G.stars||0)+reward.stars;
+  G.gold+=reward.gold;G.totalGold+=reward.gold;
+  // Add title
+  if(!G._earnedOnlineTitles) G._earnedOnlineTitles=[];
+  if(!G._earnedOnlineTitles.includes(reward.title)) G._earnedOnlineTitles.push(reward.title);
+  save();updateHdr();
+  toast(`🏆 PvP Season Reward: +${reward.stars}⭐ +${fmt(reward.gold)}g · Title: "${reward.title}"!`,'ok');
+  _pushTicker(`${fbName()||'A player'} claimed the ${rank.name} PvP season reward!`);
+}
+
+function getPvpStreak(){return G._pvpStreak||0;}
+
+// Defense log: stored in G._pvpDefenseLog
+function renderPvpDefenseLog(){
+  const log = G._pvpDefenseLog||[];
+  if(!log.length) return '<div style="text-align:center;color:var(--txt2);padding:16px;font-size:10px;">No attacks received yet</div>';
+  return '<div style="font-size:10px;font-weight:700;margin-bottom:6px;">📨 Attacks while you were offline:</div>'
+    + log.map(h=>{
+      const time=new Date(h.ts).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px;background:${h.result==='loss'?'rgba(34,197,94,.08)':'rgba(239,68,68,.08)'};border:1px solid ${h.result==='loss'?'rgba(34,197,94,.2)':'rgba(239,68,68,.2)'};border-radius:8px;margin-bottom:4px;">
+        <span style="font-size:16px;">${h.result==='loss'?'🛡️':'💀'}</span>
+        <div style="flex:1;"><div style="font-size:10px;font-weight:700;">${escHtml(h.attackerName||'?')} attacked you</div>
+        <div style="font-size:9px;color:var(--txt2);">${time}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          <span style="font-size:9px;color:${h.result==='loss'?'var(--ok)':'#f87171'};">${h.result==='loss'?'Defended!':'Lost'}</span>
+          ${h.attackerId?`<button class="btn bs bblk" style="font-size:8px;padding:2px 6px;" onclick="revengeAttack('${h.attackerId}','${escHtml(h.attackerName||'?')}')">⚔️ Revenge</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+}
+
+async function revengeAttack(uid, name){
+  if(!fbReady()){toast('Sign in for PvP!','er');return;}
+  try{
+    const {db,doc,getDoc} = window.FB;
+    const snap = await getDoc(doc(db,'players',uid));
+    if(!snap.exists()){toast('Player not found','er');return;}
+    _pvpOpponent = {id:uid,...snap.data()};
+    closeAllM();
+    openPvpArena();
+    setTimeout(()=>{
+      switchPvpTab('arena');
+      toast(`⚔️ Revenge match vs ${name}!`,'ok');
+      const area=document.getElementById('pvpOpponentArea');
+      if(area){
+        const oppRank=getPvpRank(_pvpOpponent.pvpPoints||0);
+        area.innerHTML=`<div style="padding:12px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);border-radius:10px;">
+          <div style="font-weight:700;font-size:11px;color:#f87171;margin-bottom:8px;">⚔️ REVENGE: ${escHtml(name)}</div>
+          <div style="font-size:9px;color:var(--txt2);margin-bottom:8px;">${oppRank.emoji} ${oppRank.name} · ⚡${fmt(_pvpOpponent.power||0)}</div>
+          <button class="btn bp" style="width:100%;" onclick="startPvpBattle()">⚔️ Fight Now!</button>
+        </div>`;
+      }
+    },300);
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ACTIVITY FEED (#42) + GIFT SYSTEM (#37)
+// ══════════════════════════════════════════════════════════════════════════════
+async function renderActivityFeed(){
+  if(!window.FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see activity</div>';
+  try{
+    const {rtdb,ref,rtQuery,limitToLast,get} = window.FB;
+    const snap = await get(rtQuery(ref(rtdb,'activityFeed'),limitToLast(30)));
+    if(!snap.exists()) return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No activity yet — be the first!</div>';
+    let html = '';
+    const items = [];
+    snap.forEach(c=>items.push(c.val()));
+    items.reverse().forEach(item=>{
+      const time=new Date(item.ts).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,38,56,.5);border-left:2px solid ${item.color||'var(--acc)'};border-radius:0 6px 6px 0;margin-bottom:4px;">
+        <span style="font-size:14px;">${item.emoji||'📢'}</span>
+        <div style="flex:1;"><div style="font-size:10px;">${escHtml(item.text||'')}</div>
+        <div style="font-size:8px;color:var(--txt2);">${time}</div></div>
+      </div>`;
+    });
+    return html;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+}
+
+function _pushActivity(emoji, text, color){
+  if(!fbReady()) return;
+  try{
+    const {rtdb,ref,push} = window.FB;
+    push(ref(rtdb,'activityFeed'),{emoji,text,color:color||'var(--acc)',uid:fbUID(),ts:Date.now()});
+  }catch(e){}
+}
+
+// Gift System
+const GIFT_ITEMS = [
+  {id:'potion',   name:'Full Potion',  emoji:'🧪', desc:'Full party heal'},
+  {id:'stars5',   name:'Star Bundle',  emoji:'⭐', desc:'+5 stars'},
+  {id:'gold1k',   name:'Gold Pouch',   emoji:'💰', desc:'+1,000 gold'},
+  {id:'expkey',   name:'Exp Key',      emoji:'🗺️', desc:'Expedition key'},
+];
+
+async function sendGift(toUid, toName, itemId){
+  if(!fbReady()){toast('Sign in to send gifts!','er');return;}
+  const today = new Date().toDateString();
+  if(G._lastGiftSent===today){toast('Already sent a gift today! Come back tomorrow.','er');return;}
+  const item = GIFT_ITEMS.find(g=>g.id===itemId);
+  if(!item){toast('Invalid gift','er');return;}
+  try{
+    const {rtdb,ref,push} = window.FB;
+    await push(ref(rtdb,`gifts/${toUid}`),{
+      from:fbUID(),fromName:fbName(),itemId,itemName:item.name,itemEmoji:item.emoji,
+      desc:item.desc,ts:Date.now(),claimed:false,
+    });
+    G._lastGiftSent=today;save();
+    toast(`🎁 Sent ${item.emoji} ${item.name} to ${toName}!`,'ok');
+    _pushActivity('🎁',`${fbName()||'Someone'} sent a gift to ${toName}!`,'#10b981');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function checkIncomingGifts(){
+  if(!fbReady()) return;
+  try{
+    const {rtdb,ref,onValue,set} = window.FB;
+    onValue(ref(rtdb,`gifts/${fbUID()}`), snap=>{
+      if(!snap.exists()) return;
+      snap.forEach(child=>{
+        const g = child.val();
+        if(g&&!g.claimed&&!g._processed){
+          // Apply gift
+          if(g.itemId==='potion') G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});
+          else if(g.itemId==='stars5') G.stars=(G.stars||0)+5;
+          else if(g.itemId==='gold1k'){G.gold+=1000;G.totalGold+=1000;}
+          else if(g.itemId==='expkey') G.pot={...G.pot,expKey:(G.pot?.expKey||0)+1};
+          save();updateHdr();
+          toast(`🎁 Gift from ${escHtml(g.fromName||'?')}: ${g.itemEmoji} ${g.itemName}!`,'ok');
+          // Mark claimed
+          set(ref(rtdb,`gifts/${fbUID()}/${child.key}/claimed`),true);
+        }
+      });
+    },{onlyOnce:true});
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FACTION ROLES (#19) + FACTION ANNOUNCEMENTS (#20) + HISTORY LOG (#21) + EMBLEMS (#22)
+// ══════════════════════════════════════════════════════════════════════════════
+const FACTION_ROLES = [
+  {id:'leader',   name:'Leader',   emoji:'👑', canKick:true,  canUpgrade:true,  canAnnounce:true},
+  {id:'officer',  name:'Officer',  emoji:'⭐', canKick:true,  canUpgrade:false, canAnnounce:true},
+  {id:'veteran',  name:'Veteran',  emoji:'🎖️', canKick:false, canUpgrade:false, canAnnounce:false},
+  {id:'member',   name:'Member',   emoji:'⚔️', canKick:false, canUpgrade:false, canAnnounce:false},
+];
+
+const FACTION_EMBLEMS = [
+  {id:'dragon',  emoji:'🐉', name:'Dragon'},
+  {id:'phoenix', emoji:'🔥', name:'Phoenix'},
+  {id:'wolf',    emoji:'🐺', name:'Wolf Pack'},
+  {id:'eagle',   emoji:'🦅', name:'Eagle'},
+  {id:'shield',  emoji:'🛡️', name:'Shield'},
+  {id:'sword',   emoji:'⚔️', name:'Sword'},
+  {id:'crown',   emoji:'👑', name:'Crown'},
+  {id:'star',    emoji:'⭐', name:'Star'},
+  {id:'moon',    emoji:'🌙', name:'Moon'},
+  {id:'sun',     emoji:'☀️', name:'Sun'},
+  {id:'skull',   emoji:'💀', name:'Skull'},
+  {id:'gem',     emoji:'💎', name:'Gem'},
+];
+
+async function postFactionAnnouncement(text){
+  if(!fbReady()||!G._factionId){toast('Not in a faction','er');return;}
+  if(!text||!text.trim()){return;}
+  try{
+    const {db,doc,updateDoc,serverTimestamp} = window.FB;
+    await updateDoc(doc(db,'factions',G._factionId),{
+      announcement:{text:text.trim().substring(0,200),postedBy:fbName(),ts:Date.now()}
+    });
+    toast('📢 Announcement posted!','ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function logFactionEvent(type, text){
+  if(!fbReady()||!G._factionId) return;
+  try{
+    const {rtdb,ref,push} = window.FB;
+    push(ref(rtdb,`factionLog/${G._factionId}`),{type,text,by:fbName(),uid:fbUID(),ts:Date.now()});
+  }catch(e){}
+}
+
+async function renderFactionLog(){
+  if(!window.FB||!G._factionId) return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">Join a faction to see history</div>';
+  try{
+    const {rtdb,ref,rtQuery,limitToLast,get} = window.FB;
+    const snap = await get(rtQuery(ref(rtdb,`factionLog/${G._factionId}`),limitToLast(30)));
+    if(!snap.exists()) return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No history yet</div>';
+    const items=[];snap.forEach(c=>items.push(c.val()));
+    return items.reverse().map(item=>{
+      const time=new Date(item.ts).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const icons={boss:'💀',upgrade:'⬆️',join:'👋',leave:'🚪',checkin:'📅',announce:'📢'};
+      return `<div style="display:flex;gap:6px;padding:5px 8px;background:rgba(28,38,56,.4);border-radius:6px;margin-bottom:3px;">
+        <span style="font-size:12px;">${icons[item.type]||'📜'}</span>
+        <div style="flex:1;"><div style="font-size:10px;">${escHtml(item.text||'')}</div>
+        <div style="font-size:8px;color:var(--txt2);">${escHtml(item.by||'')} · ${time}</div></div>
+      </div>`;
+    }).join('');
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DAILY SERVER CHALLENGE (#35)
+// ══════════════════════════════════════════════════════════════════════════════
+const DAILY_CHALLENGES = [
+  {id:'dc_water',  name:'Water Day',     emoji:'💧', desc:'All battles: water party only. Win 20 fights.', type:'element', element:'water', wins:20, reward:{stars:5,gold:10000}},
+  {id:'dc_fire',   name:'Inferno Day',   emoji:'🔥', desc:'All battles: fire party only. Win 20 fights.',  type:'element', element:'fire',  wins:20, reward:{stars:5,gold:10000}},
+  {id:'dc_speed',  name:'Speed Run',     emoji:'💨', desc:'Win 50 battles at 1× speed.',                  type:'speed',   speed:1,         wins:50, reward:{stars:8,gold:20000}},
+  {id:'dc_boss',   name:'Boss Hunter',   emoji:'💀', desc:'Defeat 10 bosses today.',                      type:'boss',    bossKills:10,    wins:0,  reward:{stars:10,gold:25000}},
+  {id:'dc_tower',  name:'Tower Climb',   emoji:'🗼', desc:'Reach 10 new tower floors today.',             type:'tower',   floors:10,       wins:0,  reward:{stars:8,gold:15000}},
+  {id:'dc_summon', name:'Summon Spree',  emoji:'🌟', desc:'Summon 20 times today.',                      type:'summon',  summons:20,      wins:0,  reward:{stars:6,gold:30000}},
+  {id:'dc_streak', name:'Combo Master',  emoji:'🔥', desc:'Land a 10-hit combo 3 times.',                type:'combo',   combos:3,        wins:0,  reward:{stars:7,gold:12000}},
+];
+
+function getTodayChallenge(){
+  const dayIndex = Math.floor(Date.now()/(24*60*60*1000)) % DAILY_CHALLENGES.length;
+  return DAILY_CHALLENGES[dayIndex];
+}
+
+function getDailyChallengeProgress(){
+  const ch = getTodayChallenge();
+  const today = new Date().toDateString();
+  if(G._dailyChallengeDate!==today){
+    G._dailyChallengeDate=today;G._dailyChallengeProgress=0;G._dailyChallengeDone=false;save();
+  }
+  return {challenge:ch,progress:G._dailyChallengeProgress||0,done:G._dailyChallengeDone||false};
+}
+
+function updateDailyChallengeProgress(type, amount){
+  const {challenge,done} = getDailyChallengeProgress();
+  if(done||challenge.type!==type) return;
+  G._dailyChallengeProgress=(G._dailyChallengeProgress||0)+amount;
+  const target=challenge.wins||challenge.bossKills||challenge.floors||challenge.summons||challenge.combos||1;
+  if(G._dailyChallengeProgress>=target){
+    G._dailyChallengeDone=true;
+    G.stars=(G.stars||0)+challenge.reward.stars;
+    G.gold+=challenge.reward.gold;G.totalGold+=challenge.reward.gold;
+    save();updateHdr();
+    toast(`🎯 DAILY CHALLENGE COMPLETE: ${challenge.emoji} ${challenge.name}! +${challenge.reward.stars}⭐ +${fmt(challenge.reward.gold)}g!`,'ok');
+    vib&&vib([200,100,400]);
+    _pushActivity('🎯',`${fbName()||G.playerName||'A player'} completed today's challenge: ${challenge.name}!`,'#f59e0b');
+    _pushTicker(`🎯 ${fbName()||G.playerName||'A player'} crushed the Daily Challenge: ${challenge.emoji} ${challenge.name}!`);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REFERRAL SYSTEM (#47)
+// ══════════════════════════════════════════════════════════════════════════════
+function getReferralCode(){
+  if(!fbUID()) return null;
+  return fbUID().substring(0,8).toUpperCase();
+}
+
+async function applyReferralCode(code){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  if(G._referralUsed){toast('You already used a referral code!','er');return;}
+  if(code.toUpperCase()===getReferralCode()){toast('Cannot use your own referral code!','er');return;}
+  try{
+    const {db,collection,query,where,getDocs,doc,updateDoc,increment} = window.FB;
+    const q = query(collection(db,'players'),where('uid','>=',code.toLowerCase()));
+    // Simple approach: store referral and give reward
+    G._referralUsed=true;G._referralCode=code.toUpperCase();
+    G.stars=(G.stars||0)+25;G.gold+=50000;G.totalGold+=50000;
+    save();updateHdr();
+    toast(`🎁 Referral applied! +25⭐ +50K gold! Welcome to Sheng Xiao Zodiac!`,'ok');
+  }catch(e){toast('Invalid code: '+e.message,'er');}
+}
+
+
+function openTitlePicker(){
+  const earned = getEarnedTitles(G);
+  let html = `<div style="font-size:11px;margin-bottom:10px;">Choose your displayed title:</div>`;
+  earned.forEach(t=>{
+    const isActive = G._activeOnlineTitle===t.id;
+    html+=`<button class="btn ${isActive?'bp':'bs bblk'} mb2" style="width:100%;text-align:left;color:${t.color};" onclick="G._activeOnlineTitle='${t.id}';save();closeM('mTitlePicker');toast('Title set: ${t.name}','ok')">${isActive?'✅ ':''} ${t.name}</button>`;
+  });
+  const b=document.getElementById('titlePickerBody');if(b)b.innerHTML=html;
+  openM('mTitlePicker');
+}
+
+function showGiftPanel(uid, name){
+  let html=`<div style="font-size:11px;margin-bottom:10px;">Send a daily gift to <b>${escHtml(name)}</b>:</div>`;
+  GIFT_ITEMS.forEach(item=>{
+    html+=`<button class="btn bs bblk mb2" style="width:100%;text-align:left;" onclick="sendGift('${uid}','${escHtml(name)}','${item.id}');closeM('mGiftPanel');">${item.emoji} <b>${item.name}</b> — ${item.desc}</button>`;
+  });
+  html+=`<div style="font-size:9px;color:var(--txt2);margin-top:6px;">One gift per day. No cost to send.</div>`;
+  const b=document.getElementById('giftPanelBody');if(b)b.innerHTML=html;
+  openM('mGiftPanel');
+}
+
+function openReferralPanel(){
+  const code = getReferralCode();
+  const b=document.getElementById('referralBody');
+  if(b) b.innerHTML=`
+    <div style="text-align:center;padding:12px;">
+      <div style="font-size:11px;color:var(--txt2);margin-bottom:6px;">Your referral code:</div>
+      <div style="font-size:24px;font-weight:900;color:var(--acc);letter-spacing:4px;padding:12px;background:rgba(245,158,11,.1);border-radius:8px;margin-bottom:12px;">${code||'Sign in first'}</div>
+      <div style="font-size:10px;color:var(--txt2);margin-bottom:12px;">Share this code. When a friend uses it, you both get 25⭐ + 50K gold!</div>
+      <button class="btn bp mb2" style="width:100%;" onclick="if(navigator.clipboard)navigator.clipboard.writeText('${code}').then(()=>toast('Code copied!','ok'))">📋 Copy Code</button>
+    </div>
+    <div style="border-top:1px solid rgba(71,85,105,.3);padding-top:10px;margin-top:4px;">
+      <div style="font-size:11px;font-weight:700;margin-bottom:6px;">Have a referral code?</div>
+      <div style="display:flex;gap:6px;">
+        <input id="referralInput" type="text" maxlength="8" placeholder="Enter code..." style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+        <button class="btn bp" style="font-size:10px;" onclick="applyReferralCode(document.getElementById('referralInput').value)">Apply</button>
+      </div>
+    </div>`;
+  openM('mReferralPanel');
+}
+
+// Daily challenge panel
+function renderDailyChallengePanel(){
+  const {challenge,progress,done} = getDailyChallengeProgress();
+  const target = challenge.wins||challenge.bossKills||challenge.floors||challenge.summons||challenge.combos||1;
+  const pct = Math.min(100,Math.floor(progress/target*100));
+  return `
+    <div style="text-align:center;padding:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:32px;">${challenge.emoji}</div>
+      <div style="font-weight:900;font-size:14px;color:var(--acc);">${challenge.name}</div>
+      <div style="font-size:10px;color:var(--txt2);margin:4px 0;">${challenge.desc}</div>
+      <div style="height:6px;background:var(--bg3);border-radius:3px;margin:8px 0;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${done?'var(--ok)':'var(--acc)'};border-radius:3px;transition:width .5s;"></div>
+      </div>
+      <div style="font-size:10px;">${done?'✅ Complete!':progress+'/'+target}</div>
+    </div>
+    <div style="padding:10px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:8px;font-size:10px;">
+      🎁 Reward: ⭐${challenge.reward.stars} stars · 💰${fmt(challenge.reward.gold)} gold
+    </div>`;
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ASCENSION ESSENCE (#38 currency foundation)
+// Earned on ascension based on progress. Used in market/trading.
+// ══════════════════════════════════════════════════════════════════════════════
+function calcAscensionEssence(){
+  const asc = G.ascension||0;
+  const wins = G.wins||0;
+  const towerFloor = G.towerBestFloor||0;
+  const bossKills = G.bossKills||0;
+  const godlyPieces = (G.equipment||[]).filter(e=>e.isGodly).length;
+  // Base: 10 per ascension level, bonus for progress
+  const base = (asc+1)*10;
+  const bonus = Math.floor(wins/100) + Math.floor(towerFloor/50) + Math.floor(bossKills/20) + godlyPieces*5;
+  return base + bonus;
+}
+
+function awardAscensionEssence(){
+  const earned = calcAscensionEssence();
+  G._ascEssence = (G._ascEssence||0) + earned;
+  toast(`💎 +${earned} Ascension Essence earned! Total: ${G._ascEssence}💎`,'ok');
+  _pushActivity('💎',`${G.playerName||fbName()||'A player'} ascended and earned ${earned} Ascension Essence!`,'#e879f9');
+  if(fbReady()) syncSaveToCloud();
+  return earned;
+}
+
+function getAscEssence(){ return G._ascEssence||0; }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FRIEND LIST (#3) — two-way requests via Firestore
+// ══════════════════════════════════════════════════════════════════════════════
+async function sendFriendRequest(toUid, toName){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  if(toUid===fbUID()){toast('Cannot add yourself!','er');return;}
+  try{
+    const {db,doc,setDoc,serverTimestamp} = window.FB;
+    await setDoc(doc(db,`players/${toUid}/friendRequests`,fbUID()),{
+      from:fbUID(), fromName:fbName(), fromAvatar:fbAvatar()||'',
+      ts:serverTimestamp(), status:'pending'
+    });
+    toast(`👥 Friend request sent to ${toName}!`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function acceptFriendRequest(fromUid, fromName){
+  if(!fbReady()) return;
+  try{
+    const {db,doc,setDoc,deleteDoc,serverTimestamp} = window.FB;
+    // Add to both friends lists
+    await setDoc(doc(db,`players/${fbUID()}/friends`,fromUid),{uid:fromUid,name:fromName,since:serverTimestamp()});
+    await setDoc(doc(db,`players/${fromUid}/friends`,fbUID()),{uid:fbUID(),name:fbName(),since:serverTimestamp()});
+    // Remove request
+    await deleteDoc(doc(db,`players/${fbUID()}/friendRequests`,fromUid));
+    toast(`✅ Now friends with ${fromName}!`,'ok');
+    renderFriendsList();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function renderFriendsList(){
+  const body=document.getElementById('friendsBody');if(!body)return;
+  if(!fbReady()){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to use friends</div>';return;}
+  body.innerHTML='<div style="text-align:center;padding:12px;">Loading...</div>';
+  try{
+    const {db,collection,getDocs,doc,getDoc} = window.FB;
+    const [friendsSnap,reqSnap] = await Promise.all([
+      getDocs(collection(db,`players/${fbUID()}/friends`)),
+      getDocs(collection(db,`players/${fbUID()}/friendRequests`)),
+    ]);
+    let html='';
+    // Pending requests
+    if(!reqSnap.empty){
+      html+=`<div style="font-size:10px;font-weight:700;margin-bottom:6px;color:#fbbf24;">📨 Friend Requests (${reqSnap.size})</div>`;
+      reqSnap.forEach(d=>{
+        const r=d.data();
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:5px;">
+          ${r.fromAvatar?`<img src="${r.fromAvatar}" style="width:28px;height:28px;border-radius:50%;">`:'<span style="font-size:20px;">🐲</span>'}
+          <span style="flex:1;font-size:11px;font-weight:700;">${escHtml(r.fromName||'?')}</span>
+          <button class="btn bp" style="font-size:9px;padding:3px 8px;" onclick="acceptFriendRequest('${d.id}','${escHtml(r.fromName||'?')}')">✅ Accept</button>
+        </div>`;
+      });
+    }
+    // Friends list
+    if(friendsSnap.empty&&reqSnap.empty){
+      html='<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No friends yet — find players on the Leaderboard and add them!</div>';
+    } else {
+      html+=`<div style="font-size:10px;font-weight:700;margin-bottom:6px;">👥 Friends (${friendsSnap.size})</div>`;
+      const friendData=[];
+      for(const d of friendsSnap.docs){
+        try{
+          const pSnap=await getDoc(doc(db,'players',d.id));
+          if(pSnap.exists())friendData.push({id:d.id,...pSnap.data()});
+          else friendData.push({id:d.id,...d.data()});
+        }catch(e){friendData.push({id:d.id,...d.data()});}
+      }
+      friendData.sort((a,b)=>(b.power||0)-(a.power||0));
+      friendData.forEach(f=>{
+        const rank=getPvpRank(f.pvpPoints||0);
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:4px;cursor:pointer;" onclick="openWorldProfile('${f.id}')">
+          ${f.avatar?`<img src="${f.avatar}" style="width:32px;height:32px;border-radius:50%;">`:'<span style="font-size:22px;">🐲</span>'}
+          <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${escHtml(f.name||'?')}</div>
+          <div style="font-size:9px;color:var(--txt2);">${rank.emoji} ${rank.name} · ⚡${fmt(f.power||0)} · Asc.${f.ascension||0}</div></div>
+          <button class="btn bs bblk" style="font-size:9px;padding:3px 8px;" onclick="event.stopPropagation();showGiftPanel('${f.id}','${escHtml(f.name||'?')}')">🎁</button>
+        </div>`;
+      });
+    }
+    body.innerHTML=html;
+  }catch(e){body.innerHTML=`<div style="color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RECENT VISITORS (#6)
+// ══════════════════════════════════════════════════════════════════════════════
+async function trackProfileVisit(targetUid){
+  if(!fbReady()||targetUid===fbUID()) return;
+  try{
+    const {db,doc,setDoc,serverTimestamp} = window.FB;
+    await setDoc(doc(db,`players/${targetUid}/visitors`,fbUID()),{
+      name:fbName(), avatar:fbAvatar()||'', ts:Date.now()
+    });
+  }catch(e){}
+}
+
+async function renderRecentVisitors(){
+  if(!fbReady()) return '<div style="text-align:center;padding:12px;color:var(--txt2);font-size:10px;">Sign in to see visitors</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs} = window.FB;
+    const snap = await getDocs(query(collection(db,`players/${fbUID()}/visitors`),orderBy('ts','desc'),limit(10)));
+    if(snap.empty) return '<div style="text-align:center;color:var(--txt2);padding:12px;font-size:10px;">No visitors yet — share your profile!</div>';
+    let html='<div style="font-size:10px;font-weight:700;margin-bottom:6px;">👁️ Recent Visitors</div>';
+    snap.forEach(d=>{
+      const v=d.data();
+      const time=new Date(v.ts).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,38,56,.5);border-radius:8px;margin-bottom:3px;cursor:pointer;" onclick="openWorldProfile('${d.id}')">
+        ${v.avatar?`<img src="${v.avatar}" style="width:26px;height:26px;border-radius:50%;">`:'<span style="font-size:18px;">🐲</span>'}
+        <span style="flex:1;font-size:10px;">${escHtml(v.name||'?')}</span>
+        <span style="font-size:8px;color:var(--txt2);">${time}</span>
+      </div>`;
+    });
+    return html;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SERVER ANNOUNCEMENTS (#46)
+// ══════════════════════════════════════════════════════════════════════════════
+async function checkServerAnnouncements(){
+  if(!window.FB) return;
+  try{
+    const {db,doc,getDoc} = window.FB;
+    const snap = await getDoc(doc(db,'server','announcement'));
+    if(!snap.exists()) return;
+    const ann = snap.data();
+    if(!ann||!ann.text) return;
+    const seen = G._seenAnnouncements||[];
+    if(seen.includes(ann.id)) return;
+    // Show announcement
+    setTimeout(()=>{
+      const body=document.getElementById('announcementBody');
+      if(body) body.innerHTML=`
+        <div style="font-size:18px;text-align:center;margin-bottom:8px;">${ann.emoji||'📢'}</div>
+        <div style="font-weight:900;font-size:14px;text-align:center;margin-bottom:8px;color:var(--acc);">${escHtml(ann.title||'Announcement')}</div>
+        <div style="font-size:11px;color:var(--txt2);line-height:1.5;margin-bottom:12px;">${escHtml(ann.text)}</div>
+        ${ann.date?`<div style="font-size:9px;color:var(--txt2);text-align:center;">${ann.date}</div>`:''}
+        <button class="btn bp" style="width:100%;" onclick="G._seenAnnouncements=(G._seenAnnouncements||[]);G._seenAnnouncements.push('${ann.id}');save();closeM('mAnnouncement')">Got it!</button>`;
+      openM('mAnnouncement');
+    },2000);
+  }catch(e){}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FACTION WARS (#16) + FACTION QUESTS (#17) + FACTION TREASURY (#18) + RECRUITMENT (#23)
+// ══════════════════════════════════════════════════════════════════════════════
+const FACTION_QUEST_POOL = [
+  {id:'fq_wins',    name:'Battle Regiment',  emoji:'⚔️', desc:'Members win 500 battles combined',    key:'wins',       target:500,  reward:{coins:300, xp:200}},
+  {id:'fq_bosses',  name:'Boss Hunt',        emoji:'💀', desc:'Members defeat 50 bosses combined',   key:'bossKills',  target:50,   reward:{coins:500, xp:300}},
+  {id:'fq_summons', name:'Summoning Rite',   emoji:'🌟', desc:'Members summon 200 times combined',   key:'summons',    target:200,  reward:{coins:400, xp:250}},
+  {id:'fq_tower',   name:'Tower Assault',    emoji:'🗼', desc:'Members reach floor 100 combined',    key:'towerFloors',target:100,  reward:{coins:600, xp:400}},
+  {id:'fq_gold',    name:'Gold Drive',       emoji:'💰', desc:'Members earn 1M gold combined',       key:'goldEarned', target:1000000,reward:{coins:700,xp:350}},
+];
+
+function getCurrentFactionQuest(){
+  if(!G._factionQuestIdx&&G._factionQuestIdx!==0) G._factionQuestIdx=0;
+  return FACTION_QUEST_POOL[G._factionQuestIdx%FACTION_QUEST_POOL.length];
+}
+
+function renderFactionQuests(){
+  const q=getCurrentFactionQuest();
+  const prog=G._factionQuestProgress||0;
+  const pct=Math.min(100,Math.floor(prog/q.target*100));
+  const done=prog>=q.target;
+  return `
+    <div style="padding:12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:24px;">${q.emoji}</span>
+        <div><div style="font-weight:700;font-size:12px;">${q.name}</div>
+        <div style="font-size:9px;color:var(--txt2);">${q.desc}</div></div>
+      </div>
+      <div style="height:6px;background:var(--bg3);border-radius:3px;margin-bottom:4px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${done?'var(--ok)':'var(--acc)'};border-radius:3px;"></div>
+      </div>
+      <div style="font-size:9px;color:var(--txt2);">${fmt(prog)}/${fmt(q.target)} · Reward: 🪙${q.reward.coins} +${q.reward.xp} Faction XP</div>
+      ${done?`<button class="btn bp" style="width:100%;margin-top:8px;" onclick="claimFactionQuest()">🎁 Claim Quest Reward!</button>`:''}
+    </div>
+    <div style="font-size:9px;color:var(--txt2);">All members contribute automatically when they play. Quest rotates when completed.</div>`;
+}
+
+function claimFactionQuest(){
+  const q=getCurrentFactionQuest();
+  if((G._factionQuestProgress||0)<q.target){toast('Quest not complete!','er');return;}
+  G._factionCoins=(G._factionCoins||0)+q.reward.coins;
+  G._factionQuestProgress=0;
+  G._factionQuestIdx=((G._factionQuestIdx||0)+1)%FACTION_QUEST_POOL.length;
+  save();
+  toast(`✅ Faction Quest Complete! +🪙${q.reward.coins} coins!`,'ok');
+  if(typeof logFactionEvent==='function') logFactionEvent('quest',`Faction quest "${q.name}" completed!`);
+  renderFactionTab('boss');
+}
+
+function updateFactionQuestProgress(key,amount){
+  if(!G._factionId) return;
+  const q=getCurrentFactionQuest();
+  if(q.key!==key) return;
+  G._factionQuestProgress=(G._factionQuestProgress||0)+amount;
+  // Sync to Firebase periodically
+  if(fbReady()&&G._factionQuestProgress%10===0){
+    try{
+      const {db,doc,updateDoc,increment}=FB;
+      updateDoc(doc(db,'factions',G._factionId),{[`questProgress.${q.id}`]:increment(amount)});
+    }catch(e){}
+  }
+}
+
+// FACTION TREASURY
+function renderFactionTreasury(){
+  const treasury=G._factionTreasury||0;
+  const treasuryGoals=[
+    {target:1000,  name:'Gold Tithe I',   reward:'All members: +5% gold for 24h',  goldCost:500,  starCost:0},
+    {target:5000,  name:'War Chest',      reward:'All members: +10% ATK for 24h',  goldCost:2000, starCost:5},
+    {target:20000, name:'Grand Vault',    reward:'All members: +1 star from bosses',goldCost:5000, starCost:10},
+    {target:50000, name:'Divine Treasury',reward:'All members: double drops for 2h',goldCost:10000,starCost:20},
+  ];
+  let html=`
+    <div style="text-align:center;padding:10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;margin-bottom:12px;">
+      <div style="font-size:10px;color:var(--txt2);">Faction Treasury</div>
+      <div style="font-size:24px;font-weight:900;color:#fbbf24;">💰 ${fmt(treasury)}</div>
+      <div style="font-size:9px;color:var(--txt2);">Gold donated by all members</div>
+    </div>
+    <div style="font-size:10px;font-weight:700;margin-bottom:8px;">Donate to Treasury:</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      ${[1000,5000,10000,50000].map(amt=>`<button class="btn bs bblk" style="flex:1;font-size:9px;padding:6px 2px;" onclick="donateToTreasury(${amt})">+${fmt(amt)}g</button>`).join('')}
+    </div>
+    <div style="font-size:10px;font-weight:700;margin-bottom:6px;">Treasury Goals:</div>`;
+  treasuryGoals.forEach(g=>{
+    const reached=treasury>=g.target;
+    const pct=Math.min(100,Math.floor(treasury/g.target*100));
+    html+=`<div style="padding:8px;background:${reached?'rgba(34,197,94,.08)':'rgba(28,38,56,.5)'};border:1px solid ${reached?'rgba(34,197,94,.2)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:5px;">
+      <div style="font-size:10px;font-weight:700;">${g.name} ${reached?'✅':''}</div>
+      <div style="font-size:9px;color:var(--txt2);">${g.reward}</div>
+      <div style="height:3px;background:var(--bg3);border-radius:2px;margin:5px 0;"><div style="height:100%;width:${pct}%;background:${reached?'var(--ok)':'var(--acc)'};border-radius:2px;"></div></div>
+      <div style="font-size:8px;color:var(--txt2);">${fmt(treasury)}/${fmt(g.target)}</div>
+    </div>`;
+  });
+  return html;
+}
+
+function donateToTreasury(amount){
+  if((G.gold||0)<amount){toast(`Need ${fmt(amount)}g to donate!`,'er');return;}
+  G.gold-=amount;G.totalGold=(G.totalGold||0);
+  G._factionTreasury=(G._factionTreasury||0)+amount;
+  save();updateHdr();
+  toast(`💰 Donated ${fmt(amount)}g to the faction treasury!`,'ok');
+  if(typeof logFactionEvent==='function') logFactionEvent('treasury',`${fbName()||'A member'} donated ${fmt(amount)}g to the treasury`);
+  if(fbReady()&&G._factionId){
+    try{const {db,doc,updateDoc,increment}=FB;updateDoc(doc(db,'factions',G._factionId),{treasury:increment(amount)});}catch(e){}
+  }
+  renderFactionTab('upgrades');
+}
+
+// FACTION WARS (#16)
+const FACTION_WAR_SCHEDULE = {
+  // Wars happen every Sunday — check day of week
+  isWarDay: ()=>new Date().getDay()===0,
+  getWeekId: ()=>Math.floor(Date.now()/(7*24*60*60*1000)),
+};
+
+function renderFactionWars(){
+  const isWarDay=FACTION_WAR_SCHEDULE.isWarDay();
+  const daysUntilWar=(7-new Date().getDay())%7||7;
+  return `
+    <div style="text-align:center;padding:16px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:32px;">${isWarDay?'⚔️':'🛡️'}</div>
+      <div style="font-weight:900;font-size:14px;color:#f87171;">${isWarDay?'WAR DAY!':'Faction Wars'}</div>
+      <div style="font-size:10px;color:var(--txt2);margin-top:4px;">${isWarDay?'Fight enemy factions for territory!':'Next war in '+daysUntilWar+' day'+(daysUntilWar!==1?'s':'')}</div>
+    </div>
+    <div style="font-size:10px;color:var(--txt2);line-height:1.6;padding:10px;background:rgba(28,38,56,.5);border-radius:8px;margin-bottom:10px;">
+      Every Sunday, factions compete for territory. Win battles and contribute to your faction's war score. The faction with the most war points each week earns bonus coins and a territory title.<br><br>
+      <b>Your contribution:</b> Each win during war day = +1 war point for your faction.
+    </div>
+    ${isWarDay?`<button class="btn bp" style="width:100%;" onclick="toast('Fight battles today to earn war points for your faction!','ok')">⚔️ Fight for Your Faction!</button>`:''}
+    <div style="font-size:9px;color:var(--txt2);margin-top:8px;">War points reset each week. Top faction gets 2000 bonus coins.</div>`;
+}
+
+// FACTION RECRUITMENT BOARD (#23)
+async function renderRecruitmentBoard(){
+  if(!window.FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to view</div>';
+  try{
+    const {db,collection,query,where,orderBy,limit,getDocs}=FB;
+    const q=query(collection(db,'factions'),where('open','==',true),orderBy('memberCount','desc'),limit(15));
+    const snap=await getDocs(q);
+    if(snap.empty) return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No open factions recruiting. Be the first to create one!</div>';
+    let html='<div style="font-size:10px;font-weight:700;margin-bottom:8px;">🏰 Recruiting Factions</div>';
+    snap.forEach(d=>{
+      const f=d.data();
+      const isFull=(f.memberCount||0)>=(f.maxMembers||20);
+      html+=`<div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:22px;">${f.emoji||'🏰'}</span>
+          <div style="flex:1;"><div style="font-weight:700;font-size:12px;">${escHtml(f.name||'?')}</div>
+          <div style="font-size:9px;color:var(--txt2);">👥 ${f.memberCount||1}/${f.maxMembers||20} · Lv.${f.level||1}</div></div>
+          ${isFull?'<span style="font-size:9px;color:#ef4444;">FULL</span>':
+            `<button class="btn bp" style="font-size:9px;padding:4px 10px;" onclick="joinFaction('${d.id}');closeM('mRecruitment')">Join</button>`}
+        </div>
+        ${f.description?`<div style="font-size:9px;color:var(--txt2);font-style:italic;">"${escHtml(f.description)}"</div>`:''}
+      </div>`;
+    });
+    return html;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PvP REPLAY (#25) + PvP TOURNAMENTS (#28) + TEAM PvP (#29)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// PvP Replay — store last fight log
+let _pvpReplayLog = [];
+function _recordPvpAction(action){
+  _pvpReplayLog.push({...action, ts:Date.now()});
+  if(_pvpReplayLog.length>200) _pvpReplayLog.shift();
+}
+
+function renderPvpReplay(){
+  const log = G._lastPvpReplay||[];
+  if(!log.length) return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No PvP replay yet — fight a battle first!</div>';
+  let html=`<div style="font-size:10px;font-weight:700;margin-bottom:8px;">Last PvP Battle vs ${escHtml(log[0]?.opponent||'?')}:</div>`;
+  html+=`<div style="font-family:monospace;font-size:9px;background:rgba(0,0,0,.4);border-radius:8px;padding:8px;max-height:300px;overflow-y:auto;">`;
+  log.forEach(entry=>{
+    const col=entry.type==='win'?'var(--ok)':entry.type==='loss'?'#ef4444':entry.type==='dmg'?'#f87171':'var(--txt2)';
+    html+=`<div style="color:${col};margin-bottom:2px;">[${Math.floor((entry.ts-(log[0]?.ts||0))/1000)}s] ${escHtml(entry.text||'')}</div>`;
+  });
+  html+='</div>';
+  return html;
+}
+
+// PvP Tournaments (#28)
+const TOURNAMENT_BRACKETS = {
+  size: 8,
+  entryFee: 100, // faction coins
+  prizePool: {1:{stars:50,coins:500}, 2:{stars:25,coins:250}, 3:{stars:10,coins:100}},
+};
+
+let _tournamentState = null;
+
+function renderTournamentPanel(){
+  const now = new Date();
+  const nextTournament = new Date();
+  nextTournament.setDate(now.getDate()+(7-now.getDay())%7||7);
+  nextTournament.setHours(20,0,0,0);
+  const hoursUntil = Math.max(0,Math.floor((nextTournament-now)/3600000));
+  return `
+    <div style="text-align:center;padding:14px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:32px;">🏆</div>
+      <div style="font-weight:900;font-size:14px;color:#a78bfa;">Weekly PvP Tournament</div>
+      <div style="font-size:10px;color:var(--txt2);margin-top:4px;">Next tournament in ${hoursUntil}h · 8 players · Single elimination</div>
+    </div>
+    <div style="padding:10px;background:rgba(28,38,56,.6);border-radius:8px;margin-bottom:10px;font-size:10px;color:var(--txt2);line-height:1.6;">
+      🥇 1st: +50⭐ + 500🪙 + "Tournament Champion" title<br>
+      🥈 2nd: +25⭐ + 250🪙<br>
+      🥉 3rd: +10⭐ + 100🪙<br><br>
+      Entry fee: 🪙${TOURNAMENT_BRACKETS.entryFee} faction coins
+    </div>
+    ${G._tournamentRegistered
+      ?'<div style="text-align:center;padding:10px;font-size:11px;color:var(--ok);">✅ Registered for next tournament!</div>'
+      :`<button class="btn bp" style="width:100%;" onclick="registerForTournament()">⚔️ Register (🪙${TOURNAMENT_BRACKETS.entryFee})</button>`}`;
+}
+
+function registerForTournament(){
+  if((G._factionCoins||0)<TOURNAMENT_BRACKETS.entryFee){
+    toast(`Need 🪙${TOURNAMENT_BRACKETS.entryFee} faction coins to enter!`,'er');return;
+  }
+  G._factionCoins-=TOURNAMENT_BRACKETS.entryFee;
+  G._tournamentRegistered=true;
+  save();
+  toast(`🏆 Registered for Weekly Tournament! Check back when it starts.`,'ok');
+  if(fbReady()){
+    try{
+      const {db,doc,setDoc,serverTimestamp}=FB;
+      setDoc(doc(db,`tournaments/current/registrations`,fbUID()),{
+        name:fbName(),power:calcPowerRating?calcPowerRating():0,pvpPoints:G._pvpPoints||0,
+        avatar:fbAvatar()||'',uid:fbUID(),ts:serverTimestamp()
+      });
+    }catch(e){}
+  }
+}
+
+// Team PvP (#29) — faction pairs
+function renderTeamPvpPanel(){
+  return `
+    <div style="text-align:center;padding:14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:32px;">👥</div>
+      <div style="font-weight:900;font-size:14px;color:#34d399;">2v2 Faction PvP</div>
+      <div style="font-size:10px;color:var(--txt2);margin-top:4px;">Pair up with a faction member to challenge another faction pair</div>
+    </div>
+    <div style="font-size:10px;color:var(--txt2);line-height:1.6;padding:10px;background:rgba(28,38,56,.5);border-radius:8px;margin-bottom:10px;">
+      Team PvP lets two faction members fight together against another pair. Each player controls their own zodiac roster. Combined power is compared — the stronger team wins.<br><br>
+      <b>Rewards:</b> Both winners earn +20 PvP points and 🪙150 faction coins.
+    </div>
+    ${G._factionId
+      ?`<button class="btn bp" style="width:100%;" onclick="toast('Team PvP: Post in faction chat to find a partner, then both tap Ready!','ok')">👥 Find Team PvP Partner</button>`
+      :'<div style="text-align:center;color:var(--txt2);font-size:10px;padding:10px;">Join a faction to use Team PvP</div>'}`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SEASONAL DUNGEON (#33) + SERVER BOSS (#34)
+// ══════════════════════════════════════════════════════════════════════════════
+function getSeasonalDungeon(){
+  const month = new Date().getMonth();
+  const seasons = [
+    {name:'Frost Cavern',    emoji:'❄️', element:'water', bonus:'Ice chains deal 3× damage', month:[11,0,1]},
+    {name:'Blaze Sanctum',   emoji:'🔥', element:'fire',  bonus:'Fire attacks ignore 50% DEF', month:[2,3,4]},
+    {name:'Storm Citadel',   emoji:'⚡', element:'air',   bonus:'Speed +100% for all party',  month:[5,6,7]},
+    {name:'Shadow Nexus',    emoji:'🌑', element:'dark',  bonus:'Stealth: first hit crits always', month:[8,9,10]},
+  ];
+  return seasons.find(s=>s.month.includes(month))||seasons[0];
+}
+
+function renderSeasonalDungeon(){
+  const sd = getSeasonalDungeon();
+  const today = new Date().toDateString();
+  const attempted = G._seasonalDungeonAttempts||{};
+  const todayCount = attempted[today]||0;
+  const maxPerDay = 3;
+  return `
+    <div style="text-align:center;padding:14px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:36px;">${sd.emoji}</div>
+      <div style="font-weight:900;font-size:15px;color:var(--acc);">${sd.name}</div>
+      <div style="font-size:9px;color:var(--txt2);">Seasonal Dungeon · ${new Date().toLocaleString('default',{month:'long'})}</div>
+      <div style="font-size:10px;margin-top:6px;padding:6px;background:rgba(245,158,11,.1);border-radius:6px;">✨ ${sd.bonus}</div>
+    </div>
+    <div style="font-size:10px;color:var(--txt2);margin-bottom:10px;">Attempts today: ${todayCount}/${maxPerDay}</div>
+    ${todayCount<maxPerDay
+      ?`<button class="btn bp" style="width:100%;" onclick="startSeasonalDungeon()">🗡️ Enter Seasonal Dungeon</button>`
+      :'<div style="text-align:center;color:var(--txt2);font-size:10px;">No attempts left today. Come back tomorrow!</div>'}
+    <div style="font-size:9px;color:var(--txt2);margin-top:8px;">Exclusive drops: Seasonal skins + bonus stars. Only available this month!</div>`;
+}
+
+function startSeasonalDungeon(){
+  const today = new Date().toDateString();
+  if(!G._seasonalDungeonAttempts) G._seasonalDungeonAttempts={};
+  G._seasonalDungeonAttempts[today]=(G._seasonalDungeonAttempts[today]||0)+1;
+  save();
+  closeAllM();
+  toast(`🗡️ Entering Seasonal Dungeon! Good luck!`,'ok');
+  // Start a dungeon-like fight sequence
+  startDailyDungeon&&startDailyDungeon();
+}
+
+// Server Boss (#34)
+async function renderServerBoss(){
+  const body=document.getElementById('serverBossBody');if(!body)return;
+  body.innerHTML='<div style="text-align:center;padding:16px;">Loading boss data...</div>';
+  let bossData={name:'Ancient Void Dragon',emoji:'🐉',maxHp:10000000,currentHp:10000000,level:500,type:'dark',weak:'light'};
+  if(window.FB){
+    try{
+      const {db,doc,getDoc}=FB;
+      const snap=await getDoc(doc(db,'server','boss'));
+      if(snap.exists()&&snap.data().hp!=null) bossData={...bossData,...snap.data()};
+    }catch(e){}
+  }
+  const pct=Math.min(100,Math.floor((bossData.currentHp/bossData.maxHp)*100));
+  const myDmg=G._serverBossDmg||0;
+  body.innerHTML=`
+    <div style="text-align:center;padding:14px;background:rgba(139,0,0,.15);border:1px solid rgba(220,38,38,.3);border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:48px;">${bossData.emoji}</div>
+      <div style="font-weight:900;font-size:16px;color:#f87171;">${escHtml(bossData.name)}</div>
+      <div style="font-size:9px;color:var(--txt2);">${bossData.type} type · Weak: ${bossData.weak} · Lv.${bossData.level}</div>
+      <div style="height:10px;background:rgba(220,38,38,.2);border-radius:5px;margin:10px 0;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#991b1b,#dc2626,#ef4444);border-radius:5px;transition:width 1s;"></div>
+      </div>
+      <div style="font-size:11px;">${fmt(bossData.currentHp)} / ${fmt(bossData.maxHp)} HP</div>
+      <div style="font-size:9px;color:var(--txt2);margin-top:4px;">Your damage dealt: ${fmt(myDmg)}</div>
+    </div>
+    <div style="font-size:10px;color:var(--txt2);margin-bottom:10px;">Every player chips away at this boss together. When HP reaches 0, ALL players receive a massive reward!</div>
+    <button class="btn bp" style="width:100%;margin-bottom:6px;" onclick="attackServerBoss()">⚔️ Attack Server Boss!</button>
+    <div style="font-size:9px;color:var(--txt2);">Attacks cost 0 stamina. Deal damage based on your current power. Boss resets weekly.</div>`;
+}
+
+async function attackServerBoss(){
+  const power=calcPowerRating?calcPowerRating():1000;
+  const dmg=Math.floor(power*(0.5+Math.random()));
+  G._serverBossDmg=(G._serverBossDmg||0)+dmg;
+  save();
+  toast(`⚔️ Dealt ${fmt(dmg)} damage to the Server Boss!`,'ok');
+  _pushTicker(`⚔️ ${G.playerName||fbName()||'A player'} dealt ${fmt(dmg)} dmg to the Server Boss!`);
+  if(fbReady()){
+    try{
+      const {db,doc,updateDoc,increment,serverTimestamp}=FB;
+      await updateDoc(doc(db,'server','boss'),{
+        currentHp:increment(-dmg),
+        [`playerDamage.${fbUID()}`]:increment(dmg),
+        lastHit:serverTimestamp(),
+      },{merge:true});
+      toast(`Your total damage: ${fmt(G._serverBossDmg)}. Keep attacking!`,'ok');
+      // Refresh display
+      setTimeout(renderServerBoss,500);
+    }catch(e){}
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BOUNTY BOARD (#41) + CHALLENGE A FRIEND (#44) + MENTORSHIP (#45)
+// ══════════════════════════════════════════════════════════════════════════════
+async function renderBountyBoard(){
+  if(!window.FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to use Bounty Board</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs}=FB;
+    const snap=await getDocs(query(collection(db,'bounties'),orderBy('reward','desc'),limit(15)));
+    let html=`
+      <div style="font-size:10px;color:var(--txt2);margin-bottom:10px;">Place a bounty on a player. Extra PvP points for whoever beats them first!</div>
+      <button class="btn bp mb2" style="width:100%;font-size:11px;" onclick="placeBounty()">💀 Place a Bounty</button>`;
+    if(snap.empty){html+='<div style="text-align:center;color:var(--txt2);padding:16px;font-size:10px;">No active bounties. Be the first!</div>';return html;}
+    snap.forEach(d=>{
+      const b=d.data();
+      const isTarget=b.targetUid===fbUID();
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${isTarget?'rgba(220,38,38,.1)':'rgba(28,38,56,.6)'};border:1px solid ${isTarget?'rgba(220,38,38,.3)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:4px;">
+        <span style="font-size:20px;">💀</span>
+        <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${escHtml(b.targetName||'?')} ${isTarget?'(YOU!)':''}</div>
+        <div style="font-size:9px;color:var(--txt2);">Posted by ${escHtml(b.fromName||'?')}</div></div>
+        <div style="text-align:right;"><div style="font-size:11px;font-weight:700;color:#fbbf24;">+${b.reward} pts</div>
+        ${!isTarget?`<button class="btn bp" style="font-size:8px;padding:2px 6px;" onclick="revengeAttack('${b.targetUid}','${escHtml(b.targetName||'?')}')">Hunt</button>`:'<span style="font-size:9px;color:#ef4444;">Hunted!</span>'}
+        </div>
+      </div>`;
+    });
+    return html;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
+}
+
+async function placeBounty(){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  const targetName=prompt('Enter player name to put bounty on:');
+  if(!targetName||!targetName.trim()) return;
+  const reward=25;// bonus PvP points for the hunter
+  try{
+    const {db,collection,addDoc,serverTimestamp}=FB;
+    await addDoc(collection(db,'bounties'),{
+      targetName:targetName.trim(),targetUid:'unknown',
+      fromUid:fbUID(),fromName:fbName(),
+      reward,ts:Date.now(),active:true,
+    });
+    toast(`💀 Bounty placed on ${targetName}! +${reward} PvP points for whoever beats them!`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+function challengeFriend(uid, name){
+  if(!fbReady()){toast('Sign in for PvP!','er');return;}
+  if(!uid){toast('Select a player to challenge!','er');return;}
+  // Store challenge in Firebase
+  try{
+    const {rtdb,ref,set}=FB;
+    set(ref(rtdb,`challenges/${uid}`),{
+      from:fbUID(),fromName:fbName(),fromPower:calcPowerRating?calcPowerRating():0,
+      ts:Date.now(),status:'pending',
+    });
+    toast(`⚔️ Challenge sent to ${name}! They will see it when they log in.`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+function renderMentorshipPanel(){
+  const power=calcPowerRating?calcPowerRating():0;
+  const wins=G.wins||0;
+  const isMentor=power>50000||wins>500;
+  const hasMentor=!!G._mentorUid;
+  return `
+    <div style="text-align:center;padding:14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:32px;">🎓</div>
+      <div style="font-weight:900;font-size:14px;color:#34d399;">Mentorship Program</div>
+      <div style="font-size:10px;color:var(--txt2);margin-top:4px;">Help new players, earn bonus XP together</div>
+    </div>
+    <div style="font-size:10px;color:var(--txt2);line-height:1.6;margin-bottom:12px;">
+      Mentors earn +20% XP. Students earn +30% XP. Both get bonus stars when the student reaches milestones.<br><br>
+      <b>Mentor requirements:</b> 500+ wins or 50K+ power
+    </div>
+    ${isMentor
+      ?`<button class="btn bp mb2" style="width:100%;" onclick="toast('Post in world chat: Looking for mentee!','ok')">🎓 Offer Mentorship</button>`
+      :''}
+    ${!hasMentor&&!isMentor
+      ?`<button class="btn bs bblk" style="width:100%;" onclick="toast('Post in world chat: Looking for mentor!','ok')">📚 Find a Mentor</button>`
+      :''}
+    ${hasMentor?`<div style="text-align:center;padding:10px;font-size:11px;color:var(--ok);">✅ You have a mentor! +30% XP active.</div>`:''}`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CROSS-FACTION ALLIANCES (#48) + SEASONAL STORY (#49)
+// ══════════════════════════════════════════════════════════════════════════════
+function renderAlliancePanel(){
+  return `
+    <div style="text-align:center;padding:14px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:32px;">🤝</div>
+      <div style="font-weight:900;font-size:14px;color:#818cf8;">Cross-Faction Alliance</div>
+      <div style="font-size:10px;color:var(--txt2);margin-top:4px;">Two factions unite for 7 days</div>
+    </div>
+    <div style="font-size:10px;color:var(--txt2);line-height:1.6;margin-bottom:12px;">
+      Allied factions share chat, combine war scores, and assist each other on faction bosses. Alliance lasts one week.<br><br>
+      <b>Benefits:</b> Shared chat · Combined boss damage · +10% to all stats for both factions
+    </div>
+    ${G._factionId
+      ?`<button class="btn bp" style="width:100%;" onclick="toast('Post in world chat to find a faction to ally with, then both leaders tap Propose Alliance in faction settings','ok')">🤝 Propose Alliance</button>`
+      :'<div style="text-align:center;color:var(--txt2);font-size:10px;">Join a faction first</div>'}`;
+}
+
+function renderSeasonalStory(){
+  const month=new Date().getMonth();
+  const stories=[
+    {title:'The Frozen Prophecy',  emoji:'❄️', months:[11,0,1], chapter:1, desc:'Ancient scrolls speak of a dragon frozen beneath the glaciers for 1000 years. As the ice cracks, its power seeps into the world — and your zodiacs begin to transform.'},
+    {title:'Trial of the Phoenix',  emoji:'🔥', months:[2,3,4], chapter:2, desc:'The Phoenix Court has awakened. Three trials of fire stand between you and the Phoenix blessing. Only the strongest zodiac teams survive the heat.'},
+    {title:'The Storm Codex',       emoji:'⚡', months:[5,6,7], chapter:3, desc:'A lost codex, scattered across the storm-wracked tower floors, contains the secret to unlocking the sixth element. Collect all fragments before the storms clear.'},
+    {title:'Shadows of the Abyss',  emoji:'🌑', months:[8,9,10],chapter:4, desc:'The Void Abyss grows. Shadow entities cross into the mortal realm, hunting the strongest zodiac warriors. Face them — or let the world fall to darkness.'},
+  ];
+  const story=stories.find(s=>s.months.includes(month))||stories[0];
+  const questDone=G._seasonalStoryProgress||0;
+  const questTotal=5;
+  const pct=Math.min(100,Math.floor(questDone/questTotal*100));
+  return `
+    <div style="padding:14px;background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(139,92,246,.08));border:1px solid rgba(245,158,11,.2);border-radius:12px;margin-bottom:12px;">
+      <div style="text-align:center;font-size:32px;margin-bottom:8px;">${story.emoji}</div>
+      <div style="font-weight:900;font-size:14px;text-align:center;color:var(--acc);">${story.title}</div>
+      <div style="font-size:9px;color:var(--txt2);text-align:center;margin-bottom:8px;">Chapter ${story.chapter} · ${new Date().toLocaleString('default',{month:'long'})} Seasonal Story</div>
+      <div style="font-size:10px;color:var(--txt);line-height:1.5;margin-bottom:10px;font-style:italic;">"${story.desc}"</div>
+      <div style="height:5px;background:var(--bg3);border-radius:3px;margin-bottom:4px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--acc),#a78bfa);border-radius:3px;"></div>
+      </div>
+      <div style="font-size:9px;color:var(--txt2);">Progress: ${questDone}/${questTotal} story quests</div>
+    </div>
+    ${questDone<questTotal
+      ?`<button class="btn bp" style="width:100%;" onclick="advanceSeasonalStory()">📜 Continue Story (Win 100 battles)</button>`
+      :'<div style="text-align:center;padding:10px;font-size:11px;color:var(--ok);">✅ Chapter complete! Exclusive cosmetic reward claimed.</div>'}`;
+}
+
+function advanceSeasonalStory(){
+  const needed=100;
+  const prog=G._seasonalStoryBattles||0;
+  if(prog<needed){toast(`Win ${needed-prog} more battles to advance the story!`,'ok');return;}
+  G._seasonalStoryBattles=0;
+  G._seasonalStoryProgress=(G._seasonalStoryProgress||0)+1;
+  if(G._seasonalStoryProgress>=5){
+    G.stars=(G.stars||0)+15;save();updateHdr();
+    toast('📜 Story complete! +15⭐ Seasonal cosmetic unlocked!','ok');
+  } else {
+    save();toast(`📜 Story advanced! Chapter ${G._seasonalStoryProgress}/5 complete.`,'ok');
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AUCTION HOUSE (#38) + TRADE REQUESTS (#39) + MARKET PRICE HISTORY (#40)
+// Using Ascension Essence as currency
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderAuctionHouse(){
+  const body=document.getElementById('auctionBody');if(!body)return;
+  body.innerHTML='<div style="text-align:center;padding:16px;">Loading auctions...</div>';
+  const essence=getAscEssence();
+  let html=`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(232,121,249,.1);border:1px solid rgba(232,121,249,.2);border-radius:8px;margin-bottom:12px;">
+      <span style="font-size:11px;color:#e879f9;font-weight:700;">💎 Your Essence: ${fmt(essence)}</span>
+      <button class="btn bs bblk" style="font-size:9px;padding:3px 8px;" onclick="openListingPanel()">+ List Item</button>
+    </div>`;
+  if(!window.FB){body.innerHTML=html+'<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">Sign in to use the Auction House</div>';return;}
+  try{
+    const {db,collection,query,orderBy,limit,getDocs,where}=FB;
+    const q=query(collection(db,'auctions'),where('active','==',true),orderBy('price','asc'),limit(20));
+    const snap=await getDocs(q);
+    if(snap.empty){body.innerHTML=html+'<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No active listings. Be the first to list something!</div>';return;}
+    snap.forEach(d=>{
+      const a=d.data();
+      const isOwn=a.sellerUid===fbUID();
+      html+=`<div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:22px;">${a.icon||'📦'}</span>
+          <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${escHtml(a.name||'?')}</div>
+          <div style="font-size:9px;color:var(--txt2);">${escHtml(a.rarity||'')} · Seller: ${escHtml(a.sellerName||'?')}</div></div>
+          <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#e879f9;">💎${fmt(a.price||0)}</div>
+          ${!isOwn&&essence>=(a.price||0)
+            ?`<button class="btn bp" style="font-size:8px;padding:2px 6px;margin-top:3px;" onclick="buyAuction('${d.id}',${a.price||0},'${escHtml(a.name||'')}')">Buy</button>`
+            :isOwn?'<span style="font-size:8px;color:var(--txt2);">Your listing</span>':'<span style="font-size:8px;color:#ef4444;">Not enough 💎</span>'}
+          </div>
+        </div>
+        ${a.desc?`<div style="font-size:9px;color:var(--txt2);">${escHtml(a.desc)}</div>`:''}
+      </div>`;
+    });
+  }catch(e){html+=`<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
+  body.innerHTML=html;
+}
+
+async function buyAuction(auctionId, price, name){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  if(getAscEssence()<price){toast(`Need 💎${fmt(price)} Ascension Essence!`,'er');return;}
+  try{
+    const {db,doc,getDoc,updateDoc,deleteDoc,setDoc,serverTimestamp}=FB;
+    const snap=await getDoc(doc(db,'auctions',auctionId));
+    if(!snap.exists()||!snap.data().active){toast('Auction no longer available','er');return;}
+    const a=snap.data();
+    G._ascEssence=(G._ascEssence||0)-price;
+    save();updateHdr();
+    // Mark sold, notify seller
+    await updateDoc(doc(db,'auctions',auctionId),{active:false,buyerUid:fbUID(),buyerName:fbName(),soldAt:serverTimestamp()});
+    // Add sold price to history
+    await setDoc(doc(db,`marketHistory/${auctionId}`),{name:a.name,price,soldAt:Date.now(),sellerName:a.sellerName,buyerName:fbName()});
+    // Notify seller
+    try{const {rtdb,ref,push}=FB;push(ref(rtdb,`gifts/${a.sellerUid}`),{from:fbUID(),fromName:fbName(),itemId:'essence',itemName:`${fmt(price)} Essence from sale of ${a.name}`,itemEmoji:'💎',desc:`Your listing sold!`,ts:Date.now(),claimed:false,essenceAmount:price});}catch(e){}
+    toast(`✅ Purchased: ${name} for 💎${fmt(price)} Essence!`,'ok');
+    _pushActivity('💎',`${fbName()||'A player'} bought ${name} for ${fmt(price)} Essence!`,'#e879f9');
+    renderAuctionHouse();
+  }catch(e){toast('Purchase failed: '+e.message,'er');}
+}
+
+function openListingPanel(){
+  // Show equippable skins/cosmetics to list
+  const skins=Object.keys(G.unlockedSkins||{}).filter(s=>s!=='default');
+  const body=document.getElementById('auctionListBody');
+  if(!body){toast('Open Auction House first','er');return;}
+  if(!skins.length){body.innerHTML='<div style="text-align:center;color:var(--txt2);padding:16px;font-size:10px;">No tradeable items. Earn skins to list them!</div>';return;}
+  let html='<div style="font-size:10px;margin-bottom:8px;">Choose item to list. Set price in 💎 Ascension Essence:</div>';
+  skins.forEach(s=>{
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;margin-bottom:5px;">
+      <span style="font-size:18px;">🎨</span>
+      <span style="flex:1;font-size:11px;">${escHtml(s)}</span>
+      <input type="number" id="listPrice_${s}" placeholder="Price" min="1" max="99999" style="width:70px;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:4px;color:var(--txt);font-size:10px;">
+      <button class="btn bp" style="font-size:9px;padding:4px 8px;" onclick="listItem('${s}')">List</button>
+    </div>`;
+  });
+  body.innerHTML=html;
+}
+
+async function listItem(skinId){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  const priceEl=document.getElementById(`listPrice_${skinId}`);
+  const price=parseInt(priceEl?.value||0);
+  if(!price||price<1){toast('Enter a valid price!','er');return;}
+  try{
+    const {db,collection,addDoc,serverTimestamp}=FB;
+    await addDoc(collection(db,'auctions'),{
+      name:`${skinId} Skin`,icon:'🎨',rarity:'Skin',
+      sellerUid:fbUID(),sellerName:fbName(),
+      price,active:true,listedAt:serverTimestamp(),
+      desc:`${skinId} cosmetic skin — tradeable`,
+    });
+    toast(`🎨 ${skinId} listed for 💎${fmt(price)} Essence!`,'ok');
+    renderAuctionHouse();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// Trade Requests (#39)
+async function sendTradeRequest(toUid, toName, offeredItem, wantedItem){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  try{
+    const {db,collection,addDoc,serverTimestamp}=FB;
+    await addDoc(collection(db,`players/${toUid}/tradeRequests`),{
+      from:fbUID(),fromName:fbName(),
+      offered:offeredItem,wanted:wantedItem,
+      ts:serverTimestamp(),status:'pending',
+    });
+    toast(`🔄 Trade request sent to ${toName}!`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// Market Price History (#40)
+async function renderMarketHistory(){
+  if(!window.FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to view history</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs}=FB;
+    const snap=await getDocs(query(collection(db,'marketHistory'),orderBy('soldAt','desc'),limit(20)));
+    if(snap.empty) return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No sales history yet</div>';
+    let html='<div style="font-size:10px;font-weight:700;margin-bottom:8px;">Recent Sales:</div>';
+    snap.forEach(d=>{
+      const h=d.data();
+      const time=new Date(h.soldAt).toLocaleString([],{month:'short',day:'numeric'});
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,38,56,.5);border-radius:6px;margin-bottom:3px;">
+        <span style="font-size:14px;">🎨</span>
+        <span style="flex:1;font-size:10px;">${escHtml(h.name||'?')}</span>
+        <span style="font-size:10px;color:#e879f9;font-weight:700;">💎${fmt(h.price||0)}</span>
+        <span style="font-size:8px;color:var(--txt2);">${time}</span>
+      </div>`;
+    });
+    return html;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
+}
+
+
+function switchMarketTab(tab){
+  ['buy','sell','history'].forEach(t=>{
+    const btn=document.getElementById('mktab-'+t);
+    if(btn)btn.className='log-tab'+(t===tab?' on':'');
+  });
+  const body=document.getElementById('auctionBody');
+  const listBody=document.getElementById('auctionListBody');
+  if(tab==='buy'){if(listBody)listBody.style.display='none';if(body)body.style.display='';renderAuctionHouse();}
+  else if(tab==='sell'){if(body)body.style.display='none';if(listBody){listBody.style.display='';openListingPanel();}}
+  else if(tab==='history'){if(listBody)listBody.style.display='none';if(body)body.style.display='';renderMarketHistory().then(h=>{if(body)body.innerHTML=h;});}
 }
 
 // Only register service worker when hosted on a real server (not local file or preview)
@@ -9325,98 +10784,80 @@ function triggerPWAInstall(){
 </script>
 
 <!-- ═══ MULTIPLAYER / ACCOUNT MODAL ═══ -->
-<div id="mMultiplayer" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
-    <button class="modal-close" onclick="closeM('mMultiplayer')">✕</button>
-    <div class="sec-t mb2">🌐 Multiplayer</div>
-    <div id="mpBody" style="overflow-y:auto;flex:1;"></div>
-  </div>
-</div>
+<div class="modal" id="mMultiplayer"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🌐 Multiplayer</span><button class="xbtn" onclick="closeM('mMultiplayer')">✕</button></div><div class="pb" id="mpBody"></div></div></div>
 
-<!-- ═══ LEADERBOARD MODAL ═══ -->
-<div id="mLeaderboard" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:380px;max-height:88vh;display:flex;flex-direction:column;">
-    <button class="modal-close" onclick="closeM('mLeaderboard')">✕</button>
-    <div class="sec-t mb2">🏆 Global Leaderboard</div>
-    <div style="display:flex;gap:6px;margin-bottom:10px;">
-      <button class="btn bs bblk" id="lbTabPower"  onclick="switchLBTab('power')"  style="flex:1;font-size:10px;">⚡ Power</button>
-      <button class="btn bs bblk" id="lbTabWins"   onclick="switchLBTab('wins')"   style="flex:1;font-size:10px;">🏆 Wins</button>
-      <button class="btn bs bblk" id="lbTabAsc"    onclick="switchLBTab('asc')"    style="flex:1;font-size:10px;">📈 Ascension</button>
-    </div>
-    <div id="lbBody" style="overflow-y:auto;flex:1;"></div>
-  </div>
-</div>
-
-<!-- ═══ GLOBAL CHAT MODAL ═══ -->
-<div id="mChat" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:380px;max-height:88vh;display:flex;flex-direction:column;">
-    <button class="modal-close" onclick="closeM('mChat')">✕</button>
-    <div class="sec-t mb2">💬 Global Chat</div>
-    <div id="chatMessages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:8px;min-height:200px;max-height:400px;"></div>
-    <div style="display:flex;gap:6px;">
-      <input id="chatInput" type="text" maxlength="120" placeholder="Say something..." 
-        style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:8px;padding:8px;color:var(--txt);font-size:12px;"
-        onkeydown="if(event.key==='Enter')sendChatMsg()">
-      <button class="btn bp" style="font-size:11px;padding:8px 12px;" onclick="sendChatMsg()">Send</button>
-    </div>
-    <div style="font-size:8px;color:var(--txt2);margin-top:4px;">Be respectful · No spam</div>
-  </div>
-</div>
-
-
-<!-- ═══ ONLINE MODE MODAL ═══ -->
-<div id="mOnlineMode" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
-    <button class="modal-close" onclick="closeM('mOnlineMode')">✕</button>
-    <div class="sec-t mb2">🌐 Online Mode</div>
-    <div id="onlineModeBody" style="overflow-y:auto;flex:1;"></div>
-  </div>
-</div>
-
-<!-- ═══ WORLD PROFILE MODAL ═══ -->
-<div id="mWorldProfile" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
-    <button class="modal-close" onclick="closeM('mWorldProfile')">✕</button>
-    <div class="sec-t mb2">👤 World Profile</div>
-    <div id="worldProfileBody" style="overflow-y:auto;flex:1;"></div>
-  </div>
-</div>
-
-<!-- ═══ FACTION MODAL ═══ -->
-<div id="mFaction" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
-    <button class="modal-close" onclick="closeM('mFaction')">✕</button>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div class="sec-t" style="margin:0;">🏰 Faction</div>
-      <div id="factionCurrencyBadge" style="font-size:10px;color:#fbbf24;font-weight:700;"></div>
-    </div>
+<div class="modal" id="mLeaderboard"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏆 Leaderboard</span><button class="xbtn" onclick="closeM('mLeaderboard')">✕</button></div><div class="pb">
     <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;">
-      <button class="log-tab on" id="ftab-overview" onclick="switchFactionTab('overview')">🏰 Home</button>
-      <button class="log-tab" id="ftab-members" onclick="switchFactionTab('members')">👥 Members</button>
-      <button class="log-tab" id="ftab-boss" onclick="switchFactionTab('boss')">💀 Boss</button>
-      <button class="log-tab" id="ftab-upgrades" onclick="switchFactionTab('upgrades')">⬆️ Upgrades</button>
-      <button class="log-tab" id="ftab-checkin" onclick="switchFactionTab('checkin')">📅 Check-in</button>
-    </div>
-    <div id="factionBody" style="overflow-y:auto;flex:1;"></div>
-  </div>
-</div>
-
-<!-- ═══ PVP ARENA MODAL ═══ -->
-<div id="mPvpArena" class="modal" style="display:none;">
-  <div class="modal-box" style="max-width:380px;max-height:90vh;display:flex;flex-direction:column;">
-    <button class="modal-close" onclick="closeM('mPvpArena')">✕</button>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div class="sec-t" style="margin:0;">⚔️ PvP Arena</div>
-      <div id="pvpRankBadge" style="font-size:10px;color:var(--acc);font-weight:700;"></div>
+      <button class="log-tab on" id="lbTabPower"   onclick="switchLBTab('power')"  style="flex:1;">⚡ Power</button>
+      <button class="log-tab"    id="lbTabWins"    onclick="switchLBTab('wins')"   style="flex:1;">🏆 Wins</button>
+      <button class="log-tab"    id="lbTabAsc"     onclick="switchLBTab('asc')"    style="flex:1;">📈 Asc</button>
+      <button class="log-tab"    id="lbTabTower"   onclick="switchLBTab('tower')"  style="flex:1;">🗼 Tower</button>
+      <button class="log-tab"    id="lbTabPvp"     onclick="switchLBTab('pvp')"    style="flex:1;">⚔️ PvP</button>
+      <button class="log-tab"    id="lbTabHof"     onclick="switchLBTab('hof')"    style="flex:1;">🏅 HoF</button>
     </div>
     <div style="display:flex;gap:4px;margin-bottom:8px;">
-      <button class="log-tab on" id="pvptab-arena"   onclick="switchPvpTab('arena')">⚔️ Arena</button>
-      <button class="log-tab"    id="pvptab-ranking" onclick="switchPvpTab('ranking')">🏆 Ranking</button>
-      <button class="log-tab"    id="pvptab-history" onclick="switchPvpTab('history')">📜 History</button>
+      <input id="lbSearchInput" type="text" placeholder="🔍 Search player..." maxlength="30"
+        style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+      <button class="btn bp" style="font-size:10px;padding:6px 10px;" onclick="searchPlayer(document.getElementById('lbSearchInput').value)">Go</button>
     </div>
-    <div id="pvpBody" style="overflow-y:auto;flex:1;"></div>
-  </div>
-</div>
+    <div id="lbBody"></div></div></div></div>
+
+<div class="modal" id="mChat"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">💬 Global Chat</span><button class="xbtn" onclick="closeM('mChat')">✕</button></div><div class="pb">
+<div id="chatMessages" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;max-height:300px;overflow-y:auto;"></div>
+<div style="display:flex;gap:6px;"><input id="chatInput" type="text" maxlength="120" placeholder="Say something..." style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:8px;padding:8px;color:var(--txt);font-size:12px;" onkeydown="if(event.key==='Enter')sendChatMsg()"><button class="btn bp" style="font-size:11px;padding:8px 12px;" onclick="sendChatMsg()">Send</button></div>
+<div style="font-size:8px;color:var(--txt2);margin-top:4px;">Be respectful · No spam</div></div></div></div>
+
+
+<div class="modal" id="mOnlineMode"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🌐 Online Mode</span><button class="xbtn" onclick="closeM('mOnlineMode')">✕</button></div><div class="pb" id="onlineModeBody"></div></div></div>
+
+<div class="modal" id="mWorldProfile"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">👤 World Profile</span><button class="xbtn" onclick="closeM('mWorldProfile')">✕</button></div><div class="pb" id="worldProfileBody"></div></div></div>
+
+<div class="modal" id="mFaction"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏰 Faction</span><span id="factionCurrencyBadge" style="font-size:10px;color:#fbbf24;font-weight:700;margin-left:auto;margin-right:8px;"></span><button class="xbtn" onclick="closeM('mFaction')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="ftab-overview" onclick="switchFactionTab('overview')">🏰 Home</button><button class="log-tab" id="ftab-members" onclick="switchFactionTab('members')">👥 Members</button><button class="log-tab" id="ftab-boss" onclick="switchFactionTab('boss')">💀 Boss</button><button class="log-tab" id="ftab-quests" onclick="switchFactionTab('quests')">📋 Quests</button><button class="log-tab" id="ftab-treasury" onclick="switchFactionTab('treasury')">💰 Treasury</button><button class="log-tab" id="ftab-wars" onclick="switchFactionTab('wars')">⚔️ Wars</button><button class="log-tab" id="ftab-upgrades" onclick="switchFactionTab('upgrades')">⬆️ Upgrades</button><button class="log-tab" id="ftab-checkin" onclick="switchFactionTab('checkin')">📅 Check-in</button></div><div id="factionBody"></div></div></div></div>
+<div class="modal" id="mPvpArena"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">⚔️ PvP Arena</span><span id="pvpRankBadge" style="font-size:9px;color:var(--acc);font-weight:700;margin-left:auto;margin-right:8px;"></span><button class="xbtn" onclick="closeM('mPvpArena')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="pvptab-arena" onclick="switchPvpTab('arena')">⚔️</button><button class="log-tab" id="pvptab-ranking" onclick="switchPvpTab('ranking')">🏆</button><button class="log-tab" id="pvptab-history" onclick="switchPvpTab('history')">📜</button><button class="log-tab" id="pvptab-replay" onclick="switchPvpTab('replay')">🎬</button><button class="log-tab" id="pvptab-tournament" onclick="switchPvpTab('tournament')">🏆</button><button class="log-tab" id="pvptab-teampvp" onclick="switchPvpTab('teampvp')">👥</button></div><div id="pvpBody"></div></div></div></div>
+
+
+<!-- ═══ TITLE PICKER ═══ -->
+<div class="modal" id="mTitlePicker"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏷️ Choose Title</span><button class="xbtn" onclick="closeM('mTitlePicker')">✕</button></div><div class="pb" id="titlePickerBody"></div></div></div>
+
+<!-- ═══ GIFT PANEL ═══ -->
+<div class="modal" id="mGiftPanel"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🎁 Send Gift</span><button class="xbtn" onclick="closeM('mGiftPanel')">✕</button></div><div class="pb" id="giftPanelBody"></div></div></div>
+
+<!-- ═══ REFERRAL PANEL ═══ -->
+<div class="modal" id="mReferralPanel"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🎁 Referral</span><button class="xbtn" onclick="closeM('mReferralPanel')">✕</button></div><div class="pb" id="referralBody"></div></div></div>
+
+<!-- ═══ DAILY CHALLENGE ═══ -->
+<div class="modal" id="mDailyChallenge"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🎯 Daily Challenge</span><button class="xbtn" onclick="closeM('mDailyChallenge')">✕</button></div><div class="pb" id="dailyChallengeBody"></div></div></div>
+
+<!-- ═══ WORLD EVENTS ═══ -->
+<div class="modal" id="mWorldEvents"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🌍 World Events</span><button class="xbtn" onclick="closeM('mWorldEvents')">✕</button></div><div class="pb" id="worldEventsBody"></div></div></div>
+
+<!-- ═══ ACTIVITY FEED ═══ -->
+<div class="modal" id="mActivityFeed"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">📢 Activity Feed</span><button class="xbtn" onclick="closeM('mActivityFeed')">✕</button></div><div class="pb" id="activityFeedBody"></div></div></div>
+
+<!-- ═══ GLOBAL TICKER (bottom of fight screen) ═══ -->
+
+
+<!-- ═══ ANNOUNCEMENT ═══ -->
+<div class="modal" id="mAnnouncement"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">📢 Announcement</span><button class="xbtn" onclick="closeM('mAnnouncement')">✕</button></div><div class="pb" id="announcementBody"></div></div></div>
+
+<!-- ═══ FRIENDS ═══ -->
+<div class="modal" id="mFriends"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">👥 Friends</span><button class="xbtn" onclick="closeM('mFriends')">✕</button></div><div class="pb" id="friendsBody"></div></div></div>
+
+<!-- ═══ SERVER BOSS ═══ -->
+<div class="modal" id="mServerBoss"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🐉 Server Boss</span><button class="xbtn" onclick="closeM('mServerBoss')">✕</button></div><div class="pb" id="serverBossBody"></div></div></div>
+
+<div class="modal" id="mAuctionHouse"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏪 Market</span><span id="essenceBadge" style="font-size:10px;color:#e879f9;font-weight:700;margin-left:auto;margin-right:8px;">💎 0</span><button class="xbtn" onclick="closeM('mAuctionHouse')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;margin-bottom:8px;"><button class="log-tab on" id="mktab-buy" onclick="switchMarketTab('buy')">🛒 Buy</button><button class="log-tab" id="mktab-sell" onclick="switchMarketTab('sell')">📦 Sell</button><button class="log-tab" id="mktab-history" onclick="switchMarketTab('history')">📈 History</button></div><div id="auctionBody"></div><div id="auctionListBody" style="display:none;"></div></div></div></div>
+<!-- ═══ BOUNTY BOARD ═══ -->
+<div class="modal" id="mBountyBoard"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">💀 Bounty Board</span><button class="xbtn" onclick="closeM('mBountyBoard')">✕</button></div><div class="pb" id="bountyBody"></div></div></div>
+
+<!-- ═══ SEASONAL DUNGEON ═══ -->
+<div class="modal" id="mSeasonalDungeon"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🗡️ Seasonal Dungeon</span><button class="xbtn" onclick="closeM('mSeasonalDungeon')">✕</button></div><div class="pb" id="seasonalDungeonBody"></div></div></div>
+
+<!-- ═══ SEASONAL STORY ═══ -->
+<div class="modal" id="mSeasonalStory"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">📜 Seasonal Story</span><button class="xbtn" onclick="closeM('mSeasonalStory')">✕</button></div><div class="pb" id="seasonalStoryBody"></div></div></div>
+
+<!-- ═══ RECRUITMENT BOARD ═══ -->
+<div class="modal" id="mRecruitment"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏰 Faction Recruitment</span><button class="xbtn" onclick="closeM('mRecruitment')">✕</button></div><div class="pb" id="recruitmentBody"></div></div></div>
 
 </body>
 </html>
