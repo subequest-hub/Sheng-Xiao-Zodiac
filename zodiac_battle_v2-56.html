@@ -8401,47 +8401,47 @@ window._onFBSignOut = function(){
 
 // ── CLOUD SAVE ────────────────────────────────────────────────────────────────
 async function syncSaveToCloud(){
-  if(!window.FB?.db){console.warn('syncSaveToCloud: db not ready');return;}
-  if(!fbReady()){console.warn('syncSaveToCloud: not ready');return;}
+  if(!fbReady())return;
   const currentUser=window.FB?.auth?.currentUser;
-  if(!currentUser){console.warn('syncSaveToCloud: no currentUser');return;}
+  if(!currentUser) return;
   const uid=currentUser.uid;
-  if(!uid){console.warn('syncSaveToCloud: no UID');return;}
+  if(!uid) return;
+  window._lastSyncError=null;
   try{
-    await currentUser.getIdToken(false);// get token without forcing refresh
-    const db=window.fbDB||window.FB?.db;if(!db){console.error('No db instance!');return;}
-    const {doc,setDoc,serverTimestamp}=window.FB;
-    // Small public profile doc (for leaderboard/search) — stays under 10KB
-    const profile={
-      uid:fbUID(),
-      name:G.playerName||fbName(),
-      power:calcPowerRating?calcPowerRating():0,
-      wins:G.wins||0,
-      ascension:G.ascension||0,
-      stars:G.stars||0,
-      towerBest:G.towerBestFloor||0,
-      pvpPoints:G._pvpPoints||0,
-      pvpWins:G._pvpWins||0,
-      factionId:G._factionId||'',
-      factionName:G._factionName||'',
-      avatar:fbAvatar()||'',
-      isAnonymous:window._fbUser?.isAnonymous||false,
-      lastSeen:serverTimestamp(),
-    };
-    await setDoc(doc(db,'players',uid),profile,{merge:true});
-    // Full save stored separately (subcollection avoids size limits on profile)
+    const token=await currentUser.getIdToken(true);
+    const proj='sheng-xiao-zodiac';
+    const base=`https://firestore.googleapis.com/v1/projects/${proj}/databases/(default)/documents`;
+    const headers={'Content-Type':'application/json','Authorization':'Bearer '+token};
+    // Write profile doc via REST
+    const profile={fields:{
+      uid:{stringValue:uid},
+      name:{stringValue:G.playerName||fbName()||'Anonymous'},
+      power:{doubleValue:calcPowerRating?calcPowerRating():0},
+      wins:{integerValue:String(G.wins||0)},
+      ascension:{integerValue:String(G.ascension||0)},
+      stars:{doubleValue:G.stars||0},
+      towerBest:{integerValue:String(G.towerBestFloor||0)},
+      pvpPoints:{integerValue:String(G._pvpPoints||0)},
+      pvpWins:{integerValue:String(G._pvpWins||0)},
+      factionId:{stringValue:G._factionId||''},
+      factionName:{stringValue:G._factionName||''},
+      avatar:{stringValue:fbAvatar()||''},
+      isAnonymous:{booleanValue:!!(window._fbUser?.isAnonymous)},
+    }};
+    const r=await fetch(`${base}/players/${uid}`,{method:'PATCH',headers,body:JSON.stringify(profile)});
+    if(!r.ok){const t=await r.text();throw new Error('HTTP '+r.status+': '+t.substring(0,200));}
+    // Write save data
     const saveStr=JSON.stringify(G);
-    if(saveStr.length<500000){
-      await setDoc(doc(db,'players',uid,'saveData','latest'),{data:saveStr,ts:serverTimestamp()},{merge:true});
+    if(saveStr.length<400000){
+      const saveBody={fields:{data:{stringValue:saveStr},ts:{stringValue:new Date().toISOString()}}};
+      await fetch(`${base}/players/${uid}/saveData/latest`,{method:'PATCH',headers,body:JSON.stringify(saveBody)});
     }
-    console.log('Save synced to cloud ✓');
+    console.log('Cloud sync OK via REST');
+    if(window._manualSync) toast('☁️ Cloud save synced!','ok');
   }catch(e){
-    console.error('Cloud save failed:',e.message,e.code,'uid:',uid);
-    window._lastSyncError={msg:e.message,code:e.code,uid,time:new Date().toISOString()};
-    if(window._manualSync){
-      // Show full debug info on manual sync
-      alert('Cloud save debug:\nError: '+e.message+'\nCode: '+e.code+'\nUID: '+uid+'\nDB ready: '+(!!window.fbDB)+'\nAuth current: '+(window.fbAuth?.currentUser?.uid||'none'));
-    }
+    console.error('Cloud save failed:',e.message,'uid:',uid);
+    window._lastSyncError={msg:e.message,code:'rest-error',uid,time:new Date().toISOString()};
+    if(window._manualSync) alert('Sync error:\n'+e.message+'\nUID: '+uid);
   }
 }
 
