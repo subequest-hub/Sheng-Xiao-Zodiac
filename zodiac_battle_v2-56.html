@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Sheng Xiao Zodiac</title>
+<!-- v1780904985 -->
 <meta name="theme-color" content="#f59e0b">
 <meta name="application-name" content="Sheng Xiao Zodiac">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -915,6 +916,7 @@ onAuthStateChanged(auth, user => {
   <button class="btn bs bblk mb2" onclick="closeM('mSettings');reopenTutorial()">📖 Replay Tutorial</button>
   <button class="btn bs bblk mb2" onclick="repairSave()" style="background:rgba(16,185,129,.15);border-color:#10b981;color:#34d399;">🔧 Repair Save (fix missing zodiacs)</button>
   <button class="btn bd bblk" onclick="hardReset()">⚠️ Hard Reset All Data</button>
+  <button class="btn bs bblk mb2" style="margin-top:8px;" onclick="syncSaveToCloud().then(()=>debugFirestore()).catch(e=>alert('Sync error: '+e.message))">🔍 Debug Firebase</button>
 </div></div></div>
 <div class="modal" id="mWin"><div class="panel" style="text-align:center;padding:22px 18px;"><div style="display:flex;justify-content:center;min-height:52px;margin-bottom:7px;" id="winEmoji"><span style="font-size:52px;">🎉</span></div><div style="font-family:'Cinzel',serif;color:var(--acc);font-size:20px;margin-bottom:5px;">Victory!</div><div class="t2 ts mb3" id="vMsg"></div><div id="vRew" style="margin-bottom:14px;"></div><button class="btn bp bblk" onclick="nextEnemy()">⚔️ Next Battle</button></div></div>
 <div class="modal" id="mLose"><div class="panel" style="text-align:center;padding:22px 18px;"><div style="font-size:52px;margin-bottom:7px;">💀</div><div style="font-family:'Cinzel',serif;color:var(--bad);font-size:20px;margin-bottom:5px;">Defeated!</div><div class="t2 ts mb3">Your entire squad fell…</div><div class="bgrp"><button class="btn bp" onclick="reviveAll()">✨ Revive (free)</button><button class="btn bs" onclick="resetBattle()">🔄 Restart</button></div></div></div>
