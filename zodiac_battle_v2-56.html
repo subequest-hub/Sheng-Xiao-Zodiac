@@ -11330,6 +11330,31 @@ async function _checkGlobalReward(){
   }catch(e){}
 }
 
+
+function debugFirestore(){
+  const uid = window.FB?.auth?.currentUser?.uid || window._fbUser?.uid || 'NO UID';
+  const dbReady = !!window.fbDB;
+  const authReady = !!window.FB?.auth?.currentUser;
+  const lastErr = window._lastSyncError;
+  
+  let msg = 'FIRESTORE DEBUG\n';
+  msg += '─────────────────\n';
+  msg += 'UID: ' + uid + '\n';
+  msg += 'DB Ready: ' + dbReady + '\n';
+  msg += 'Auth Ready: ' + authReady + '\n';
+  msg += 'fbReady(): ' + fbReady() + '\n';
+  if(lastErr){
+    msg += '\nLAST ERROR:\n';
+    msg += 'Code: ' + lastErr.code + '\n';
+    msg += 'Message: ' + lastErr.msg + '\n';
+    msg += 'Time: ' + lastErr.time + '\n';
+  } else {
+    msg += '\nNo errors recorded yet\n';
+    msg += '(trigger a sync first)\n';
+  }
+  alert(msg);
+}
+
 // Only register service worker when hosted on a real server (not local file or preview)
 if('serviceWorker' in navigator && location.protocol === 'https:' && !location.hostname.includes('claudeusercontent')){
   window.addEventListener('load', () => {
