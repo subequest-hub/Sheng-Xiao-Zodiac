@@ -3332,9 +3332,20 @@ function updateQuestProgress(key,delta=1){
     if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;updateHdr();save();toast(`📋 ${q.desc}! +${st}⭐`,'ok');}
   });
   if(G.weeklyQuests)G.weeklyQuests.forEach(q=>{
-    if(q.completed||q.key!==key)return;
-    q.progress=Math.min(q.target,q.progress+delta);
-    if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;updateHdr();save();toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');}
+    if(q.completed)return;
+    const reqs=q.requirements||[];
+    if(reqs.length){
+      if(!q.reqProgress)q.reqProgress=reqs.map(()=>0);
+      reqs.forEach((r,i)=>{if(r.key===key)q.reqProgress[i]=Math.min(r.target,(q.reqProgress[i]||0)+delta);});
+      if(reqs.every((r,i)=>(q.reqProgress[i]||0)>=r.target)){
+        q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;updateHdr();save();
+        toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');addBpXp(100);
+      }
+    }else{
+      if(q.key!==key)return;
+      q.progress=Math.min(q.target,(q.progress||0)+delta);
+      if(q.progress>=q.target){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;updateHdr();save();toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');}
+    }
   });
   if(G.monthlyQuests)G.monthlyQuests.forEach(q=>{
     if(q.completed||q.key!==key)return;
@@ -3413,7 +3424,20 @@ function renderQuests(){
     ${allWeeklyDone?`<button class="btn bs" style="font-size:9px;padding:2px 8px;" onclick="resetWeeklyQuests()">🔄 Reset (2K g)</button>`:''}
   </div>`;
   if(G.weeklyQuests)G.weeklyQuests.forEach(q=>{
-    html+=`<div class="quest-card${q.completed?' completed':''}"><div class="row sb mb1"><span style="font-weight:700;font-size:12px;">${q.emoji} ${q.desc}</span><span style="color:${rarColor[q.rarity]||'#fff'};font-size:9px;font-weight:700;">${q.rarity}</span></div><div class="row sb ts t2"><span>${q.completed?'✅ Complete!':'Progress: '+q.progress+'/'+q.target}</span><span class="ta" style="color:#f59e0b;">⭐ +${q.stars||0}</span></div><div class="quest-prog"><div class="quest-progf" style="width:${Math.min(100,(q.progress/q.target)*100)}%"></div></div></div>`;
+    const reqs=q.requirements||[];
+    const reqProg=q.reqProgress||reqs.map(()=>0);
+    const allDone=reqs.length?reqs.every((r,i)=>(reqProg[i]||0)>=r.target):q.completed;
+    let progressHtml='';
+    if(reqs.length){
+      progressHtml=reqs.map((r,i)=>{
+        const p=reqProg[i]||0;const pct=Math.min(100,Math.floor(p/r.target*100));
+        return`<div style="margin-bottom:3px;"><div style="font-size:9px;color:var(--txt2);margin-bottom:1px;">${r.label}: ${fmt(p)}/${fmt(r.target)}</div><div class="quest-prog"><div class="quest-progf" style="width:${pct}%"></div></div></div>`;
+      }).join('');
+    }else{
+      const pct=Math.min(100,Math.floor(((q.progress||0)/(q.target||1))*100));
+      progressHtml=`<div style="font-size:9px;color:var(--txt2);margin-bottom:1px;">Progress: ${q.progress||0}/${q.target||0}</div><div class="quest-prog"><div class="quest-progf" style="width:${pct}%"></div></div>`;
+    }
+    html+=`<div class="quest-card${q.completed?' completed':''}"><div class="row sb mb1"><span style="font-weight:700;font-size:12px;">${q.emoji} ${q.desc}</span><span style="color:${rarColor[q.rarity]||'#fff'};font-size:9px;font-weight:700;">${q.rarity}</span></div><div class="row sb ts t2 mb1"><span>${q.completed?'✅ Complete!':'In progress...'}</span><span class="ta" style="color:#f59e0b;">⭐ +${q.stars||0}</span></div>${progressHtml}</div>`;
   });
   const allMonthlyDone=(G.monthlyQuests||[]).length>0&&(G.monthlyQuests||[]).every(q=>q.completed);
   html+=`<div class="sec-t mb2" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;">
@@ -6526,9 +6550,16 @@ function startTowerBattle(){
   const floor=G.towerFloor||0;const sc=1+G.wins*B.WIN_SCALE+floor*.05;
   G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc),hp:Math.floor(B.BASE_HP*t.hpM*sc),atk:Math.floor(B.BASE_ATK*t.atkM*sc),level:Math.max(t.level,Math.floor(floor*.2)+1)};
   G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
-  G.towerFloor=(G.towerFloor||0)+1;if(G.towerFloor>G.towerBest)G.towerBest=G.towerFloor;
+  G.towerFloor=(G.towerFloor||0)+1;if(G.towerFloor>G.towerBest)G.towerBest=G.towerFloor;if(G.towerFloor>(G.towerBestFloor||0))G.towerBestFloor=G.towerFloor;
   // Track variant best
-  const _vk='towerBest_'+(_towerVariant||'buff');if(G.towerFloor>(G[_vk]||0))G[_vk]=G.towerFloor;
+  const _vk='towerBest_'+(_towerVariant||'buff');if(G.towerFloor>(G[_vk]||0)){G[_vk]=G.towerFloor;
+    if(G.towerFloor>=1000){
+      if(_towerVariant==='buff')checkGodlyPieceUnlock('tower_1000_buff');
+      else if(_towerVariant==='ironman')checkGodlyPieceUnlock('tower_1000_ironman');
+      else if(_towerVariant==='debuff')checkGodlyPieceUnlock('tower_1000_debuff');
+      else if(_towerVariant==='reborn')checkGodlyPieceUnlock('reborn_1000');
+    }
+  }
   applyTowerFloorRewards(G.towerFloor);
   // Boss tower: always use boss enemy
   if(isTowerVariant('boss'))G.enemy.boss=true;
@@ -6721,8 +6752,13 @@ function endTowerRun(){
 }
 function endTimedTower(success){
   clearInterval(_timedTowerTimer);_timedTowerTimer=null;
-  if(success){const b=G.towerFloor*100;G.gold+=b;G.totalGold+=b;G.stars=(G.stars||0)+G.towerFloor;toast('⏱️ Timed! Floor '+G.towerFloor+'! +'+b+'g +'+G.towerFloor+'⭐','ok');}
-  else toast('⏱️ Times up! Floor '+G.towerFloor,'er');
+  if(success){
+    const elapsed=Math.floor((Date.now()-(_timedTowerEnd-(10*60*1000)))/1000);
+    if(!G._timedTowerBest||elapsed<G._timedTowerBest)G._timedTowerBest=elapsed;
+    if(elapsed<=90)checkGodlyPieceUnlock('timed_90s');
+    const b=G.towerFloor*100;G.gold+=b;G.totalGold+=b;G.stars=(G.stars||0)+G.towerFloor;
+    toast('⏱️ Timed! Floor '+G.towerFloor+'! +'+b+'g +'+G.towerFloor+'⭐ (Time: '+elapsed+'s)','ok');
+  }else toast('⏱️ Times up! Floor '+G.towerFloor,'er');
   endTowerRun();
 }
 function rebornPickupZodiac(enemyName){
