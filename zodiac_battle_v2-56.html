@@ -8409,7 +8409,12 @@ async function syncSaveToCloud(){
   try{
     if(window._manualSync) toast('Getting token...','ok');
     const token=await currentUser.getIdToken(true);
-    if(window._manualSync) toast('Token OK, writing...','ok');
+    
+    // Decode token to verify project
+    const payload=JSON.parse(atob(token.split('.')[1]));
+    const tokenProject=payload.aud;
+    if(window._manualSync) toast('Token aud: '+tokenProject,'ok');
+    
     const url='https://firestore.googleapis.com/v1/projects/sheng-xiao-zodiac/databases/(default)/documents/players/'+uid;
     const body=JSON.stringify({fields:{
       uid:{stringValue:uid},
@@ -8423,7 +8428,7 @@ async function syncSaveToCloud(){
       body
     });
     const responseText=await r.text();
-    if(window._manualSync) alert('HTTP '+r.status+'\n'+(r.ok?'SUCCESS!':'FAILED')+'\n'+responseText.substring(0,300));
+    if(window._manualSync) alert('Project: '+tokenProject+'\nUID: '+uid+'\nHTTP '+r.status+': '+(r.ok?'SUCCESS':'FAILED')+'\n\n'+responseText.substring(0,400));
     if(!r.ok) throw new Error('HTTP '+r.status+': '+responseText.substring(0,100));
     console.log('Cloud sync OK');
     if(window._manualSync) toast('☁️ Synced!','ok');
