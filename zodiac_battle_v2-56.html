@@ -8377,8 +8377,8 @@ window._onFBSignIn = function(user){
   // Update hub Online section badges
   const sub=document.getElementById('hubMPSub');
   if(sub)sub.textContent=user.displayName||'Online';
-  // Immediately sync to create player doc in Firestore
-  setTimeout(()=>syncSaveToCloud(),1000);
+  // Wait for auth token to be fully propagated before syncing
+  setTimeout(()=>syncSaveToCloud(),3000);
   const profSub=document.getElementById('hubProfileSub');
   if(profSub)profSub.textContent=user.displayName||'View profile';
   // Show GM button if developer (delay to ensure auth fully loaded)
@@ -8395,11 +8395,14 @@ window._onFBSignOut = function(){
 
 // ── CLOUD SAVE ────────────────────────────────────────────────────────────────
 async function syncSaveToCloud(){
-  if(!fbReady()){console.warn('syncSaveToCloud: not ready, fbUID=',fbUID());return;}
-  const uid=fbUID();
+  if(!fbReady()){console.warn('syncSaveToCloud: not ready');return;}
+  const currentUser=window.FB?.auth?.currentUser;
+  if(!currentUser){console.warn('syncSaveToCloud: no currentUser');return;}
+  const uid=currentUser.uid;
   if(!uid){console.warn('syncSaveToCloud: no UID');return;}
-  console.log('syncSaveToCloud: uid=',uid,'auth.currentUser=',window.FB?.auth?.currentUser?.uid);
   try{
+    // Force token refresh to ensure Firestore auth works
+    await currentUser.getIdToken(true);
     const {db,doc,setDoc,serverTimestamp}=window.FB;
     // Small public profile doc (for leaderboard/search) — stays under 10KB
     const profile={
@@ -8792,7 +8795,7 @@ function openOnlineMode(){
   }
   // Start listeners once signed in
   _startWorldChatListener();
-  setTimeout(()=>{_runFirestoreSetup();_checkGlobalReward();if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();},2000);
+  setTimeout(()=>{_runFirestoreSetup();_checkGlobalReward();syncSaveToCloud();if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();},2000);
   if(G._factionId) _startFactionChatListener(G._factionId);
 
   const power = calcPowerRating ? calcPowerRating() : 0;
