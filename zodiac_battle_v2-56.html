@@ -8447,11 +8447,19 @@ async function syncSaveToCloud(){
 
 async function loadFromCloud(){
   if(!fbReady())return false;
+  const currentUser=window.FB?.auth?.currentUser;
+  if(!currentUser) return false;
   try{
-    const {db,doc,getDoc}=window.FB;
-    const saveSnap=await getDoc(doc(db,'players',fbUID(),'saveData','latest'));
-    if(saveSnap.exists()&&saveSnap.data().data){
-      const cloud=JSON.parse(saveSnap.data().data);
+    const token=await currentUser.getIdToken(true);
+    const uid=currentUser.uid;
+    const projectId='sheng-xiao-zodiac';
+    const url=`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/players/${uid}/saveData/latest`;
+    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
+    if(!resp.ok) return false;
+    const doc=await resp.json();
+    const dataStr=doc.fields?.data?.stringValue;
+    if(dataStr){
+      const cloud=JSON.parse(dataStr);
       // Only load if cloud save is newer/better
       if((cloud.wins||0)>(G.wins||0)||(cloud.ascension||0)>(G.ascension||0)){
         Object.assign(G,cloud);
