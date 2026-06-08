@@ -8403,45 +8403,34 @@ window._onFBSignOut = function(){
 async function syncSaveToCloud(){
   if(!fbReady())return;
   const currentUser=window.FB?.auth?.currentUser;
-  if(!currentUser) return;
+  if(!currentUser){if(window._manualSync)alert('No currentUser!');return;}
   const uid=currentUser.uid;
-  if(!uid) return;
   window._lastSyncError=null;
   try{
+    if(window._manualSync) toast('Getting token...','ok');
     const token=await currentUser.getIdToken(true);
-    const proj='sheng-xiao-zodiac';
-    const base=`https://firestore.googleapis.com/v1/projects/${proj}/databases/(default)/documents`;
-    const headers={'Content-Type':'application/json','Authorization':'Bearer '+token};
-    // Write profile doc via REST
-    const profile={fields:{
+    if(window._manualSync) toast('Token OK, writing...','ok');
+    const url='https://firestore.googleapis.com/v1/projects/sheng-xiao-zodiac/databases/(default)/documents/players/'+uid;
+    const body=JSON.stringify({fields:{
       uid:{stringValue:uid},
-      name:{stringValue:G.playerName||fbName()||'Anonymous'},
-      power:{doubleValue:calcPowerRating?calcPowerRating():0},
+      name:{stringValue:fbName()||'Test'},
       wins:{integerValue:String(G.wins||0)},
-      ascension:{integerValue:String(G.ascension||0)},
-      stars:{doubleValue:G.stars||0},
-      towerBest:{integerValue:String(G.towerBestFloor||0)},
-      pvpPoints:{integerValue:String(G._pvpPoints||0)},
-      pvpWins:{integerValue:String(G._pvpWins||0)},
-      factionId:{stringValue:G._factionId||''},
-      factionName:{stringValue:G._factionName||''},
-      avatar:{stringValue:fbAvatar()||''},
-      isAnonymous:{booleanValue:!!(window._fbUser?.isAnonymous)},
-    }};
-    const r=await fetch(`${base}/players/${uid}`,{method:'PATCH',headers,body:JSON.stringify(profile)});
-    if(!r.ok){const t=await r.text();throw new Error('HTTP '+r.status+': '+t.substring(0,200));}
-    // Write save data
-    const saveStr=JSON.stringify(G);
-    if(saveStr.length<400000){
-      const saveBody={fields:{data:{stringValue:saveStr},ts:{stringValue:new Date().toISOString()}}};
-      await fetch(`${base}/players/${uid}/saveData/latest`,{method:'PATCH',headers,body:JSON.stringify(saveBody)});
-    }
-    console.log('Cloud sync OK via REST');
-    if(window._manualSync) toast('☁️ Cloud save synced!','ok');
+      test:{stringValue:'hello from REST'}
+    }});
+    const r=await fetch(url,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body
+    });
+    const responseText=await r.text();
+    if(window._manualSync) alert('HTTP '+r.status+'\n'+(r.ok?'SUCCESS!':'FAILED')+'\n'+responseText.substring(0,300));
+    if(!r.ok) throw new Error('HTTP '+r.status+': '+responseText.substring(0,100));
+    console.log('Cloud sync OK');
+    if(window._manualSync) toast('☁️ Synced!','ok');
   }catch(e){
-    console.error('Cloud save failed:',e.message,'uid:',uid);
+    console.error('Sync failed:',e.message);
     window._lastSyncError={msg:e.message,code:'rest-error',uid,time:new Date().toISOString()};
-    if(window._manualSync) alert('Sync error:\n'+e.message+'\nUID: '+uid);
+    if(window._manualSync) alert('SYNC ERROR:\n'+e.message+'\nUID: '+uid);
   }
 }
 
