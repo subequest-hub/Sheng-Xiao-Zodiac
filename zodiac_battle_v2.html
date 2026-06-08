@@ -863,6 +863,17 @@ onAuthStateChanged(auth, user => {
     <div id="moreExpeditions" class="t2 ts"></div>
   </div>
 
+  <!-- GAME GUIDE -->
+  <div class="hub-section">
+    <div class="hub-title">📖 Help</div>
+    <div class="hub-grid">
+      <button class="hub-btn hub-btn-green" onclick="closeM('mMore');openGameGuide()" style="grid-column:span 4;border-color:#7c3aed66;background:rgba(124,58,237,.2);">
+        <span class="hub-icon">📖</span><span class="hub-label">Game Guide</span>
+        <span class="hub-sub">Full feature reference</span>
+      </button>
+    </div>
+  </div>
+
 </div></div></div>
 <div class="modal" id="mAwards"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏅 Achievements</span><button class="xbtn" onclick="closeM('mAwards')">✕</button></div><div class="pb" id="awardsList"><div id="awardsBody"></div></div></div></div>
 <div class="modal" id="mStats"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">📊 Lifetime Stats</span><button class="xbtn" onclick="closeM('mStats')">✕</button></div><div class="pb" id="statsList"></div></div></div>
@@ -913,7 +924,8 @@ onAuthStateChanged(auth, user => {
   <div class="sec-t mb2" style="margin-top:14px;">💾 Data</div>
   <div class="bgrp mb2"><button class="btn bp" onclick="exportSave()">📤 Export</button><button class="btn bs" onclick="importSave()">📥 Import</button></div>
   <button id="pwaInstallBtn" class="btn bp mb2" style="display:none;background:linear-gradient(135deg,#0f172a,#1e3a8a);border-color:#3b82f6;" onclick="triggerPWAInstall()">📲 Install App on Device</button>
-  <button class="btn bs bblk mb2" onclick="closeM('mSettings');reopenTutorial()">📖 Replay Tutorial</button>
+  <button class="btn bp bblk mb2" onclick="closeM('mSettings');openGameGuide()" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);">📖 Game Guide</button>
+  <button class="btn bs bblk mb2" onclick="closeM('mSettings');reopenTutorial()">🎓 Replay Tutorial</button>
   <button class="btn bs bblk mb2" onclick="repairSave()" style="background:rgba(16,185,129,.15);border-color:#10b981;color:#34d399;">🔧 Repair Save (fix missing zodiacs)</button>
   <button class="btn bd bblk" onclick="hardReset()">⚠️ Hard Reset All Data</button>
   <button class="btn bs bblk mb2" style="margin-top:8px;" onclick="syncSaveToCloud().then(()=>debugFirestore()).catch(e=>alert('Sync error: '+e.message))">🔍 Debug Firebase</button>
@@ -11464,6 +11476,715 @@ function triggerPWAInstall(){
 
 <!-- ═══ GM PANEL ═══ -->
 <div class="modal" id="mGMPanel"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:#a855f7;font-size:14px;">🛡️ GM Panel</span><button class="xbtn" onclick="closeM('mGMPanel')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="gmtab-events" onclick="switchGMTab('events')">🌍 Events</button><button class="log-tab" id="gmtab-boss" onclick="switchGMTab('boss')">🐉 Boss</button><button class="log-tab" id="gmtab-announce" onclick="switchGMTab('announce')">📢 Announce</button><button class="log-tab" id="gmtab-players" onclick="switchGMTab('players')">👥 Players</button><button class="log-tab" id="gmtab-server" onclick="switchGMTab('server')">📊 Server</button><button class="log-tab" id="gmtab-world" onclick="switchGMTab('world')">🌍 World</button></div><div id="gmPanelBody"></div></div></div></div>
+
+<!-- ═══ GAME GUIDE ═══ -->
+<div class="modal" id="mGameGuide" style="padding:0;">
+  <div style="background:linear-gradient(135deg,rgba(28,38,56,.99),rgba(12,20,40,.99));border:1px solid rgba(71,85,105,.45);border-radius:17px;box-shadow:0 22px 48px rgba(0,0,0,.5);width:100%;max-width:440px;height:88vh;display:flex;flex-direction:column;overflow:hidden;animation:slideU .28s ease-out;">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,rgba(124,58,237,.3),rgba(79,70,229,.2));padding:12px 14px;border-bottom:1px solid rgba(124,58,237,.4);border-radius:17px 17px 0 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+      <span style="font-family:'Cinzel',serif;color:#a78bfa;font-size:15px;font-weight:700;">📖 Game Guide</span>
+      <button class="xbtn" onclick="closeM('mGameGuide')">✕</button>
+    </div>
+    <!-- 3-panel layout -->
+    <div style="display:flex;flex:1;overflow:hidden;">
+      <!-- Panel 1: Categories -->
+      <div id="ggCats" style="width:90px;flex-shrink:0;background:rgba(8,14,28,.8);border-right:1px solid rgba(71,85,105,.3);overflow-y:auto;padding:6px 4px;"></div>
+      <!-- Panel 2: Topics -->
+      <div id="ggTopics" style="width:110px;flex-shrink:0;background:rgba(12,18,35,.8);border-right:1px solid rgba(71,85,105,.3);overflow-y:auto;padding:6px 4px;"></div>
+      <!-- Panel 3: Detail -->
+      <div id="ggDetail" style="flex:1;overflow-y:auto;padding:12px 10px;font-size:11px;line-height:1.7;color:var(--txt2);"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// GAME GUIDE SYSTEM
+// ══════════════════════════════════════════════════════════════════════════════
+
+const GUIDE_DATA = [
+  {
+    cat: '⚔️ Combat', catId: 'combat', topics: [
+      { name: '🗡️ Basics', id: 'combat_basics', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⚔️ Combat Basics</h3>
+        <p>Battles are <b style="color:var(--acc);">turn-based</b>. Turn order is determined by each fighter's <b>SPD stat</b> — higher SPD means you attack sooner in the round.</p>
+        <p style="margin-top:8px;">Tap <b style="color:#f87171;">⚔️ Attack</b> to deal damage to the enemy. Each hit generates Ult charge. Once Ult is full (100%), tap <b style="color:#a78bfa;">⚡ Ult</b> to unleash your zodiac's special skill.</p>
+        <p style="margin-top:8px;"><b>Damage formula:</b> Your ATK minus ~20% of enemy ATK, with randomness applied. Type advantages add +50% damage.</p>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:var(--acc);font-weight:700;margin-bottom:4px;">💡 Tip</div>
+          The damage preview in the top-right of the arena shows your estimated hit range and crit before you attack. Watch for enemy telegraphed skills — a warning appears 2 turns before a boss uses a special move.
+        </div>
+      `},
+      { name: '🔄 Auto Battle', id: 'combat_auto', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">▶ Auto Battle</h3>
+        <p>Tap the <b style="color:#14b8a6;">▶ circle button</b> to toggle Auto Battle. Your squad will attack automatically at the configured speed.</p>
+        <p style="margin-top:8px;"><b>Speed slider:</b> Drag left/right to set battle speed from 1× to 10×. Higher speed = faster gold and XP, but less time to react.</p>
+        <p style="margin-top:8px;"><b>Smart Auto</b> (Settings): When enabled, auto-battle will intelligently time ultimates — waiting for the right moment based on enemy HP and your zodiac's role.</p>
+        <p style="margin-top:8px;"><b>Auto-Heal</b> (Settings): Automatically uses a heal potion when any party member drops below 30% HP.</p>
+        <div style="background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:#14b8a6;font-weight:700;margin-bottom:4px;">⚡ Speed</div>
+          Auto pauses when you navigate to other menus. It resumes automatically when you return to the battle screen.
+        </div>
+      `},
+      { name: '💥 Damage Types', id: 'combat_dmg', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">💥 Damage Types</h3>
+        <div style="display:grid;gap:5px;margin-bottom:10px;">
+          <div style="background:rgba(255,215,0,.08);border-radius:6px;padding:6px;"><b style="color:#fbbf24;">💛 Critical (cr)</b> — 2× damage, triggered by crit rate stat</div>
+          <div style="background:rgba(251,146,60,.08);border-radius:6px;padding:6px;"><b style="color:#fb923c;">🟠 Super Crit (sc)</b> — 3× damage, rare crit upgrade</div>
+          <div style="background:rgba(239,68,68,.08);border-radius:6px;padding:6px;"><b style="color:#f87171;">🔴 Mega Crit (mc)</b> — 4× damage, ultra rare</div>
+          <div style="background:rgba(148,163,184,.08);border-radius:6px;padding:6px;"><b style="color:#94a3b8;">⚪ Miss</b> — 0 damage, dodge-based chance</div>
+          <div style="background:rgba(251,146,60,.08);border-radius:6px;padding:6px;"><b style="color:#fb923c;">🟠 Counter (cnt)</b> — Triggered when enemy hits high-DEF units</div>
+        </div>
+        <p><b>Finisher Bonus:</b> If you land the killing blow on an enemy with very high damage, it triggers a dramatic FINISH animation with bonus rewards.</p>
+        <p style="margin-top:8px;"><b>Overkill:</b> Dealing excess damage beyond enemy HP counts toward the Overkill achievement track.</p>
+      `},
+      { name: '🌀 Combo System', id: 'combat_combo', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🌀 Combo System</h3>
+        <p>Each consecutive win without losing increases your <b style="color:var(--acc);">win streak combo</b>. Each combo level adds +10% to rewards.</p>
+        <p style="margin-top:8px;">Losing a fight resets your streak to 0. Escaping also resets it.</p>
+        <p style="margin-top:8px;"><b>Perfect Win Bonus:</b> Win a battle without taking any damage to earn bonus stars and a "PERFECT WIN!" notification.</p>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:var(--acc);font-weight:700;margin-bottom:4px;">🔥 Streak Rewards</div>
+          High streaks dramatically boost gold and XP per fight. A 10× streak means each battle earns double rewards. Keep it alive!
+        </div>
+      `},
+      { name: '🏃 Escape', id: 'combat_escape', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏃 Escape</h3>
+        <p>Tap <b>Escape</b> during battle for a 65% chance to flee. Success ends the battle with no rewards and <b style="color:#f87171;">resets your win streak</b>.</p>
+        <p style="margin-top:8px;">Failure means you remain in battle and the turn advances. The enemy may then attack you.</p>
+        <p style="margin-top:8px;">Useful for: fleeing impossible fights you accidentally entered, or getting out of a dungeon with your progress intact.</p>
+      `},
+      { name: '💊 Potions', id: 'combat_potions', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">💊 Potions</h3>
+        <p>The <b style="color:#34d399;">🧪</b> button shows your Heal potion count. Tap to fully restore all party members' HP instantly.</p>
+        <div style="display:grid;gap:5px;margin-top:10px;">
+          <div style="background:rgba(16,185,129,.08);border-radius:6px;padding:6px;"><b style="color:#34d399;">🧪 Heal</b> — Restore full HP to all party members</div>
+          <div style="background:rgba(16,185,129,.08);border-radius:6px;padding:6px;"><b style="color:#a78bfa;">💉 Mega Elixir</b> — Full heal + clears all debuffs</div>
+          <div style="background:rgba(245,158,11,.08);border-radius:6px;padding:6px;"><b style="color:var(--acc);">⚡ Boost</b> — +50% ATK/DEF for ~10 turns</div>
+          <div style="background:rgba(59,130,246,.08);border-radius:6px;padding:6px;"><b style="color:#60a5fa;">🛡️ Shield</b> — Shields entire party for 1 hit each</div>
+          <div style="background:rgba(16,185,129,.08);border-radius:6px;padding:6px;"><b style="color:#34d399;">🍀 Lucky Charm</b> — +15% drop rates for 10 battles</div>
+        </div>
+      `},
+    ]
+  },
+  {
+    cat: '🐲 Zodiacs', catId: 'zodiacs', topics: [
+      { name: '📋 All 12', id: 'zod_all', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🐲 The 12 Zodiacs</h3>
+        <div style="display:grid;gap:5px;">
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐀 Rat</b> — Swift, Water. High SPD. Ult: <i>Coin Snatch</i> — Steals gold from enemy.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐂 Ox</b> — Tanky, Earth. High DEF/HP. Ult: <i>Iron Wall</i> — +50% DEF for 2 turns.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐅 Tiger</b> — Fierce, Fire. High ATK. Ult: <i>Rending Claw</i> — 2.5× + Bleed.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐇 Rabbit</b> — Lucky, Air. High SPD/Crit. Ult: <i>Lucky Strike</i> — 1–5× random mult.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐉 Dragon</b> — Fierce, Fire. Highest ATK. Ult: <i>Dragon Breath</i> — 2× + Burn.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐍 Snake</b> — Wise, Water. Balanced. Ult: <i>Venom Bite</i> — Heavy poison (5 turns).</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐎 Horse</b> — Swift, Fire. High SPD/ATK. Ult: <i>Swift Charge</i> — 3× ignores DEF.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐐 Goat</b> — Tanky, Earth. High HP/DEF. Ult: <i>Mountain Rage</i> — Armor break + 2×.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐒 Monkey</b> — Clever, Air. Balanced+SPD. Ult: <i>Confusion</i> — Stun + 1.5×.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐓 Rooster</b> — Fierce, Fire. ATK/SPD. Ult: <i>War Cry</i> — All allies +20% ATK 2 turns.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐕 Dog</b> — Brave, Earth. ATK+DEF. Ult: <i>Loyal Guard</i> — Shields all allies.</div>
+          <div style="background:rgba(28,38,56,.6);border-radius:7px;padding:7px;"><b>🐖 Pig</b> — Lucky, Water. HP/Crit. Ult: <i>Fortune Feast</i> — Heals all allies 40% HP.</div>
+        </div>
+      `},
+      { name: '⭐ Rarities', id: 'zod_rarity', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⭐ Zodiac Rarities</h3>
+        <p>Each zodiac has a rarity tier that multiplies all their base stats:</p>
+        <div style="display:grid;gap:5px;margin-top:8px;">
+          <div style="background:rgba(156,163,175,.1);border-left:3px solid #9ca3af;padding:6px 8px;border-radius:4px;"><b style="color:#9ca3af;">◆ Normal</b> — ×1.0 stats. Starting rarity.</div>
+          <div style="background:rgba(252,211,77,.1);border-left:3px solid #fcd34d;padding:6px 8px;border-radius:4px;"><b style="color:#fcd34d;">★ Shiny</b> — ×1.15 stats. 15% summon chance.</div>
+          <div style="background:rgba(232,121,249,.1);border-left:3px solid #e879f9;padding:6px 8px;border-radius:4px;"><b style="color:#e879f9;">✦ Omega</b> — ×1.30 stats. 4% summon chance.</div>
+          <div style="background:rgba(248,113,113,.1);border-left:3px solid #f87171;padding:6px 8px;border-radius:4px;"><b style="color:#f87171;">✸ Mythical</b> — ×1.60 stats. 0.5% chance (pity at 200 pulls).</div>
+        </div>
+        <p style="margin-top:10px;"><b>Rarity Reroll (Shiny Hunt):</b> Spend 10⭐ stars to reroll a zodiac's rarity with boosted rates (5% Mythical, 20% Omega, 35% Shiny).</p>
+        <p style="margin-top:8px;"><b>Mythical Stacks:</b> Each duplicate Mythical pull on an already-Mythical zodiac becomes a "stack." Each stack adds +10% to ALL stats permanently.</p>
+      `},
+      { name: '🧬 Evolution', id: 'zod_evo', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🧬 Evolution</h3>
+        <p>Each zodiac evolves through <b style="color:var(--acc);">5 stages</b> (6 for Mythical Lv.50), gaining new appearances and +15% stat boosts per stage.</p>
+        <p style="margin-top:8px;"><b>Requirements per stage:</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">Stage 1: 20 wins + 200g</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">Stage 2: 50 wins + 1,000g + 1⭐ Prestige</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">Stage 3: 100 wins + 5,000g + 3⭐ + 1 Mythical Stack</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">Stage 4: 200 wins + 15,000g + 5⭐ + 3 Stacks</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">Stage 5: 500 wins + 50,000g + 8⭐ + 5 Stacks</div>
+          <div style="background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);padding:5px 8px;border-radius:5px;color:#f87171;">Stage 6 (Mythical): 1,000 wins + 200,000g + 10⭐ + 10 Stacks + Mythical Lv.50</div>
+        </div>
+        <p style="margin-top:8px;"><b>Auto-Evo:</b> Enable in Squad screen to automatically evolve zodiacs when requirements are met.</p>
+      `},
+      { name: '⭐ Prestige', id: 'zod_prestige', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⭐ Prestige</h3>
+        <p>When a zodiac reaches <b>Level 50</b>, you can Prestige them. This resets them to Lv.1 but grants a <b style="color:var(--acc);">Prestige Star (⭐)</b>.</p>
+        <p style="margin-top:8px;">Each Prestige Star adds <b>+5% to all stats</b> permanently. Maximum of <b>10 Prestige Stars</b> per zodiac.</p>
+        <p style="margin-top:8px;">Prestige stars are required to unlock higher Evolution stages, so you must prestige repeatedly to reach max evolution.</p>
+        <p style="margin-top:8px;"><b>Prestige Titles:</b> Stars unlock visible titles — Awakened (1⭐), Veteran (2⭐), Champion (3⭐), Elite (4⭐), Legend (5⭐), Mythic (6⭐), Ancient (7⭐), Divine (8⭐), Ascendant (9⭐), Eternal (10⭐).</p>
+        <p style="margin-top:8px;"><b>Auto-Prestige:</b> Enable in Squad screen to automatically prestige at Lv.50.</p>
+        <p style="margin-top:8px;"><b>Prestige Orbs:</b> Found as rare rewards — allow a free prestige without losing gold.</p>
+      `},
+      { name: '🎯 Mastery', id: 'zod_mastery', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🎯 Mastery</h3>
+        <p>Each zodiac has a <b>Mastery</b> track based on total wins while they are active. Mastery unlocks permanent stat bonuses at milestone thresholds.</p>
+        <p style="margin-top:8px;"><b>Mastery bonuses (example — Tiger):</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">10 wins: Tiger Claw — +10% ATK</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">25 wins: Frenzy — +15% ATK</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">50 wins: Killing Instinct — +30% ATK</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">100 wins: Tiger God — All stats +20%</div>
+        </div>
+        <p style="margin-top:8px;">Each zodiac has its own unique mastery bonuses tailored to their role. Check individual zodiac details to see their full mastery path.</p>
+      `},
+      { name: '🌟 Elements', id: 'zod_elements', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🌟 Elements & Reactions</h3>
+        <p>Each zodiac has a default element based on Chinese astrology. Elements affect damage against enemies with type weaknesses.</p>
+        <div style="display:grid;gap:4px;margin-top:8px;font-size:10px;">
+          <div style="background:rgba(239,68,68,.1);padding:5px 8px;border-radius:5px;">🔥 Fire — Rat, Tiger, Horse, Dragon, Rooster</div>
+          <div style="background:rgba(59,130,246,.1);padding:5px 8px;border-radius:5px;">💧 Water — Ox, Snake, Pig</div>
+          <div style="background:rgba(132,204,22,.1);padding:5px 8px;border-radius:5px;">🌍 Earth — Rabbit, Goat, Dog</div>
+          <div style="background:rgba(167,139,250,.1);padding:5px 8px;border-radius:5px;">💨 Air — Monkey</div>
+        </div>
+        <p style="margin-top:8px;"><b>Element Reactions:</b> When your element meets an enemy type, a reaction can trigger:</p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(239,68,68,.08);padding:5px 8px;border-radius:5px;">🔥+💨 Explosion — ×1.8 + Burn</div>
+          <div style="background:rgba(167,139,250,.08);padding:5px 8px;border-radius:5px;">⚡+💧 Electrolysis — ×2.0 + Paralysis</div>
+          <div style="background:rgba(247,131,22,.08);padding:5px 8px;border-radius:5px;">🌍+🔥 Magma — ×1.5 + Burn</div>
+          <div style="background:rgba(59,130,246,.08);padding:5px 8px;border-radius:5px;">💨+💧 Whirlpool — ×1.3 + Freeze</div>
+          <div style="background:rgba(59,130,246,.08);padding:5px 8px;border-radius:5px;">💧+🌍 Mud Slow — ×1.2 + Stun</div>
+          <div style="background:rgba(148,163,184,.08);padding:5px 8px;border-radius:5px;">🔥+💧 Steam — ×0.7 (cancelled)</div>
+        </div>
+        <p style="margin-top:8px;"><b>Element Change:</b> Spend stars to change a zodiac's element. Costs 200+ stars, increasing with prestige level.</p>
+        <p style="margin-top:8px;"><b>Element Affinity Bonus:</b> Having multiple same-element zodiacs in your party grants: 2=+10%, 3=+20%, 4=+50%, 5=+75%, 6=+100% to all their stats.</p>
+      `},
+    ]
+  },
+  {
+    cat: '👥 Squad', catId: 'squad', topics: [
+      { name: '🛡️ Party Setup', id: 'squad_party', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🛡️ Party Setup</h3>
+        <p>Your party holds up to <b>6 active fighters</b>. Tap any zodiac in the Squad screen to add or remove them from the party.</p>
+        <p style="margin-top:8px;">The <b style="color:var(--acc);">active fighter</b> (shown with ▶) is who fights. Tap another party member during battle to switch immediately.</p>
+        <p style="margin-top:8px;"><b>Formation:</b> Each zodiac can be in Front or Back row. Front row deals full damage but takes full damage. Back row deals 85% damage but also takes 80% damage — useful for protecting wounded healers or supports.</p>
+        <p style="margin-top:8px;"><b>HP Carry-over:</b> HP lost in one battle carries into the next — heal between fights using potions or the Pig's ultimate!</p>
+      `},
+      { name: '💞 Affinities', id: 'squad_affinities', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">💞 Affinities</h3>
+        <p>Certain pairs of zodiacs in your party trigger <b>Affinity Bonuses</b>:</p>
+        <div style="display:grid;gap:4px;margin-top:8px;font-size:10px;">
+          <div style="background:rgba(239,68,68,.1);padding:5px 8px;border-radius:5px;">Dragon + Tiger → King's Roar: +15% ATK</div>
+          <div style="background:rgba(59,130,246,.1);padding:5px 8px;border-radius:5px;">Rat + Ox → Earth & Water: +12% DEF</div>
+          <div style="background:rgba(245,158,11,.1);padding:5px 8px;border-radius:5px;">Horse + Dog → Swift Pack: +18% SPD</div>
+          <div style="background:rgba(139,92,246,.1);padding:5px 8px;border-radius:5px;">Snake + Rabbit → Shadow Step: +20% Dodge</div>
+          <div style="background:rgba(16,185,129,.1);padding:5px 8px;border-radius:5px;">Pig + Goat → Lucky Duo: +10% all stats</div>
+          <div style="background:rgba(252,211,77,.1);padding:5px 8px;border-radius:5px;">Monkey + Rooster → Clever Birds: +15% Crit Rate</div>
+        </div>
+        <p style="margin-top:8px;"><b>Group Affinities</b> require 3, 4, or 6 specific zodiacs:</p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(239,68,68,.08);padding:5px 8px;border-radius:5px;">Dragon+Tiger+Horse = Fire Triad: +20% ATK</div>
+          <div style="background:rgba(59,130,246,.08);padding:5px 8px;border-radius:5px;">Rat+Ox+Pig = Earth Trinity: +20% DEF</div>
+          <div style="background:rgba(245,158,11,.08);padding:5px 8px;border-radius:5px;">Dragon+Tiger+Horse+Rooster = Warrior Quartet: +25% ATK+Crit</div>
+          <div style="background:rgba(167,139,250,.08);padding:5px 8px;border-radius:5px;">Ancient Six (first 6 zodiacs): +30% ALL stats</div>
+          <div style="background:rgba(132,204,22,.08);padding:5px 8px;border-radius:5px;">Earthly Six (last 6 zodiacs): +30% ALL stats</div>
+        </div>
+      `},
+      { name: '⚡ Team Combos', id: 'squad_combos', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⚡ Team Combos</h3>
+        <p>When specific pairs of zodiacs both use ultimates in the same battle, a <b style="color:var(--acc);">Team Combo</b> can trigger — a joint special attack with massive damage or unique effects.</p>
+        <div style="display:grid;gap:5px;margin-top:8px;">
+          <div style="background:rgba(239,68,68,.1);border-radius:7px;padding:7px;"><b style="color:#f87171;">Dragon + Tiger</b> — King's Roar 🔥: ×2.5 devastation</div>
+          <div style="background:rgba(139,92,246,.1);border-radius:7px;padding:7px;"><b style="color:#a78bfa;">Rat + Snake</b> — Shadow Fang 🌑: ×2.0 + Poison</div>
+          <div style="background:rgba(245,158,11,.1);border-radius:7px;padding:7px;"><b style="color:var(--acc);">Horse + Rooster</b> — Dawn Charge ⚡: ×2.2 full-speed</div>
+          <div style="background:rgba(59,130,246,.1);border-radius:7px;padding:7px;"><b style="color:#60a5fa;">Dog + Ox</b> — Iron Guard 🛡️: Shields entire team</div>
+          <div style="background:rgba(16,185,129,.1);border-radius:7px;padding:7px;"><b style="color:#34d399;">Pig + Goat</b> — Fortune Rain 🍀: Heals all 40%</div>
+          <div style="background:rgba(252,211,77,.1);border-radius:7px;padding:7px;"><b style="color:#fbbf24;">Monkey + Rabbit</b> — Trickster Duo 🎭: ×1.8 + Stun</div>
+        </div>
+      `},
+      { name: '🏷️ Nicknames', id: 'squad_nicknames', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏷️ Nicknames & Titles</h3>
+        <p>Open any zodiac's detail page and tap their name to set a custom nickname. Nicknames appear in battle and squad view instead of the zodiac's real name.</p>
+        <p style="margin-top:8px;"><b>Player Titles:</b> Unlock titles through achievements and the Title Picker (Hub → Profile → Title). Titles appear next to your name on the leaderboard and world profile.</p>
+      `},
+    ]
+  },
+  {
+    cat: '📈 Progression', catId: 'progress', topics: [
+      { name: '🌟 Summon', id: 'prog_summon', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🌟 Summon (Recruit)</h3>
+        <p>Spend gold to summon new zodiacs. You can summon ×1, ×10, ×100, or ×1000 at once.</p>
+        <div style="display:grid;gap:4px;margin-top:8px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">×1 = 2,000g · ×10 = 20,000g</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">×100 = 200,000g · ×1000 = 2,000,000g</div>
+        </div>
+        <p style="margin-top:8px;"><b>Rarity rates:</b> Normal 80.5% · Shiny 15% · Omega 4% · Mythical 0.5%</p>
+        <p style="margin-top:8px;"><b>Pity System:</b> Every 200 pulls without a Mythical guarantees one. The counter is shown in the Summon screen.</p>
+        <p style="margin-top:8px;">Summoning a zodiac you already own at a higher rarity upgrades them. Summoning a Mythical you already own as Mythical gives a <b>Mythical Stack</b> (+10% all stats).</p>
+        <p style="margin-top:8px;"><b>Equipment Summon:</b> Also available in the summon screen — costs gold to roll equipment items with guaranteed rarity tiers.</p>
+      `},
+      { name: '⬆️ Ascension', id: 'prog_ascension', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⬆️ Ascension</h3>
+        <p>Ascension is the ultimate prestige reset. When you meet the requirements, you can ascend — your roster resets but your power multiplier increases permanently.</p>
+        <p style="margin-top:8px;"><b>Each ascension:</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(139,92,246,.1);padding:5px 8px;border-radius:5px;">+0.5× permanent stat multiplier (Asc 1 = ×1.5, Asc 2 = ×2.0, etc.)</div>
+          <div style="background:rgba(245,158,11,.1);padding:5px 8px;border-radius:5px;">Roster resets to 1 zodiac (random from what you owned)</div>
+          <div style="background:rgba(16,185,129,.1);padding:5px 8px;border-radius:5px;">Keeps: Stars, Achievements, Themes, Skins, Pets, Godly gear, Player name/title</div>
+        </div>
+        <p style="margin-top:8px;"><b>Mirror Battle:</b> Before ascending, you must defeat your own current squad in a Mirror Fight — all your current fighters come back as enemies!</p>
+        <p style="margin-top:8px;"><b>Ascension Shop:</b> Spend stars on permanent cross-ascension bonuses like +ATK%, +gold find, etc.</p>
+        <p style="margin-top:8px;"><b>Nightmare Mode</b> unlocks at Ascension 1 — a harder difficulty with special bosses available Mon/Wed/Fri.</p>
+      `},
+      { name: '🌍 World Map', id: 'prog_areas', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🗺️ World Map & Areas</h3>
+        <p>The world has multiple areas to unlock and progress through. Each area has its own enemy pool, difficulty scaling, and unique boss.</p>
+        <p style="margin-top:8px;"><b>Area progression:</b></p>
+        <div style="display:grid;gap:3px;margin-top:6px;font-size:10px;">
+          <div style="padding:4px 8px;background:rgba(16,185,129,.08);border-radius:4px;">🌿 Serene Meadow — Starting area. Unlock: 0 wins</div>
+          <div style="padding:4px 8px;background:rgba(59,130,246,.08);border-radius:4px;">🌊 Jade River — Unlock: 15 wins</div>
+          <div style="padding:4px 8px;background:rgba(239,68,68,.08);border-radius:4px;">🌋 Flame Peak — Unlock: 40 wins</div>
+          <div style="padding:4px 8px;background:rgba(139,92,246,.08);border-radius:4px;">🌑 Shadow Vale — Unlock: 100 wins</div>
+          <div style="padding:4px 8px;background:rgba(245,158,11,.08);border-radius:4px;">⚡ Thunder Citadel — Unlock: 250 wins</div>
+          <div style="padding:4px 8px;background:rgba(252,211,77,.08);border-radius:4px;">✨ Celestial Realm — Unlock: 600 wins</div>
+          <div style="padding:4px 8px;background:rgba(248,113,113,.08);border-radius:4px;">🌌 Void Abyss — Unlock: 1,500 wins (Asc. 2+)</div>
+        </div>
+        <p style="margin-top:8px;">Each area has regular enemies, a Mini Boss, and a final Boss. Clearing the boss unlocks area completion rewards and the next zone.</p>
+        <p style="margin-top:8px;"><b>Horde waves</b> occasionally spawn instead of single enemies — multiple enemies appear in sequence.</p>
+      `},
+      { name: '🗼 Tower', id: 'prog_tower', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🗼 Tower of Trials</h3>
+        <p>An infinite climbing challenge. Defeat enemies floor by floor. Each floor is harder — higher levels, more HP, more ATK.</p>
+        <p style="margin-top:8px;"><b>Tower Modes:</b></p>
+        <div style="display:grid;gap:5px;margin-top:6px;">
+          <div style="background:rgba(59,130,246,.08);border-left:3px solid #3b82f6;padding:6px 8px;border-radius:4px;"><b style="color:#60a5fa;">🏛️ Classic</b> — Standard infinite climb.</div>
+          <div style="background:rgba(16,185,129,.08);border-left:3px solid #10b981;padding:6px 8px;border-radius:4px;"><b style="color:#34d399;">⚡ Buff Tower</b> — Random buffs offered every 10 floors.</div>
+          <div style="background:rgba(239,68,68,.08);border-left:3px solid #ef4444;padding:6px 8px;border-radius:4px;"><b style="color:#f87171;">💀 Ironman</b> — No healing between floors. One shot, no revives.</div>
+          <div style="background:rgba(139,92,246,.08);border-left:3px solid #8b5cf6;padding:6px 8px;border-radius:4px;"><b style="color:#a78bfa;">🌑 Debuff Tower</b> — Enemies gain random debuffs on you.</div>
+          <div style="background:rgba(245,158,11,.08);border-left:3px solid #f59e0b;padding:6px 8px;border-radius:4px;"><b style="color:var(--acc);">♻️ Reborn</b> — Start with 1 Common zodiac. Capture zodiacs from defeated enemies.</div>
+          <div style="background:rgba(252,211,77,.08);border-left:3px solid #fbbf24;padding:6px 8px;border-radius:4px;"><b style="color:#fbbf24;">⏱️ Timed</b> — Race against 90 seconds. Rewards scale by floor reached.</div>
+        </div>
+        <p style="margin-top:8px;"><b>Tower Coins:</b> Earned by clearing floors. Spend in the Tower Shop for permanent stat upgrades that persist through all modes.</p>
+      `},
+      { name: '💎 Dungeon', id: 'prog_dungeon', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">💎 Daily Dungeon</h3>
+        <p>Special challenge dungeons that refresh daily. Each dungeon has 3 fights with escalating difficulty and a guaranteed equipment drop at the end.</p>
+        <p style="margin-top:8px;">Different dungeons rotate each day. Complete all available dungeons in a week to earn special weekly rewards.</p>
+        <p style="margin-top:8px;"><b>Dungeon rewards</b> include equipment pieces, stars, gold, and crafting skill XP.</p>
+        <div style="background:rgba(252,211,77,.08);border:1px solid rgba(252,211,77,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:#fbbf24;font-weight:700;margin-bottom:4px;">💡 Tip</div>
+          Dungeons are a reliable source of equipment. Doing them daily is one of the fastest ways to build a strong gear set.
+        </div>
+      `},
+      { name: '👑 Boss Rush', id: 'prog_bossrush', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">👑 Boss Rush</h3>
+        <p>Fight all area bosses back to back in one run. You cannot heal between fights (no potions respawn), so your starting HP at each boss is whatever you had left.</p>
+        <p style="margin-top:8px;"><b>Rewards:</b> Stars, gold, and special boss coins. Clearing Boss Rush without any faint is required for one of the Godly Equipment pieces.</p>
+        <p style="margin-top:8px;"><b>Boss phases:</b> Each boss has 2–4 phases triggered at HP thresholds. Phase transitions give ATK boosts, immunities, or special status effects to the boss.</p>
+      `},
+      { name: '🏅 Achievements', id: 'prog_achieve', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏅 Achievements</h3>
+        <p>Over <b>60+ achievements</b> across categories: Combat ⚔️, Progression 📈, Economy 💰, Tower 🗼, World Boss 🌍, Dungeon 💎, Pets 🐾, Cosmetics 🎨, and Secret 🔒.</p>
+        <p style="margin-top:8px;">Each achievement rewards gold or stars. Achievements are checked automatically after every battle.</p>
+        <p style="margin-top:8px;"><b>Secret Achievements</b> have hidden requirements — you won't know what they are until you unlock them.</p>
+        <p style="margin-top:8px;">Achievement progress is visible in Hub → Achievements (🏅). Filter by category to track what you're close to completing.</p>
+      `},
+      { name: '🎫 Battle Pass', id: 'prog_bp', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🎫 Battle Pass</h3>
+        <p>The Battle Pass has <b>100 tiers</b> with rewards at every tier. Earn BP XP through battles, achievements, quests, potions, and general gameplay.</p>
+        <p style="margin-top:8px;">BP XP is earned automatically as you play. Major sources: completing quests (+100 XP), achievements (+50 XP), using potions (+5 XP), crafting (+varies).</p>
+        <p style="margin-top:8px;"><b>BP rewards include:</b> Gold, stars, equipment pieces, potions, pets, skins, and Prestige Orbs at certain tiers.</p>
+        <p style="margin-top:8px;">Reaching BP Level 100 is required for one of the Godly Equipment pieces.</p>
+      `},
+    ]
+  },
+  {
+    cat: '⚔️ Equipment', catId: 'equipment', topics: [
+      { name: '📦 Basics', id: 'eq_basics', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">📦 Equipment Basics</h3>
+        <p>Equipment items provide passive stat bonuses to the zodiac they are equipped on. Each zodiac has <b>4 equipment slots</b>: Weapon ⚔️, Armor 🛡️, Accessory 💍, Relic 🌟.</p>
+        <p style="margin-top:8px;"><b>Equipment Rarities:</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="padding:4px 8px;background:rgba(156,163,175,.1);border-radius:4px;color:#9ca3af;">Common (×1.0) — 50% drop chance</div>
+          <div style="padding:4px 8px;background:rgba(34,197,94,.1);border-radius:4px;color:#22c55e;">Uncommon (×1.3) — 25% drop chance</div>
+          <div style="padding:4px 8px;background:rgba(59,130,246,.1);border-radius:4px;color:#3b82f6;">Rare (×1.7) — 15% drop chance</div>
+          <div style="padding:4px 8px;background:rgba(167,139,250,.1);border-radius:4px;color:#a78bfa;">Epic (×2.3) — 7% drop chance</div>
+          <div style="padding:4px 8px;background:rgba(251,191,36,.1);border-radius:4px;color:#fbbf24;">Legendary (×3.2) — 2.5% drop chance</div>
+          <div style="padding:4px 8px;background:rgba(239,68,68,.1);border-radius:4px;color:#f87171;">Mythical (×5.0) — 1% drop chance</div>
+          <div style="padding:4px 8px;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.4);border-radius:4px;color:#ffd700;">✨ Godly (×12.0) — Ultra rare, special unlock conditions</div>
+        </div>
+        <p style="margin-top:8px;"><b>Auto-Equip:</b> Enable in Settings to automatically equip the best gear to each zodiac. Tap "⚔️ Auto-Equip" in the Squad screen to trigger it manually.</p>
+      `},
+      { name: '⚒️ Blacksmith', id: 'eq_blacksmith', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⚒️ Blacksmith</h3>
+        <p>The Blacksmith lets you improve your equipment in three ways:</p>
+        <div style="display:grid;gap:6px;margin-top:8px;">
+          <div style="background:rgba(28,38,56,.7);border-radius:8px;padding:8px;">
+            <b style="color:var(--acc);">🎲 Reroll</b> — Re-randomize unlocked stats on an item. <b>Tap stats to 🔒 lock them</b> before rerolling to protect good rolls. Costs gold (scales with rarity and reroll count).
+          </div>
+          <div style="background:rgba(28,38,56,.7);border-radius:8px;padding:8px;">
+            <b style="color:var(--acc);">⬆️ Upgrade (Smith)</b> — Increase the item's Smith Level (max 100). Each level increases all stats by +2%. Costs scale with rarity and current level.
+          </div>
+          <div style="background:rgba(28,38,56,.7);border-radius:8px;padding:8px;">
+            <b style="color:#a78bfa;">✨ Enchant</b> — Spend stars to add an Enchant Level. Enchanted items deal bonus damage and have enhanced effects. No hard cap on enchant level.
+          </div>
+        </div>
+        <p style="margin-top:8px;"><b>Stat quality indicators:</b> 🔥 = top roll, ✅ = good, ~ = mid, ⬇️ = low. Use these when deciding which stats to lock.</p>
+      `},
+      { name: '🎯 Set Bonuses', id: 'eq_sets', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🎯 Equipment Sets</h3>
+        <p>Equipping 2 or 4 pieces from the same set on one zodiac activates powerful set bonuses:</p>
+        <div style="display:grid;gap:6px;margin-top:8px;">
+          <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px;">
+            <b style="color:#f87171;">🐉 Dragon Slayer</b> (Sword+Shield+Ring+Scroll)<br>
+            2pc: +15% DMG vs Bosses · 4pc: +10% Lifesteal
+          </div>
+          <div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:8px;padding:8px;">
+            <b style="color:#a78bfa;">🌑 Shadow Walker</b> (Dagger+Cloak+Necklace+Scroll)<br>
+            2pc: +15% Dodge · 4pc: +25% ATK from back row
+          </div>
+          <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:8px;">
+            <b style="color:#60a5fa;">🏰 Iron Citadel</b> (Shield+Chainmail+Crown+Gem)<br>
+            2pc: +20% DEF · 4pc: Reflect 15% damage taken
+          </div>
+          <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;">
+            <b style="color:var(--acc);">⚡ Storm Caller</b> (Spear+Vest+Orb+Comet)<br>
+            2pc: +15% SPD · 4pc: +20% Crit Rate
+          </div>
+          <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px;">
+            <b style="color:#34d399;">🍀 Fortune Seeker</b> (Bow+Tunic+Star+Ember)<br>
+            2pc: +20% Gold Find · 4pc: +30% XP
+          </div>
+        </div>
+        <p style="margin-top:8px;">Use the <b>Set Builder</b> (Hub → Set Builder) to see your set progress across all party members and equip pieces with one tap.</p>
+      `},
+      { name: '✨ Godly Gear', id: 'eq_godly', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">✨ Godly Equipment</h3>
+        <p>Godly items are the rarest gear in the game — 24 total pieces across 6 sets. Each has a unique passive ability and ×12 stat multiplier.</p>
+        <p style="margin-top:8px;">Godly pieces are earned through specific <b>milestone achievements</b>, not random drops (except one). Check <b>Hub → Godly Equipment</b> to see your progress toward each piece.</p>
+        <p style="margin-top:8px;"><b>Example unlock conditions:</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(255,215,0,.08);padding:5px 8px;border-radius:5px;">Tower Floor 1000 (any mode)</div>
+          <div style="background:rgba(255,215,0,.08);padding:5px 8px;border-radius:5px;">Ascension 5 / Ascension 10</div>
+          <div style="background:rgba(255,215,0,.08);padding:5px 8px;border-radius:5px;">100,000 total summons</div>
+          <div style="background:rgba(255,215,0,.08);padding:5px 8px;border-radius:5px;">10 Mirror Battle wins</div>
+          <div style="background:rgba(255,215,0,.08);padding:5px 8px;border-radius:5px;">Blacksmith a piece to Lv.100</div>
+          <div style="background:rgba(255,215,0,.08);padding:5px 8px;border-radius:5px;">50 Nightmare Boss kills</div>
+        </div>
+        <p style="margin-top:8px;">Godly items with the <b>persistent</b> flag survive Ascension resets and carry over to new runs.</p>
+      `},
+      { name: '🗑️ Salvage', id: 'eq_salvage', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🗑️ Salvage & Auto-Salvage</h3>
+        <p>Salvage equipment you don't need from the Inventory or Blacksmith screen. Salvaging returns some gold based on rarity.</p>
+        <p style="margin-top:8px;"><b>Auto-Salvage:</b> Set a minimum rarity threshold in Settings. Equipment below that threshold is automatically salvaged when it drops. For example, set "Keep Rare+" to auto-delete all Common and Uncommon drops.</p>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:var(--acc);font-weight:700;margin-bottom:4px;">⚠️ Warning</div>
+          Auto-salvage happens immediately — there's no undo. Be careful when raising the threshold, as you may lose useful set pieces.
+        </div>
+      `},
+    ]
+  },
+  {
+    cat: '📋 Quests', catId: 'quests', topics: [
+      { name: '📅 Daily Quests', id: 'q_daily', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">📅 Daily Quests</h3>
+        <p>A set of daily objectives that refresh every 24 hours. Completing them earns gold, stars, and Battle Pass XP.</p>
+        <p style="margin-top:8px;"><b>Example daily quests:</b> Win X battles, use X potions, use X ultimates, defeat a boss, escape X times.</p>
+        <p style="margin-top:8px;">The notification dot on the 📋 tab will pulse when you have completable quests.</p>
+      `},
+      { name: '📆 Weekly Quests', id: 'q_weekly', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">📆 Weekly Quests</h3>
+        <p>Harder objectives that reset once per week. Weekly quests have significantly larger rewards than dailies.</p>
+        <p style="margin-top:8px;"><b>Example weekly quests:</b> Evolve a zodiac, reach a specific tower floor, complete all dungeons, earn a certain amount of gold.</p>
+      `},
+      { name: '🗓️ Monthly Quests', id: 'q_monthly', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🗓️ Monthly Quests</h3>
+        <p>Long-term objectives that reset monthly. Completing 2+ monthly quests also unlocks an Achievement.</p>
+        <p style="margin-top:8px;">Monthly quests typically require significant progression milestones like: complete X ascensions, reach a very high tower floor, or accumulate enormous amounts of gold.</p>
+      `},
+      { name: '🎯 Guild Missions', id: 'q_guild', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🎯 Guild Missions</h3>
+        <p>The Adventurer Guild (Hub → Guild) offers missions that earn <b>Guild Rep</b>. Accumulating rep ranks you up through guild tiers, each with permanent passive bonuses.</p>
+        <p style="margin-top:8px;"><b>Guild ranks</b> unlock bonuses like +gold%, +XP%, +ATK%, reduced evolve costs, and more.</p>
+        <p style="margin-top:8px;">Guild missions overlap with daily quests — playing normally will naturally progress both.</p>
+      `},
+    ]
+  },
+  {
+    cat: '💰 Economy', catId: 'economy', topics: [
+      { name: '🪙 Gold', id: 'eco_gold', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">💰 Gold</h3>
+        <p>Gold is the primary currency. Earned from every battle, with boss kills giving the most. Spent on summoning, evolving, upgrading, and the shop.</p>
+        <p style="margin-top:8px;"><b>Gold multipliers:</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(245,158,11,.08);padding:5px 8px;border-radius:5px;">Win streak bonus — each consecutive win adds more gold</div>
+          <div style="background:rgba(245,158,11,.08);padding:5px 8px;border-radius:5px;">Pig zodiac trait — +10% gold find mastery bonus</div>
+          <div style="background:rgba(245,158,11,.08);padding:5px 8px;border-radius:5px;">Fortune Seeker set — +20% gold find (2pc)</div>
+          <div style="background:rgba(245,158,11,.08);padding:5px 8px;border-radius:5px;">Guild rank bonuses — up to +25% gold</div>
+          <div style="background:rgba(245,158,11,.08);padding:5px 8px;border-radius:5px;">Lucky Charm potion — +15% drops for 10 battles</div>
+          <div style="background:rgba(245,158,11,.08);padding:5px 8px;border-radius:5px;">Gold Mine — passive gold income between sessions</div>
+        </div>
+      `},
+      { name: '⭐ Stars', id: 'eco_stars', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⭐ Stars</h3>
+        <p>Stars are a premium-tier resource. Earned from boss kills, perfect wins, achievements, quests, and special events.</p>
+        <p style="margin-top:8px;"><b>Uses for stars:</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(252,211,77,.08);padding:5px 8px;border-radius:5px;">✨ Enchant equipment pieces</div>
+          <div style="background:rgba(252,211,77,.08);padding:5px 8px;border-radius:5px;">🌟 Shiny Hunt — reroll a zodiac's rarity (10⭐)</div>
+          <div style="background:rgba(252,211,77,.08);padding:5px 8px;border-radius:5px;">🔄 Element Change — change a zodiac's element (200+ ⭐)</div>
+          <div style="background:rgba(252,211,77,.08);padding:5px 8px;border-radius:5px;">🛍️ Ascension Shop — buy permanent upgrades</div>
+          <div style="background:rgba(252,211,77,.08);padding:5px 8px;border-radius:5px;">🎨 Skins — unlock cosmetic appearances</div>
+        </div>
+      `},
+      { name: '⛏️ Gold Mine', id: 'eco_mine', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⛏️ Gold Mine</h3>
+        <p>The Gold Mine (Hub → Mine) generates passive gold over time — even when you're offline. Build Mine Shafts to increase production.</p>
+        <p style="margin-top:8px;">Each Mine Shaft increases your gold per hour. There's no hard cap on shafts, but costs scale up exponentially.</p>
+        <p style="margin-top:8px;"><b>Offline Income:</b> When you return after being away, you collect accumulated gold up to a maximum cap based on your shaft count.</p>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:var(--acc);font-weight:700;margin-bottom:4px;">💡 Strategy</div>
+          Invest in Mine Shafts early. Even 10 shafts makes a big difference to passive income between sessions. The mine runs while you sleep!
+        </div>
+      `},
+      { name: '💳 Bank Interest', id: 'eco_bank', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">💳 Bank Interest</h3>
+        <p>If you hold gold without spending it, you periodically earn interest — a percentage of your current gold balance added automatically.</p>
+        <p style="margin-top:8px;">Interest triggers are shown in the rewards log. The Guild rank bonus can increase your interest rate.</p>
+      `},
+      { name: '🏪 Shop', id: 'eco_shop', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏪 Shop</h3>
+        <p>The Shop (bottom nav 🏪) sells consumables, potions, pets, and special items for gold or stars.</p>
+        <p style="margin-top:8px;"><b>Shop items include:</b> Heal potions, Boost potions, Shield potions, Lucky Charms, pets (buyable ones), and limited-time offers.</p>
+        <p style="margin-top:8px;">The shop inventory refreshes periodically. Check back regularly for new items.</p>
+      `},
+      { name: '🏦 Expeditions', id: 'eco_exp', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏦 Expeditions</h3>
+        <p>Send zodiacs on timed expeditions (Hub → Expedition) to earn gold and resources while they're away. The zodiac cannot be used in battle while on expedition.</p>
+        <p style="margin-top:8px;">Longer expeditions yield better rewards. Choose wisely which zodiacs to send — don't send your core fighters if you're actively playing!</p>
+      `},
+    ]
+  },
+  {
+    cat: '🌐 Online', catId: 'online', topics: [
+      { name: '☁️ Cloud Save', id: 'on_cloud', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">☁️ Cloud Save</h3>
+        <p>Sign in with Google (Hub → Online Mode) to enable cloud saving. Your progress syncs automatically every 5 minutes and on sign-in.</p>
+        <p style="margin-top:8px;">Cloud save stores: wins, ascension, stars, power rating, tower best floor, and PvP points — enough to restore your profile to the leaderboard.</p>
+        <p style="margin-top:8px;">Your full local save (all progress) is stored on your device. Use <b>Settings → Export</b> to make a backup file.</p>
+      `},
+      { name: '🏆 Leaderboard', id: 'on_lb', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏆 Leaderboard</h3>
+        <p>Compare your progress against all players worldwide. Available tabs:</p>
+        <div style="display:grid;gap:4px;margin-top:8px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">⚡ Power — Total combat power rating</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🏆 Wins — Total battles won</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">📈 Ascension — Ascension level reached</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🗼 Tower — Highest tower floor</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">⚔️ PvP — PvP Arena points</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">👑 Hall of Fame — Legendary players</div>
+        </div>
+        <p style="margin-top:8px;">Tap any player's name to view their World Profile.</p>
+      `},
+      { name: '⚔️ PvP Arena', id: 'on_pvp', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⚔️ PvP Arena</h3>
+        <p>Challenge other players' squads. Battles are simulated using their saved stats — you don't need both players online at the same time.</p>
+        <p style="margin-top:8px;"><b>PvP Ranks:</b> Bronze → Silver → Gold → Platinum → Diamond → Master → Grandmaster. Earn points by winning, lose points by losing.</p>
+        <p style="margin-top:8px;"><b>PvP Tabs:</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">⚔️ Arena — Find and challenge opponents</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🏆 Rankings — PvP leaderboard</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">📜 History — Your recent match results</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🎬 Replay — Review past battles</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🏆 Tournament — Bracket competitions</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">👥 Team PvP — Team-based battles</div>
+        </div>
+      `},
+      { name: '🏰 Factions', id: 'on_faction', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏰 Factions</h3>
+        <p>Join or create a Faction with up to 20 members. Factions have shared progression with bosses, upgrades, and a treasury.</p>
+        <p style="margin-top:8px;"><b>Faction Tabs:</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🏰 Home — Overview, level, XP, description</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">👥 Members — All members ranked by power</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">💀 Faction Boss — Shared boss all members attack</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">📋 Quests — Faction-wide missions</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">💰 Treasury — Shared faction coins</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">⚔️ Wars — Faction vs Faction competition</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">⬆️ Upgrades — Buy bonuses for all members</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">📅 Check-in — Daily streak rewards</div>
+        </div>
+        <p style="margin-top:8px;"><b>Faction Boss:</b> Cooperatively fight a shared boss. Rewards (coins + stars) are split among all participants who attack it.</p>
+      `},
+      { name: '💬 Global Chat', id: 'on_chat', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">💬 Global Chat</h3>
+        <p>Chat with all online players in real-time. Found in Hub → Chat. Messages are limited to 120 characters.</p>
+        <p style="margin-top:8px;">A global ticker at the bottom of the battle screen shows recent activity from all players — ascensions, rare drops, and achievements.</p>
+        <p style="margin-top:8px;">Be respectful and no spam — the rules are shown in the chat window.</p>
+      `},
+      { name: '🌍 World Boss', id: 'on_wb', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🌍 World Boss</h3>
+        <p>Massive bosses that all players can attack collaboratively. Each player deals their portion of damage and contributes to the global HP pool.</p>
+        <p style="margin-top:8px;">World Bosses rotate on a schedule. Defeating one earns stars, special equipment, and exclusive cosmetics.</p>
+        <p style="margin-top:8px;">Defeating all World Bosses 5 times each is required for one of the Godly Equipment pieces.</p>
+      `},
+      { name: '🏪 Market', id: 'on_market', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏪 Auction Market</h3>
+        <p>Buy and sell equipment with other players. List your unwanted gear for gold, or browse listings from others.</p>
+        <p style="margin-top:8px;"><b>Tabs:</b> 🛒 Buy (browse listings) · 📦 Sell (list your items) · 📈 History (recent sales)</p>
+        <p style="margin-top:8px;">Use the market to offload duplicate high-rarity items, or hunt for specific set pieces you need.</p>
+      `},
+    ]
+  },
+  {
+    cat: '🎨 Other', catId: 'other', topics: [
+      { name: '🐾 Pets', id: 'oth_pets', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🐾 Pets</h3>
+        <p>Pets provide <b>passive bonuses</b> that apply to all battles. Only one pet can be active at a time. Activate them via Hub → Pets.</p>
+        <p style="margin-top:8px;"><b>Available pets and how to unlock:</b></p>
+        <div style="display:grid;gap:4px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🐶 Doggo — Bonus gold find. Unlock at 50 wins.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🦉 Owl — Bonus XP. Unlock at 100 wins.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🐸 Frog — Bonus HP. Unlock at 200 wins.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🐉 Dragon Pet — Bonus ATK. Unlock at 500 wins.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🐱 Cat — Bonus crit rate. Buy from Shop.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🦊 Fox — Bonus gold. Buy from Shop.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🐰 Bunny — Bonus SPD. Buy from Shop.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🐼 Panda — Bonus DEF. Buy from Shop.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🐺 Wolf — Bonus all stats. Requires Ascension 1.</div>
+        </div>
+        <p style="margin-top:8px;">Each pet can be upgraded with gold to increase its bonus. Max level is shown in the pet's detail.</p>
+      `},
+      { name: '🎨 Skins & Themes', id: 'oth_skins', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🎨 Skins & Themes</h3>
+        <p><b>Skins:</b> Cosmetic appearances for your zodiacs that also provide a small stat boost. Unlock with stars and apply to specific zodiacs via Squad → Details → Skins.</p>
+        <p style="margin-top:8px;"><b>Themes:</b> Full UI color scheme changes. Unlock by reaching 50+ wins, then unlock more through achievements and purchases. Change in Hub → Skins & Themes.</p>
+        <p style="margin-top:8px;">Themes and skins carry over through Ascensions.</p>
+      `},
+      { name: '🏠 House', id: 'oth_house', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏠 Your House</h3>
+        <p>Build and upgrade your personal house (Hub → House). Rooms and furniture provide passive bonuses and quality-of-life improvements.</p>
+        <p style="margin-top:8px;"><b>Rooms:</b> Main Hall (always owned), Garden, Library, Forge, Armory, and more. Each room unlocks a bonus category and can be upgraded up to Level 5.</p>
+        <p style="margin-top:8px;"><b>Garden:</b> Plant seeds that grow over battles. Harvest to get potions, stars, or gold. Requires buying the Garden room first.</p>
+        <p style="margin-top:8px;"><b>Daily Visitors:</b> A new visitor appears each day. Tap them for a random bonus or piece of lore.</p>
+        <p style="margin-top:8px;"><b>Furniture:</b> Decorative items that provide bonus stats. Each furniture piece requires its room to be built first.</p>
+      `},
+      { name: '🌳 Skill Tree', id: 'oth_skilltree', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🌳 Skill Tree</h3>
+        <p>Each zodiac has a personal Skill Tree accessible from their detail page. Spend <b>Skill Points</b> (earned from leveling up) to unlock permanent stat bonuses.</p>
+        <p style="margin-top:8px;"><b>Three skill branches:</b></p>
+        <div style="display:grid;gap:5px;margin-top:6px;">
+          <div style="background:rgba(239,68,68,.08);border-radius:7px;padding:7px;"><b style="color:#f87171;">⚔️ Offense</b> — ATK+, Crit Rate+, Crit Dmg+, Boss Dmg+, Element Dmg+, Ult Charge+</div>
+          <div style="background:rgba(59,130,246,.08);border-radius:7px;padding:7px;"><b style="color:#60a5fa;">🛡️ Defense</b> — DEF+, HP+, Dodge+, Counter+, Lifesteal+</div>
+          <div style="background:rgba(16,185,129,.08);border-radius:7px;padding:7px;"><b style="color:#34d399;">✨ Utility</b> — Gold Find+, XP+, SPD+, Status Duration+</div>
+        </div>
+        <p style="margin-top:8px;">Some skills require a prerequisite skill to be purchased first (shown by chain requirement).</p>
+      `},
+      { name: '🛠️ Crafting', id: 'oth_crafting', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🛠️ Crafting Skills</h3>
+        <p>Crafting skills level up automatically as you perform related actions. Each skill has passive bonuses that scale with level (max 100 per skill).</p>
+        <div style="display:grid;gap:4px;margin-top:8px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">⚒️ <b>Blacksmith</b> — Levels from rerolling gear. Reduces reroll cost.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">✨ <b>Enchanter</b> — Levels from enchanting. Increases enchant effectiveness.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🧪 <b>Alchemist</b> — Levels from using potions. Increases potion effectiveness.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">🌿 <b>Herbalist</b> — Levels from harvesting Garden. Improves harvest yields.</div>
+          <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">⛏️ <b>Miner</b> — Levels from mine operations. Increases mine income.</div>
+        </div>
+      `},
+      { name: '📅 Daily Login', id: 'oth_login', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">📅 Daily Login</h3>
+        <p>Log in every day to collect daily login rewards. Consecutive days build a streak that multiplies rewards.</p>
+        <p style="margin-top:8px;">Missing a day resets your streak but not your total login count. Login rewards cycle through a reward calendar.</p>
+        <p style="margin-top:8px;"><b>Faction Daily Check-in</b> (separate from login): Check in each day in Hub → Faction → Check-in for Faction Coins. Maintaining a 7-day streak earns bonus stars.</p>
+      `},
+      { name: '⚙️ Settings', id: 'oth_settings', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⚙️ Settings</h3>
+        <p><b>Gameplay:</b></p>
+        <div style="display:grid;gap:3px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:4px 8px;border-radius:5px;">Smart Auto — AI times ultimates strategically</div>
+          <div style="background:rgba(28,38,56,.6);padding:4px 8px;border-radius:5px;">Auto-Battle Speed — Fast (0.8s) / Normal (1.2s) / Slow (2s)</div>
+          <div style="background:rgba(28,38,56,.6);padding:4px 8px;border-radius:5px;">Auto-Heal — Use heal potion automatically below 30% HP</div>
+          <div style="background:rgba(28,38,56,.6);padding:4px 8px;border-radius:5px;">Auto-Equip — Automatically equip best gear per zodiac</div>
+          <div style="background:rgba(28,38,56,.6);padding:4px 8px;border-radius:5px;">Auto-Salvage — Automatically discard gear below rarity threshold</div>
+        </div>
+        <p style="margin-top:8px;"><b>Display:</b></p>
+        <div style="display:grid;gap:3px;margin-top:6px;font-size:10px;">
+          <div style="background:rgba(28,38,56,.6);padding:4px 8px;border-radius:5px;">Reduce Motion — Disables animations for performance</div>
+          <div style="background:rgba(28,38,56,.6);padding:4px 8px;border-radius:5px;">Performance Mode — Removes weather/star effects</div>
+          <div style="background:rgba(28,38,56,.6);padding:4px 8px;border-radius:5px;">Damage Numbers — Toggle floating damage display</div>
+          <div style="background:rgba(28,38,56,.6);padding:4px 8px;border-radius:5px;">Color Theme — Default / High Contrast / Colorblind</div>
+        </div>
+        <p style="margin-top:8px;"><b>Data:</b> Export saves a .json backup file. Import loads from a backup. Hard Reset wipes all data (irreversible!).</p>
+      `},
+      { name: '📊 Status Effects', id: 'oth_status', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">📊 Status Effects</h3>
+        <div style="display:grid;gap:5px;">
+          <div style="background:rgba(239,68,68,.1);border-radius:7px;padding:7px;"><b style="color:#f87171;">🔥 Burn</b> — 8% max HP damage/turn for 3 turns. Fire element.</div>
+          <div style="background:rgba(74,222,128,.1);border-radius:7px;padding:7px;"><b style="color:#4ade80;">☠️ Poison</b> — 5% max HP damage/turn for 4 turns. Snake's specialty.</div>
+          <div style="background:rgba(96,165,250,.1);border-radius:7px;padding:7px;"><b style="color:#60a5fa;">❄️ Freeze</b> — 50% chance to skip turn for 2 turns.</div>
+          <div style="background:rgba(251,191,36,.1);border-radius:7px;padding:7px;"><b style="color:#fbbf24;">⚡ Stun</b> — Skip 1 turn guaranteed. Monkey's specialty.</div>
+          <div style="background:rgba(220,38,38,.1);border-radius:7px;padding:7px;"><b style="color:#dc2626;">🩸 Bleed</b> — 6% max HP damage/turn for 3 turns. Tiger's specialty.</div>
+          <div style="background:rgba(167,139,250,.1);border-radius:7px;padding:7px;"><b style="color:#a78bfa;">⚡ Paralysis</b> — 30% skip chance for 3 turns. Lightning element.</div>
+        </div>
+        <p style="margin-top:8px;">Status effects stack (multiple applications extend duration). Enemy status is shown in the enemy battle card during fights.</p>
+      `},
+      { name: '🌦️ Weather', id: 'oth_weather', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🌦️ Weather System</h3>
+        <p>Weather changes the battle arena's appearance and modifies damage for certain element types.</p>
+        <div style="display:grid;gap:4px;margin-top:8px;font-size:10px;">
+          <div style="padding:5px 8px;background:rgba(255,255,255,.05);border-radius:5px;">☀️ Clear — Normal conditions, no modifiers</div>
+          <div style="padding:5px 8px;background:rgba(59,130,246,.1);border-radius:5px;">🌧️ Rain — Water element +30% damage</div>
+          <div style="padding:5px 8px;background:rgba(217,119,6,.1);border-radius:5px;">🌪️ Sandstorm — All accuracy -20% (more misses)</div>
+          <div style="padding:5px 8px;background:rgba(10,0,21,.4);border-radius:5px;">🌙 Night — Dark element +30% damage</div>
+          <div style="padding:5px 8px;background:rgba(61,8,0,.4);border-radius:5px;">🌋 Volcano — Fire element +30% damage</div>
+        </div>
+        <p style="margin-top:8px;">Weather rotates during play. Build your team with the current weather in mind for maximum efficiency.</p>
+      `},
+    ]
+  },
+];
+
+let _ggCat = 0, _ggTopic = 0;
+
+function openGameGuide(){
+  openM('mGameGuide');
+  _ggCat = 0; _ggTopic = 0;
+  renderGGCats();
+  renderGGTopics(0);
+  renderGGDetail(GUIDE_DATA[0].topics[0]);
+}
+
+function renderGGCats(){
+  const el = document.getElementById('ggCats'); if(!el) return;
+  el.innerHTML = GUIDE_DATA.map((cat, i) => {
+    const active = i === _ggCat;
+    return `<div onclick="selectGGCat(${i})" style="padding:7px 5px;border-radius:7px;margin-bottom:3px;cursor:pointer;text-align:center;font-size:9px;font-weight:700;line-height:1.3;transition:all .15s;background:${active?'rgba(124,58,237,.3)':'rgba(28,38,56,.4)'};border:1px solid ${active?'rgba(124,58,237,.6)':'rgba(71,85,105,.2)'};color:${active?'#a78bfa':'var(--txt2)'};">${cat.cat.split(' ')[0]}<br><span style="font-size:8px;">${cat.cat.split(' ').slice(1).join(' ')}</span></div>`;
+  }).join('');
+}
+
+function selectGGCat(i){
+  _ggCat = i; _ggTopic = 0;
+  renderGGCats();
+  renderGGTopics(i);
+  renderGGDetail(GUIDE_DATA[i].topics[0]);
+}
+
+function renderGGTopics(catIdx){
+  const el = document.getElementById('ggTopics'); if(!el) return;
+  const topics = GUIDE_DATA[catIdx].topics;
+  el.innerHTML = topics.map((t, i) => {
+    const active = i === _ggTopic;
+    return `<div onclick="selectGGTopic(${catIdx},${i})" style="padding:7px 6px;border-radius:7px;margin-bottom:3px;cursor:pointer;font-size:9px;font-weight:600;line-height:1.4;transition:all .15s;background:${active?'rgba(124,58,237,.2)':'rgba(28,38,56,.3)'};border:1px solid ${active?'rgba(124,58,237,.4)':'rgba(71,85,105,.15)'};color:${active?'#c4b5fd':'var(--txt2)'};">${t.name}</div>`;
+  }).join('');
+}
+
+function selectGGTopic(catIdx, topicIdx){
+  _ggCat = catIdx; _ggTopic = topicIdx;
+  renderGGTopics(catIdx);
+  renderGGDetail(GUIDE_DATA[catIdx].topics[topicIdx]);
+}
+
+function renderGGDetail(topic){
+  const el = document.getElementById('ggDetail'); if(!el) return;
+  el.innerHTML = topic.content;
+  el.scrollTop = 0;
+}
+</script>
 
 </body>
 </html>
