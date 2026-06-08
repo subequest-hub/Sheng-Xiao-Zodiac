@@ -304,7 +304,7 @@ const firebaseConfig = {
 
 const fbApp  = initializeApp(firebaseConfig);
 const auth   = getAuth(fbApp);
-const db     = getFirestore(fbApp);
+const db     = getFirestore(fbApp); // uses (default) database
 const rtdb   = getDatabase(fbApp);
 const gprov  = new GoogleAuthProvider();
 
@@ -8377,6 +8377,8 @@ window._onFBSignIn = function(user){
   // Update hub Online section badges
   const sub=document.getElementById('hubMPSub');
   if(sub)sub.textContent=user.displayName||'Online';
+  // Immediately sync to create player doc in Firestore
+  setTimeout(()=>syncSaveToCloud(),1000);
   const profSub=document.getElementById('hubProfileSub');
   if(profSub)profSub.textContent=user.displayName||'View profile';
   // Show GM button if developer (delay to ensure auth fully loaded)
@@ -8395,38 +8397,41 @@ window._onFBSignOut = function(){
 async function syncSaveToCloud(){
   if(!fbReady())return;
   try{
-    const {db,doc,setDoc,serverTimestamp}=FB;
-    const snapshot={
+    const {db,doc,setDoc,serverTimestamp}=window.FB;
+    // Small public profile doc (for leaderboard/search) — stays under 10KB
+    const profile={
       uid:fbUID(),
       name:G.playerName||fbName(),
       power:calcPowerRating?calcPowerRating():0,
       wins:G.wins||0,
       ascension:G.ascension||0,
       stars:G.stars||0,
-      gold:G.gold||0,
       towerBest:G.towerBestFloor||0,
-      guildRank:G.guildRank||0,
       pvpPoints:G._pvpPoints||0,
       pvpWins:G._pvpWins||0,
       factionId:G._factionId||'',
       factionName:G._factionName||'',
       avatar:fbAvatar()||'',
+      isAnonymous:window._fbUser?.isAnonymous||false,
       lastSeen:serverTimestamp(),
-      // Full save (compressed) for restore
-      saveData:JSON.stringify(G).substring(0,900000),// Firestore 1MB limit
     };
-    await setDoc(doc(db,'players',fbUID()),snapshot,{merge:true});
-    console.log('Save synced to cloud');
-  }catch(e){console.warn('Cloud save failed:',e.message);}
+    await setDoc(doc(db,'players',fbUID()),profile,{merge:true});
+    // Full save stored separately (subcollection avoids size limits on profile)
+    const saveStr=JSON.stringify(G);
+    if(saveStr.length<500000){
+      await setDoc(doc(db,'players',fbUID(),'saveData','latest'),{data:saveStr,ts:serverTimestamp()},{merge:true});
+    }
+    console.log('Save synced to cloud ✓');
+  }catch(e){console.error('Cloud save failed:',e.message,e.code);toast('Cloud save error: '+e.message,'er');}
 }
 
 async function loadFromCloud(){
   if(!fbReady())return false;
   try{
-    const {db,doc,getDoc}=FB;
-    const snap=await getDoc(doc(db,'players',fbUID()));
-    if(snap.exists()&&snap.data().saveData){
-      const cloud=JSON.parse(snap.data().saveData);
+    const {db,doc,getDoc}=window.FB;
+    const saveSnap=await getDoc(doc(db,'players',fbUID(),'saveData','latest'));
+    if(saveSnap.exists()&&saveSnap.data().data){
+      const cloud=JSON.parse(saveSnap.data().data);
       // Only load if cloud save is newer/better
       if((cloud.wins||0)>(G.wins||0)||(cloud.ascension||0)>(G.ascension||0)){
         Object.assign(G,cloud);
@@ -8451,7 +8456,7 @@ function _startLeaderboardListener(){
   // Keep leaderboard fresh in background
   if(!window.FB||_lbUnsub)return;
   try{
-    const {db,collection,query,orderBy,limit,onSnapshot}=FB;
+    const {db,collection,query,orderBy,limit,onSnapshot}=window.FB;
     const q=query(collection(db,'players'),orderBy('power','desc'),limit(50));
     _lbUnsub=onSnapshot(q,()=>{
       // Silently refresh if leaderboard is open
@@ -8481,7 +8486,7 @@ async function renderLeaderboard(){
   body.innerHTML='<div style="text-align:center;padding:20px;">Loading...</div>';
   try{
     if(_lbTab==='hof'){body.innerHTML=await renderHallOfFame();return;}
-    const {db,collection,query,orderBy,limit,getDocs}=FB;
+    const {db,collection,query,orderBy,limit,getDocs}=window.FB;
     const fieldMap={power:'power',wins:'wins',asc:'ascension',tower:'towerBest',pvp:'pvpPoints'};
     const field=fieldMap[_lbTab]||'power';
     const q=query(collection(db,'players'),orderBy(field,'desc'),limit(50));
@@ -8489,7 +8494,7 @@ async function renderLeaderboard(){
     const players=[];
     snap.forEach(d=>players.push({id:d.id,...d.data()}));
     
-    if(!players.length){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">No players yet — be the first!</div>';return;}
+    if(!players.length){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">No players yet — tap Sync to add your score!<br><br></div>';syncSaveToCloud();setTimeout(()=>renderLeaderboard(),2000);return;}
     
     const myUID=fbUID();
     let html='';
@@ -8535,7 +8540,7 @@ function _startChatListener(){
   if(!window.FB||_chatListening)return;
   _chatListening=true;
   try{
-    const {rtdb,ref,rtQuery,limitToLast,onChildAdded}=FB;
+    const {rtdb,ref,rtQuery,limitToLast,onChildAdded}=window.FB;
     const msgsRef=rtQuery(ref(rtdb,'globalChat'),limitToLast(50));
     onChildAdded(msgsRef,snap=>{
       const msg=snap.val();
@@ -8578,7 +8583,7 @@ async function sendChatMsg(){
   if(text.length>120){toast('Max 120 characters','er');return;}
   inp.value='';
   try{
-    const {rtdb,ref,push,rtServerTimestamp}=FB;
+    const {rtdb,ref,push,rtServerTimestamp}=window.FB;
     await push(ref(rtdb,'globalChat'),{
       uid:fbUID(),
       name:fbName(),
@@ -8838,7 +8843,16 @@ async function openWorldProfile(uid){
     const {db,doc,getDoc} = window.FB;
     const snap = await getDoc(doc(db,'players',targetUid));
     const p = snap.exists() ? snap.data() : null;
-    if(!p){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Player not found</div>';return;}
+    if(!p){
+      // If viewing own profile and doc doesn't exist, sync now and show local data
+      if(isMe){
+        body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Creating your profile...<br><br>Please wait.</div>';
+        await syncSaveToCloud();
+        setTimeout(()=>openWorldProfile(),1500);
+        return;
+      }
+      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Player not found</div>';return;
+    }
     const pvpRank = getPvpRank(p.pvpPoints||0);
     const guildRankName = GUILD_RANKS?.[p.guildRank||0]?.name||'Recruit';
     body.innerHTML = `
@@ -8874,7 +8888,14 @@ async function openWorldProfile(uid){
         <button class="btn bs bblk" style="font-size:11px;" onclick="openReferralPanel()">🎁 Referral Code</button>
       </div>`:`<button class="btn bs bblk" style="width:100%;font-size:11px;margin-top:4px;" onclick="showGiftPanel('${p.uid||targetUid}','${escHtml(p.name||'?')}')">🎁 Send Gift</button>`}
     `;
-  }catch(e){body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+  }catch(e){
+    console.error('Leaderboard error:',e.code, e.message);
+    body.innerHTML=`<div style="padding:16px;text-align:center;">
+      <div style="font-size:11px;color:#ef4444;margin-bottom:8px;">❌ ${e.message||e.code}</div>
+      <div style="font-size:9px;color:var(--txt2);margin-bottom:8px;">Code: ${e.code||'unknown'}</div>
+      <button class="btn bp" style="margin-top:8px;" onclick="syncSaveToCloud().then(()=>setTimeout(renderLeaderboard,1000))">🔄 Sync & Retry</button>
+    </div>`;
+  }
 }
 
 async function openEditProfile(){
@@ -10277,7 +10298,7 @@ function updateFactionQuestProgress(key,amount){
   // Sync to Firebase periodically
   if(fbReady()&&G._factionQuestProgress%10===0){
     try{
-      const {db,doc,updateDoc,increment}=FB;
+      const {db,doc,updateDoc,increment}=window.FB;
       updateDoc(doc(db,'factions',G._factionId),{[`questProgress.${q.id}`]:increment(amount)});
     }catch(e){}
   }
@@ -10324,7 +10345,7 @@ function donateToTreasury(amount){
   toast(`💰 Donated ${fmt(amount)}g to the faction treasury!`,'ok');
   if(typeof logFactionEvent==='function') logFactionEvent('treasury',`${fbName()||'A member'} donated ${fmt(amount)}g to the treasury`);
   if(fbReady()&&G._factionId){
-    try{const {db,doc,updateDoc,increment}=FB;updateDoc(doc(db,'factions',G._factionId),{treasury:increment(amount)});}catch(e){}
+    try{const {db,doc,updateDoc,increment}=window.FB;updateDoc(doc(db,'factions',G._factionId),{treasury:increment(amount)});}catch(e){}
   }
   renderFactionTab('upgrades');
 }
@@ -10357,7 +10378,7 @@ function renderFactionWars(){
 async function renderRecruitmentBoard(){
   if(!window.FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to view</div>';
   try{
-    const {db,collection,query,where,orderBy,limit,getDocs}=FB;
+    const {db,collection,query,where,orderBy,limit,getDocs}=window.FB;
     const q=query(collection(db,'factions'),where('open','==',true),limit(20));
     const snap=await getDocs(q);
     if(snap.empty) return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No open factions recruiting. Be the first to create one!</div>';
@@ -10448,7 +10469,7 @@ function registerForTournament(){
   toast(`🏆 Registered for Weekly Tournament! Check back when it starts.`,'ok');
   if(fbReady()){
     try{
-      const {db,doc,setDoc,serverTimestamp}=FB;
+      const {db,doc,setDoc,serverTimestamp}=window.FB;
       setDoc(doc(db,`tournaments/current/registrations`,fbUID()),{
         name:fbName(),power:calcPowerRating?calcPowerRating():0,pvpPoints:G._pvpPoints||0,
         avatar:fbAvatar()||'',uid:fbUID(),ts:serverTimestamp()
@@ -10526,7 +10547,7 @@ async function renderServerBoss(){
   let bossData={name:'Ancient Void Dragon',emoji:'🐉',maxHp:10000000,currentHp:10000000,level:500,type:'dark',weak:'light'};
   if(window.FB){
     try{
-      const {db,doc,getDoc}=FB;
+      const {db,doc,getDoc}=window.FB;
       const snap=await getDoc(doc(db,'server','boss'));
       if(snap.exists()&&snap.data().hp!=null) bossData={...bossData,...snap.data()};
     }catch(e){}
@@ -10565,7 +10586,7 @@ async function attackServerBoss(){
   _pushTicker(`⚔️ ${G.playerName||fbName()||'A player'} dealt ${fmt(dmg)} dmg to the Server Boss!`);
   if(fbReady()){
     try{
-      const {db,doc,updateDoc,increment,serverTimestamp}=FB;
+      const {db,doc,updateDoc,increment,serverTimestamp}=window.FB;
       await updateDoc(doc(db,'server','boss'),{
         currentHp:increment(-dmg),
         [`playerDamage.${fbUID()}`]:increment(dmg),
@@ -10584,7 +10605,7 @@ async function attackServerBoss(){
 async function renderBountyBoard(){
   if(!window.FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to use Bounty Board</div>';
   try{
-    const {db,collection,query,orderBy,limit,getDocs}=FB;
+    const {db,collection,query,orderBy,limit,getDocs}=window.FB;
     const snap=await getDocs(query(collection(db,'bounties'),orderBy('reward','desc'),limit(15)));
     let html=`
       <div style="font-size:10px;color:var(--txt2);margin-bottom:10px;">Place a bounty on a player. Extra PvP points for whoever beats them first!</div>
@@ -10612,7 +10633,7 @@ async function placeBounty(){
   if(!targetName||!targetName.trim()) return;
   const reward=25;// bonus PvP points for the hunter
   try{
-    const {db,collection,addDoc,serverTimestamp}=FB;
+    const {db,collection,addDoc,serverTimestamp}=window.FB;
     await addDoc(collection(db,'bounties'),{
       targetName:targetName.trim(),targetUid:'unknown',
       fromUid:fbUID(),fromName:fbName(),
@@ -10627,7 +10648,7 @@ function challengeFriend(uid, name){
   if(!uid){toast('Select a player to challenge!','er');return;}
   // Store challenge in Firebase
   try{
-    const {rtdb,ref,set}=FB;
+    const {rtdb,ref,set}=window.FB;
     set(ref(rtdb,`challenges/${uid}`),{
       from:fbUID(),fromName:fbName(),fromPower:calcPowerRating?calcPowerRating():0,
       ts:Date.now(),status:'pending',
@@ -10739,7 +10760,7 @@ async function renderAuctionHouse(){
     </div>`;
   if(!window.FB){body.innerHTML=html+'<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">Sign in to use the Auction House</div>';return;}
   try{
-    const {db,collection,query,orderBy,limit,getDocs,where}=FB;
+    const {db,collection,query,orderBy,limit,getDocs,where}=window.FB;
     const q=query(collection(db,'auctions'),where('active','==',true),orderBy('price','asc'),limit(20));
     const snap=await getDocs(q);
     if(snap.empty){body.innerHTML=html+'<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No active listings. Be the first to list something!</div>';return;}
@@ -10768,7 +10789,7 @@ async function buyAuction(auctionId, price, name){
   if(!fbReady()){toast('Sign in first!','er');return;}
   if(getAscEssence()<price){toast(`Need 💎${fmt(price)} Ascension Essence!`,'er');return;}
   try{
-    const {db,doc,getDoc,updateDoc,deleteDoc,setDoc,serverTimestamp}=FB;
+    const {db,doc,getDoc,updateDoc,deleteDoc,setDoc,serverTimestamp}=window.FB;
     const snap=await getDoc(doc(db,'auctions',auctionId));
     if(!snap.exists()||!snap.data().active){toast('Auction no longer available','er');return;}
     const a=snap.data();
@@ -10779,7 +10800,7 @@ async function buyAuction(auctionId, price, name){
     // Add sold price to history
     await setDoc(doc(db,`marketHistory/${auctionId}`),{name:a.name,price,soldAt:Date.now(),sellerName:a.sellerName,buyerName:fbName()});
     // Notify seller
-    try{const {rtdb,ref,push}=FB;push(ref(rtdb,`gifts/${a.sellerUid}`),{from:fbUID(),fromName:fbName(),itemId:'essence',itemName:`${fmt(price)} Essence from sale of ${a.name}`,itemEmoji:'💎',desc:`Your listing sold!`,ts:Date.now(),claimed:false,essenceAmount:price});}catch(e){}
+    try{const {rtdb,ref,push}=window.FB;push(ref(rtdb,`gifts/${a.sellerUid}`),{from:fbUID(),fromName:fbName(),itemId:'essence',itemName:`${fmt(price)} Essence from sale of ${a.name}`,itemEmoji:'💎',desc:`Your listing sold!`,ts:Date.now(),claimed:false,essenceAmount:price});}catch(e){}
     toast(`✅ Purchased: ${name} for 💎${fmt(price)} Essence!`,'ok');
     _pushActivity('💎',`${fbName()||'A player'} bought ${name} for ${fmt(price)} Essence!`,'#e879f9');
     renderAuctionHouse();
@@ -10810,7 +10831,7 @@ async function listItem(skinId){
   const price=parseInt(priceEl?.value||0);
   if(!price||price<1){toast('Enter a valid price!','er');return;}
   try{
-    const {db,collection,addDoc,serverTimestamp}=FB;
+    const {db,collection,addDoc,serverTimestamp}=window.FB;
     await addDoc(collection(db,'auctions'),{
       name:`${skinId} Skin`,icon:'🎨',rarity:'Skin',
       sellerUid:fbUID(),sellerName:fbName(),
@@ -10826,7 +10847,7 @@ async function listItem(skinId){
 async function sendTradeRequest(toUid, toName, offeredItem, wantedItem){
   if(!fbReady()){toast('Sign in first!','er');return;}
   try{
-    const {db,collection,addDoc,serverTimestamp}=FB;
+    const {db,collection,addDoc,serverTimestamp}=window.FB;
     await addDoc(collection(db,`players/${toUid}/tradeRequests`),{
       from:fbUID(),fromName:fbName(),
       offered:offeredItem,wanted:wantedItem,
@@ -10840,7 +10861,7 @@ async function sendTradeRequest(toUid, toName, offeredItem, wantedItem){
 async function renderMarketHistory(){
   if(!window.FB) return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to view history</div>';
   try{
-    const {db,collection,query,orderBy,limit,getDocs}=FB;
+    const {db,collection,query,orderBy,limit,getDocs}=window.FB;
     const snap=await getDocs(query(collection(db,'marketHistory'),orderBy('soldAt','desc'),limit(20)));
     if(snap.empty) return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No sales history yet</div>';
     let html='<div style="font-size:10px;font-weight:700;margin-bottom:8px;">Recent Sales:</div>';
