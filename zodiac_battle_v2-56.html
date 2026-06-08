@@ -600,10 +600,10 @@ onAuthStateChanged(auth, user => {
 <div style="margin-top:10px;border-top:1px solid var(--bg3);padding-top:10px;">
   <div class="sec-t mb2">⚔️ Equipment Summon</div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:8px;">
-    <button class="btn bs" style="font-size:10px;" onclick="summonEquipment(1,100)">⚔️ ×1<br><span style="font-size:8px;opacity:.7;">100g</span></button>
-    <button class="btn bs" style="font-size:10px;" onclick="summonEquipment(10,1000)">⚔️ ×10<br><span style="font-size:8px;opacity:.7;">1K g</span></button>
-    <button class="btn bs" style="font-size:10px;" onclick="summonEquipment(100,10000)">⚔️ ×100<br><span style="font-size:8px;opacity:.7;">10K g</span></button>
-    <button class="btn bs" style="font-size:10px;" onclick="summonEquipment(1000,100000)">⚔️ ×1K<br><span style="font-size:8px;opacity:.7;">100K g</span></button>
+    <button class="btn bs" style="font-size:10px;" onclick="summonEquipment(1,2000)">⚔️ ×1<br><span style="font-size:8px;opacity:.7;">2K g</span></button>
+    <button class="btn bs" style="font-size:10px;" onclick="summonEquipment(10,20000)">⚔️ ×10<br><span style="font-size:8px;opacity:.7;">20K g</span></button>
+    <button class="btn bs" style="font-size:10px;" onclick="summonEquipment(100,200000)">⚔️ ×100<br><span style="font-size:8px;opacity:.7;">200K g</span></button>
+    <button class="btn bs" style="font-size:10px;" onclick="summonEquipment(1000,2000000)">⚔️ ×1K<br><span style="font-size:8px;opacity:.7;">2M g</span></button>
   </div>
 </div>
 <div id="sumRes"></div></div></div></div>
@@ -833,7 +833,7 @@ onAuthStateChanged(auth, user => {
         <span class="hub-icon">🎒</span><span class="hub-label">Inventory</span>
         <span class="hub-sub" id="hubInvCount">0 items</span>
       </button>
-      <button class="hub-btn" onclick="closeM('mMore');renderGodlyIntel();openM('mGodlyIntel');">
+      <button class="hub-btn" onclick="closeM('mMore');setTimeout(()=>{renderGodlyIntel();openM('mGodlyIntel');},50);">
         <span class="hub-icon">✨</span><span class="hub-label">Godly Gear</span>
         <span class="hub-sub" id="hubGodlySub">0/24 pieces</span>
       </button>
@@ -1599,19 +1599,51 @@ const WEATHERS=[
 
 const SKILL_TREES={
   offense:[
-    {id:'atk1',name:'Power Strike',desc:'+8% ATK',cost:1,effect:{atk:0.08}},
-    {id:'atk2',name:'Brutal Force',desc:'+15% ATK',cost:2,effect:{atk:0.15},req:'atk1'},
-    {id:'atk3',name:'Killing Blow',desc:'+25% ATK',cost:3,effect:{atk:0.25},req:'atk2'},
+    {id:'atk1', name:'Power Strike',   desc:'+8% ATK',              cost:1, effect:{atk:0.08}},
+    {id:'atk2', name:'Brutal Force',   desc:'+15% ATK',             cost:2, effect:{atk:0.15},  req:'atk1'},
+    {id:'atk3', name:'Killing Blow',   desc:'+25% ATK',             cost:3, effect:{atk:0.25},  req:'atk2'},
+    {id:'crit1',name:'Sharp Edge',     desc:'+10% Crit Rate',       cost:2, effect:{critRate:0.10}},
+    {id:'crit2',name:'Lethal Strikes', desc:'+25% Crit Rate',       cost:3, effect:{critRate:0.25},req:'crit1'},
+    {id:'crit3',name:'Assassin',       desc:'+50% Crit Damage',     cost:4, effect:{critDmg:0.50}, req:'crit2'},
+    {id:'boss1',name:'Giant Slayer',   desc:'+15% Boss Damage',     cost:2, effect:{bossDmg:0.15}},
+    {id:'boss2',name:'Titan Breaker',  desc:'+30% Boss Damage',     cost:4, effect:{bossDmg:0.30},req:'boss1'},
+    {id:'elem1',name:'Elemental Affinity',desc:'+15% Elem Damage',  cost:3, effect:{elemDmg:0.15}},
+    {id:'ult1', name:'Battle Trance',  desc:'+20% Ult Charge',      cost:2, effect:{ultCharge:0.20}},
+    {id:'ult2', name:'War God',        desc:'+40% Ult Charge',      cost:4, effect:{ultCharge:0.40},req:'ult1'},
   ],
   defense:[
-    {id:'def1',name:'Iron Skin',desc:'+8% DEF',cost:1,effect:{def:0.08}},
-    {id:'def2',name:'Fortify',desc:'+15% DEF',cost:2,effect:{def:0.15},req:'def1'},
-    {id:'def3',name:'Unbreakable',desc:'+25% DEF',cost:3,effect:{def:0.25},req:'def2'},
+    {id:'def1', name:'Iron Skin',      desc:'+8% DEF',              cost:1, effect:{def:0.08}},
+    {id:'def2', name:'Fortify',        desc:'+15% DEF',             cost:2, effect:{def:0.15},  req:'def1'},
+    {id:'def3', name:'Unbreakable',    desc:'+25% DEF',             cost:3, effect:{def:0.25},  req:'def2'},
+    {id:'def4', name:'Diamond Body',   desc:'+40% DEF',             cost:5, effect:{def:0.40},  req:'def3'},
+    {id:'hp1',  name:'Vitality',       desc:'+10% HP',              cost:1, effect:{hp:0.10}},
+    {id:'hp2',  name:'Endurance',      desc:'+20% HP',              cost:2, effect:{hp:0.20},   req:'hp1'},
+    {id:'hp3',  name:'Juggernaut',     desc:'+35% HP',              cost:4, effect:{hp:0.35},   req:'hp2'},
+    {id:'dot1', name:'Thorns',         desc:'+20% DoT Resistance',  cost:2, effect:{dotResist:0.20}},
+    {id:'dodge1',name:'Evasion',       desc:'+8% Dodge',            cost:2, effect:{dodgeBonus:0.08}},
+    {id:'dodge2',name:'Shadowstep',    desc:'+15% Dodge',           cost:3, effect:{dodgeBonus:0.15},req:'dodge1'},
   ],
   utility:[
-    {id:'spd1',name:'Swift Feet',desc:'+8% SPD',cost:1,effect:{spd:0.08}},
-    {id:'spd2',name:'Wind Step',desc:'+15% SPD',cost:2,effect:{spd:0.15},req:'spd1'},
-    {id:'spd3',name:'Blur',desc:'+25% SPD, +10% dodge',cost:3,effect:{spd:0.25,dodgeBonus:0.10},req:'spd2'},
+    {id:'spd1', name:'Swift Feet',     desc:'+8% SPD',              cost:1, effect:{spd:0.08}},
+    {id:'spd2', name:'Wind Step',      desc:'+15% SPD',             cost:2, effect:{spd:0.15},  req:'spd1'},
+    {id:'spd3', name:'Blur',           desc:'+25% SPD',             cost:3, effect:{spd:0.25},  req:'spd2'},
+    {id:'spd4', name:'Time Warp',      desc:'+40% SPD',             cost:5, effect:{spd:0.40},  req:'spd3'},
+    {id:'gold1',name:'Fortune',        desc:'+15% Gold',            cost:1, effect:{goldFind:0.15}},
+    {id:'gold2',name:'Merchant Soul',  desc:'+30% Gold',            cost:3, effect:{goldFind:0.30},req:'gold1'},
+    {id:'xp1',  name:'Scholar',        desc:'+15% XP',              cost:1, effect:{xpBonus:0.15}},
+    {id:'xp2',  name:'Enlightenment',  desc:'+30% XP',              cost:3, effect:{xpBonus:0.30},req:'xp1'},
+    {id:'star1',name:'Lucky Star',     desc:'+20% Star Drops',      cost:2, effect:{starBonus:0.20}},
+    {id:'star2',name:'Celestial Luck', desc:'+40% Star Drops',      cost:4, effect:{starBonus:0.40},req:'star1'},
+    {id:'summ1',name:'Pact Master',    desc:'+5% Rare Summon Rate', cost:3, effect:{summonRarity:0.05}},
+    {id:'combo1',name:'Chain Fighter', desc:'+2 Max Combo',         cost:2, effect:{comboCap:2}},
+    {id:'combo2',name:'Storm of Blows',desc:'+5 Max Combo',         cost:4, effect:{comboCap:5}, req:'combo1'},
+  ],
+  mastery:[
+    {id:'m_atkdef',name:'War Stance',  desc:'+10% ATK and DEF',     cost:4, effect:{atk:0.10,def:0.10},req:'atk3'},
+    {id:'m_hpspd', name:'Dragon Form', desc:'+15% HP and SPD',      cost:4, effect:{hp:0.15,spd:0.15}, req:'hp2'},
+    {id:'m_allstat',name:'Transcendence',desc:'+8% ALL stats',      cost:6, effect:{atk:0.08,def:0.08,hp:0.08,spd:0.08},req:'m_atkdef'},
+    {id:'m_godlike',name:'Godlike',    desc:'+15% ALL stats',       cost:9, effect:{atk:0.15,def:0.15,hp:0.15,spd:0.15},req:'m_allstat'},
+    {id:'m_prestige',name:'Ascendant Power',desc:'+5% per Ascension (max 50%)',cost:5,effect:{ascBonus:0.05}},
   ],
 };
 
@@ -2734,6 +2766,25 @@ function checkHarvestGodly(){
 function checkEqSummonGodly(){
   // Storm Shield now from Ironman Tower floor 1000 — no longer drops from eq summon
 }
+
+function resetQuest(type, idx){
+  const costs={daily:500,weekly:5000,monthly:20000};
+  const cost=costs[type]||500;
+  if((G.stars||0)<cost){toast(`Need ${cost}⭐ to reset quest!`,'er');return;}
+  let pool,quests;
+  if(type==='daily'){pool=DAILY_QUEST_POOL;quests=G.dailyQuests;}
+  else if(type==='weekly'){pool=WEEKLY_QUEST_POOL;quests=G.weeklyQuests;}
+  else{pool=MONTHLY_QUEST_POOL;quests=G.monthlyQuests;}
+  if(!quests||!quests[idx])return;
+  const activeIds=quests.map(q=>q.id);
+  const available=pool.filter(q=>!activeIds.includes(q.id));
+  if(!available.length){toast('No other quests available!','er');return;}
+  const newQ={...available[Math.floor(Math.random()*available.length)],completed:false,progress:0};
+  if(newQ.requirements)newQ.reqProgress=newQ.requirements.map(()=>0);
+  G.stars-=cost;quests[idx]=newQ;
+  save();renderQuests();toast(`🔄 Quest reset! (${cost}⭐)`,'ok');
+}
+
 function getTotalQuestPoints(){
   return (G.totalDailyDone||0)*1+(G.totalWeeklyDone||0)*5+(G.totalMonthlyDone||0)*10;
 }
@@ -3109,7 +3160,7 @@ function formatTimeLeft(ms){
   if(h>0)return`${h}h ${m}m`;if(m>0)return`${m}m ${s}s`;return`${s}s`;
 }
 
-// ══ DAILY DUNGEONS ══
+// ══ DAILY DAILY_DUNGEONS ══
 const DAILY_DUNGEONS=[
   {id:'crystal',name:'Crystal Caves',emoji:'💎',day:0,enemies:['Crystal Golem','Gem Spider','Diamond Wasp'],bossName:'Prism Dragon',goldMult:2.5,starBonus:1,dropRarityBoost:1},
   {id:'abyss',name:'Abyssal Depths',emoji:'🌊',day:1,enemies:['Abyssal Eel','Depths Horror','Void Jelly'],bossName:'Leviathan',goldMult:3.0,starBonus:2,dropRarityBoost:2},
@@ -5022,8 +5073,8 @@ function potion(type){
 
 // ══ SUMMON ══
 function summonEquipment(count,goldCost,starCost=0){
-  if(starCost>0){if((G.stars||0)<starCost){toast('Not enough stars!','er');return;}G.stars-=starCost;}
-  else{if(G.gold<goldCost){toast('Not enough gold!','er');return;}G.gold-=goldCost;}
+  if(starCost>0){if((G.stars||0)<starCost){toast('Not enough stars!','er');return;}G.stars-=starCost;updateHdr();}
+  else{if(G.gold<goldCost){toast('Not enough gold!','er');return;}G.gold-=goldCost;updateHdr();}
   const results=[];
   for(let i=0;i<count;i++){
     // Star cost gives guaranteed Rare+
@@ -5057,6 +5108,7 @@ function summonEquipment(count,goldCost,starCost=0){
     }
   }
   updateHdr();save();
+  const _sg=document.getElementById('sumG');if(_sg)_sg.textContent=G.gold;
   if(!results.length){toast('No items dropped!','er');return;}
   const html=results.map(item=>{const rd=EQUIPMENT_RARITIES[item.rarity];return`<div style="display:flex;align-items:center;gap:7px;margin:4px 0;padding:6px 8px;border-radius:8px;background:${rd.color}11;border:1px solid ${rd.color}44;"><span style="font-size:20px;">${item.icon}</span><div><div style="font-weight:700;font-size:11px;color:${rd.color};">${item.rarity} ${item.name}</div><div style="font-size:9px;color:var(--txt2);">${Object.entries(item.stats).slice(0,2).map(([k,v])=>k+':'+v).join(' · ')}</div></div></div>`;}).join('');
   document.getElementById('sumRes').innerHTML=`<div style="margin-top:8px;border-top:1px solid var(--bg3);padding-top:8px;max-height:200px;overflow-y:auto;"><div class="sec-t mb2">⚔️ Equipment Dropped!</div>${html}</div>`;
@@ -5203,7 +5255,7 @@ function lvCheck(name){
   if(r.level%20===0){G.stars=(G.stars||0)+1;toast(`${name} Lv.${r.level}! +1⭐`,'ok');}else toast(`${name} Lv.${r.level}!`,'ok');
   if(name===G.active){const c=document.getElementById('afCube');if(c){c.classList.add('lvUpFlash');setTimeout(()=>c.classList.remove('lvUpFlash'),700);}}
   addLog('events','⬆️ '+name+' Level Up! Lv.'+r.level,'');addBpXp(15);
-  if(name===G.active)addSkillPoint(name);
+  if(name===G.active&&r.level%5===0)addSkillPoint(name);// 1 point every 5 levels
   if(r.level>G.level)G.level=r.level;
   }
   updateHdr();renderSquad();
@@ -5746,15 +5798,14 @@ function toggleParty(name){
 // ══ SHOP ══
 const SHOP_ITEMS=[
   {id:'heal',     name:'Full Potion',    emoji:'🧪', desc:'Heal ALL party 100% HP',        cost:200,  bulk:true},
-  {id:'megaHeal', name:'Elixir',         emoji:'💉', desc:'Heal all + clear all debuffs',   cost:600,  bulk:true},
   {id:'boost',    name:'Power Boost',    emoji:'⚡', desc:'+50% ATK/DEF — stacks turns',   cost:400,  bulk:true, turns:true},
   {id:'shield',   name:'Iron Shield',    emoji:'🛡️', desc:'All party: blocks next hit',    cost:350,  bulk:true},
   {id:'luckCharm',name:'Lucky Charm',    emoji:'🍀', desc:'+40% drop rate — stacks battles',cost:500, bulk:true, turns:true},
   {id:'expKey',   name:'Expedition Key', emoji:'🗺️', desc:'Send 1 zodiac on expedition',   cost:250,  bulk:true},
   {id:'starDust', name:'Star Dust',      emoji:'✨', desc:'+5 stars instantly',             cost:2500, bulk:true},
-  {id:'starVault',name:'Star Mine',     emoji:'🌟', desc:'+5⭐/battle forever',       cost:0, starCost:5000, bulk:false, dynamic:true, getDesc:()=>`+5⭐/battle forever (${G.starMines||0}/50 owned)`},
+  {id:'starVault',name:'Star Mine',     emoji:'🌟', desc:'+5⭐/battle forever',       cost:0, starCost:5000, bulk:true,  dynamic:true, getDesc:()=>`+5⭐/battle forever (${G.starMines||0}/50 owned)`},
   {id:'starMegaVault',name:'Void Vault',emoji:'🌌', desc:'+30⭐/battle forever (unlimited)', cost:0, starCost:50000, bulk:false, dynamic:true, getDesc:()=>`+30⭐/battle forever (${G.voidVaults||0} owned)`},
-  {id:'mineShaft',name:'Mine Shaft',     emoji:'⛏️', desc:'+1⭐/battle forever',           cost:0,    starCost:500,  bulk:false, dynamic:true,getDesc:()=>`+1⭐/battle forever (${G.mineShafts||0}/100 owned)`},
+  {id:'mineShaft',name:'Mine Shaft',     emoji:'⛏️', desc:'+1⭐/battle forever',           cost:0,    starCost:500,  bulk:true,  dynamic:true,getDesc:()=>`+1⭐/battle forever (${G.mineShafts||0}/100 owned)`},
   {id:'prestigeReset',name:'Prestige Reset',emoji:'🔄',desc:'Refund all Prestige Shop stars',cost:0,  starCost:50,   bulk:false},
 ];
 function renderShop(){
@@ -5762,51 +5813,50 @@ function renderShop(){
   const starEl=document.getElementById('shopStar');if(starEl)starEl.textContent=G.stars||0;
   document.getElementById('shopList').innerHTML=SHOP_ITEMS.map(it=>{
     const sc=it.cost;const itemDesc=it.getDesc?it.getDesc():it.desc;
-    const costDisplay=it.starCost?`⭐${it.starCost}`:`${sc}g`;
-    const canAfford=it.starCost?(G.stars||0)>=it.starCost:G.gold>=sc;
-    const canx10=it.bulk&&!it.starCost&&G.gold>=sc*10;
-    const canx100=it.bulk&&!it.starCost&&G.gold>=sc*100;
-    const maxQty=it.bulk&&!it.starCost?Math.floor(G.gold/sc):it.starCost?Math.floor((G.stars||0)/it.starCost):0;
-    const maxCost=it.starCost?maxQty*it.starCost:maxQty*sc;
+    const isStar=!!it.starCost;
+    const costDisplay=isStar?`⭐${it.starCost}`:`${fmt(sc)}g`;
+    const canAfford=isStar?(G.stars||0)>=it.starCost:G.gold>=sc;
+    // Cap calculations
+    const isPot=it.id==='heal'||it.id==='shield';
+    const potCap=isPot?1000:99999;
+    const potOwned=isPot?(G.pot[it.id]||0):0;
+    const potRoom=isPot?Math.max(0,potCap-potOwned):99999;
+    // Star items: cap by owned amount
+    const starCaps={starVault:50-(G.starMines||0),starMegaVault:999,mineShaft:100-(G.mineShafts||0)};
+    const itemCap=starCaps[it.id]!==undefined?Math.max(0,starCaps[it.id]):potRoom;
+    const maxQty=it.bulk?(isStar?Math.min(itemCap,Math.floor((G.stars||0)/it.starCost)):Math.min(itemCap,Math.floor(G.gold/sc))):0;
+    const maxCost=isStar?maxQty*it.starCost:maxQty*sc;
+    const x10=Math.min(10,maxQty);const x100=Math.min(100,maxQty);
+    const canx10=x10>=10;const canx100=x100>=100;
     return`<div style="background:rgba(28,38,56,.5);padding:8px;border-radius:9px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:${(it.bulk||it.starCost)?'5':'0'}px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
         <div style="font-size:20px;">${it.emoji}</div>
-        <div style="flex:1;"><div style="font-size:11px;font-weight:700;">${it.name}</div><div class="t2 ts">${itemDesc}${it.turns?' (qty stacks)':''}</div></div>
-        <button class="btn bp" style="padding:4px 8px;font-size:10px;${!canAfford?'opacity:.4;':''}" onclick="buyItem('${it.id}',1)" ${!canAfford?'disabled':''}>×1 ${costDisplay}</button>
+        <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:700;">${it.name}${isPot?` (${potOwned}/1000)`:''}</div><div class="t2 ts" style="font-size:9px;">${itemDesc}${it.turns?' · stacks':''}</div></div>
       </div>
-      ${it.bulk&&!it.starCost?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
-        <button class="btn bs" style="font-size:9px;${!canx10?'opacity:.4;':''}" onclick="buyItem('${it.id}',10)" ${!canx10?'disabled':''}>×10 (${sc*10}g)</button>
-        <button class="btn bs" style="font-size:9px;${!canx100?'opacity:.4;':''}" onclick="buyItem('${it.id}',100)" ${!canx100?'disabled':''}>×100 (${sc*100>=1000?(sc*100/1000).toFixed(0)+'K':sc*100}g)</button>
-        ${maxQty>0?`<button class="btn bp" style="font-size:9px;" onclick="buyItem('${it.id}',${maxQty})">Max ×${maxQty}</button>`:''}
-      </div>`:''}
-      ${it.starCost&&maxQty>1?`<div style="margin-top:4px;"><button class="btn bp" style="font-size:9px;width:100%;" onclick="buyItem('${it.id}',${maxQty})">Max ×${maxQty} (⭐${maxCost})</button></div>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr${it.bulk?' 1fr 1fr':''};gap:4px;">
+        <button class="btn bp" style="font-size:10px;padding:5px 2px;${!canAfford?'opacity:.4;':''}" onclick="buyItem('${it.id}',1)" ${!canAfford?'disabled':''}>×1<br><span style="font-size:8px;">${costDisplay}</span></button>
+        ${it.bulk?`
+        <button class="btn bs" style="font-size:10px;padding:5px 2px;${!canx10?'opacity:.4;':''}" onclick="buyItem('${it.id}',10)" ${!canx10?'disabled':''}>×10<br><span style="font-size:8px;">${isStar?'⭐'+(it.starCost*10):fmt(sc*10)+'g'}</span></button>
+        <button class="btn bs" style="font-size:10px;padding:5px 2px;${!canx100?'opacity:.4;':''}" onclick="buyItem('${it.id}',100)" ${!canx100?'disabled':''}>×100<br><span style="font-size:8px;">${isStar?'⭐'+(it.starCost*100):fmt(sc*100)+'g'}</span></button>
+        <button class="btn ${canAfford&&maxQty>0?'bp':'bs'}" style="font-size:10px;padding:5px 2px;${!canAfford||maxQty<=0?'opacity:.4;':''}" onclick="buyItem('${it.id}',${maxQty||1})" ${!canAfford||maxQty<=0?'disabled':''}>Max<br><span style="font-size:8px;">${maxQty>0?(isStar?'⭐'+maxCost:fmt(maxCost)+'g'):'—'}</span></button>
+        `:`<div></div>`}
+      </div>
     </div>`;
   }).join('');
 }
 function buyItem(id,qty=1){
   const item=SHOP_ITEMS.find(i=>i.id===id);if(!item)return;
   const total=item.starCost?item.starCost:item.cost*qty;
-  if(item.starCost){if((G.stars||0)<item.starCost){toast('Not enough stars!','er');return;}G.stars-=item.starCost;}
+  if(item.starCost){const totalStarCost=item.starCost*(item.bulk?qty:1);if((G.stars||0)<totalStarCost){toast('Not enough stars!','er');return;}G.stars-=totalStarCost;}
   else{if(G.gold<total){toast('Not enough gold!','er');return;}G.gold-=total;}
-  if(id==='starDust'){G.stars=(G.stars||0)+5*qty;updateHdr();save();renderShop();toast(`✨ +${5*qty} Stars!`,'ok');return;}
-  if(id==='starVault'){
-    if((G.starMines||0)>=50){toast('Max 50 Star Mines!','er');G.stars+=item.starCost;return;}
-    G.starMines=(G.starMines||0)+1;updateHdr();save();renderShop();
-    toast(`🌟 Star Mine #${G.starMines}! +5⭐/battle forever!`,'ok');return;
-  }
-  if(id==='starMegaVault'){setTimeout(()=>{if((G.voidVaults||0)>=100)checkGodlyPieceUnlock('vault100');},100);
-    G.voidVaults=(G.voidVaults||0)+1;updateHdr();save();renderShop();
-    toast(`🌌 Void Vault #${G.voidVaults}! +100⭐/battle forever!`,'ok');return;
-  }
+  if(id==='starDust'){G.stars=(G.stars||0)+5*qty;updateHdr();save();renderShop();toast(`✨ +${fmt(5*qty)} Stars!`,'ok');return;}
+  if(id==='starVault'){const canBuyV=Math.min(qty,50-(G.starMines||0));if(canBuyV<=0){toast('Max 50 Star Mines!','er');G.stars+=item.starCost*qty;return;}if(canBuyV<qty)G.stars+=item.starCost*(qty-canBuyV);G.starMines=(G.starMines||0)+canBuyV;updateHdr();save();renderShop();toast(`🌟 +${canBuyV} Star Mine${canBuyV>1?'s':''}! Total: ${G.starMines}/50`,'ok');return;}
+  if(id==='starMegaVault'){const canBuyMV=Math.min(qty,100-(G.voidVaults||0));if(canBuyMV<=0){toast('Max 100 Void Vaults!','er');G.stars+=item.starCost*qty;return;}if(canBuyMV<qty)G.stars+=item.starCost*(qty-canBuyMV);G.voidVaults=(G.voidVaults||0)+canBuyMV;if((G.voidVaults||0)>=100)checkGodlyPieceUnlock('vault100');updateHdr();save();renderShop();toast(`🌌 +${canBuyMV} Void Vault${canBuyMV>1?'s':''}! Total: ${G.voidVaults}/100`,'ok');return;}
   if(id==='expKey'){G.expKeys=(G.expKeys||0)+qty;toast(`🗺️ +${qty} Expedition Key${qty>1?'s':''}! (${G.expKeys} total)`);}
-  if(id==='heal'||id==='megaHeal'||id==='shield'){G.pot[id]=(G.pot[id]||0)+qty;}
+  if(id==='heal'||id==='shield'){const maxPot=1000;const cur=G.pot[id]||0;const canAdd=Math.min(qty,maxPot-cur);if(canAdd<=0){toast('Max 1000 potions!','er');if(!item.starCost)G.gold+=item.cost*qty;else G.stars+=item.starCost*qty;updateHdr();return;}if(canAdd<qty){if(!item.starCost)G.gold+=item.cost*(qty-canAdd);else G.stars+=item.starCost*(qty-canAdd);updateHdr();}G.pot[id]=(G.pot[id]||0)+canAdd;}
   if(id==='boost'){G.pot.boost=(G.pot.boost||0)+qty*10;}
   if(id==='luckCharm'){G._luckCharmBattles=(G._luckCharmBattles||0)+20*qty;}
-  if(id==='mineShaft'){
-    if((G.mineShafts||0)>=100){toast('Max 100 Mine Shafts!','er');G.stars+=item.starCost;return;}
-    G.mineShafts=Math.min(100,(G.mineShafts||0)+1);updateHdr();save();renderShop();
-    toast(`⛏️ Mine Shaft #${G.mineShafts}!`,'ok');return;
-  }
+  if(id==='mineShaft'){const canBuyMS=Math.min(qty,100-(G.mineShafts||0));if(canBuyMS<=0){toast('Max 100 Mine Shafts!','er');G.stars+=item.starCost*qty;return;}if(canBuyMS<qty)G.stars+=item.starCost*(qty-canBuyMS);G.mineShafts=Math.min(100,(G.mineShafts||0)+canBuyMS);updateHdr();save();renderShop();toast(`⛏️ +${canBuyMS} Mine Shaft${canBuyMS>1?'s':''}! Total: ${G.mineShafts}/100`,'ok');return;}
   if(id==='prestigeReset'){
     const totalSpent=Object.entries(G.prestigeShopBought||{}).reduce((sum,[id2,n])=>{
       const item2=PRESTIGE_SHOP_ITEMS.find(i=>i.id===id2);if(!item2)return sum;
@@ -6102,7 +6152,7 @@ function getGodlyProgressVal(sourceKey){
     case 'nightmare_50':    {const n=G.nightmareBossKills||0;return[n,50,Math.min(1,n/50),`${n}/50 Nightmare kills`];}
     case 'wins_10k':        {const w=G.wins||0;return[w,10000,Math.min(1,w/10000),`${fmt(w)}/10,000 wins`];}
     case 'prestige_10':     {const p=G.prestigeCount||0;return[p,10,Math.min(1,p/10),`${p}/10 prestiges`];}
-    case 'dungeon_week':    {const d=Object.keys(G.weeklyDungeonsDone||{}).length;const tot=(DUNGEONS||[]).length;return[d,tot,tot?Math.min(1,d/tot):0,`${d}/${tot} dungeons this week`];}
+    case 'dungeon_week':    {const d=Object.keys(G.weeklyDungeonsDone||{}).length;const tot=(DAILY_DUNGEONS||[]).length;return[d,tot,tot?Math.min(1,d/tot):0,`${d}/${tot} dungeons this week`];}
     case 'boss_rush_perf':  {return[0,0,0,'Clear Boss Rush without any faint'];}
     case 'mirror_10':       {const m=G.mirrorWins||0;return[m,10,Math.min(1,m/10),`${m}/10 Mirror Battle wins`];}
     default: return[0,0,0,'Unknown condition'];
@@ -6180,7 +6230,7 @@ function renderBlacksmith(){
   const body=document.getElementById('blacksmithBody');if(!body)return;
   const rarityOrder=['Common','Uncommon','Rare','Epic','Legendary','Mythical'];
   const rerollCost=item=>Math.floor(10*(EQUIPMENT_RARITIES[item.rarity]?.mult||1)*(1+Math.floor((item.rerollCount||0)/10)*.2));  // cheap, softly scales every 10 rolls
-  const upgradeCost=item=>Math.floor(20*(EQUIPMENT_RARITIES[item.rarity]?.mult||1));  // flat cheap, same each upgrade
+  const upgradeCost=item=>{const lv=item.smithLevel||0;const rarMult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;return Math.floor(5000*rarMult*Math.pow(1.15,lv));};
   const enchantCost=item=>2+(item.enchantLevel||0);
   let html=`<div class="t2 ts mb2">Tap a stat to 🔒 lock it. Locked stats won't be rerolled.</div>`;
   const items=(G.equipment||[]).sort((a,b)=>rarityOrder.indexOf(b.rarity)-rarityOrder.indexOf(a.rarity));
@@ -7046,20 +7096,20 @@ function renderAchievements(){
 
 // ══ HOUSE SYSTEM ══
 const HOUSE_ROOMS=[
-  {id:'main',       name:'Main Hall',    emoji:'🏠', desc:'Base room, always available',          cost:0,     level:1,maxLevel:3},
-  {id:'garden',     name:'Garden',       emoji:'🌿', desc:'Grow herbs, unlock Herbalist bonuses',  cost:5000,  level:0,maxLevel:3},
-  {id:'forge',      name:'Smithy',       emoji:'⚒️', desc:'-10% reroll cost, +craft quality',     cost:8000,  level:0,maxLevel:3},
-  {id:'library',    name:'Library',      emoji:'📚', desc:'+10% all XP gains per level',          cost:10000, level:0,maxLevel:3},
-  {id:'treasury',   name:'Treasury',     emoji:'💰', desc:'+5% gold interest per level',          cost:15000, level:0,maxLevel:3},
-  {id:'dojo',       name:'Dojo',         emoji:'🥋', desc:'+5% ATK/DEF per level',               cost:12000, level:0,maxLevel:3},
-  {id:'shrine',     name:'Shrine',       emoji:'🛕', desc:'+1 star per boss kill per level',      cost:20000, level:0,maxLevel:3},
-  {id:'dungeon_room',name:'Vault',       emoji:'🗝️', desc:'Stores rare items, +gear drop rate',  cost:30000, level:0,maxLevel:3},
-  {id:'observatory',name:'Observatory',  emoji:'🔭', desc:'+star drop rate, see enemy weaknesses',cost:25000, level:0,maxLevel:3},
-  {id:'arena',      name:'Arena',        emoji:'⚔️', desc:'+combo damage, unlock arena challenges',cost:35000,level:0,maxLevel:3},
-  {id:'kitchen',    name:'Kitchen',      emoji:'🍳', desc:'+potion effectiveness, free potions',  cost:18000, level:0,maxLevel:3},
-  {id:'workshop',   name:'Workshop',     emoji:'🔨', desc:'+crafting XP, unlock special recipes', cost:22000, level:0,maxLevel:3},
+  {id:'main',       name:'Main Hall',    emoji:'🏠', desc:'Base room, always available',          cost:0,     level:1,maxLevel:5},
+  {id:'garden',     name:'Garden',       emoji:'🌿', desc:'Grow herbs, unlock Herbalist bonuses',  cost:5000,  level:0,maxLevel:5},
+  {id:'forge',      name:'Smithy',       emoji:'⚒️', desc:'-10% reroll cost, +craft quality',     cost:8000,  level:0,maxLevel:5},
+  {id:'library',    name:'Library',      emoji:'📚', desc:'+10% all XP gains per level',          cost:10000, level:0,maxLevel:5},
+  {id:'treasury',   name:'Treasury',     emoji:'💰', desc:'+5% gold interest per level',          cost:15000, level:0,maxLevel:5},
+  {id:'dojo',       name:'Dojo',         emoji:'🥋', desc:'+5% ATK/DEF per level',               cost:12000, level:0,maxLevel:5},
+  {id:'shrine',     name:'Shrine',       emoji:'🛕', desc:'+1 star per boss kill per level',      cost:20000, level:0,maxLevel:5},
+  {id:'dungeon_room',name:'Vault',       emoji:'🗝️', desc:'Stores rare items, +gear drop rate',  cost:30000, level:0,maxLevel:5},
+  {id:'observatory',name:'Observatory',  emoji:'🔭', desc:'+star drop rate, see enemy weaknesses',cost:25000, level:0,maxLevel:5},
+  {id:'arena',      name:'Arena',        emoji:'⚔️', desc:'+combo damage, unlock arena challenges',cost:35000,level:0,maxLevel:5},
+  {id:'kitchen',    name:'Kitchen',      emoji:'🍳', desc:'+potion effectiveness, free potions',  cost:18000, level:0,maxLevel:5},
+  {id:'workshop',   name:'Workshop',     emoji:'🔨', desc:'+crafting XP, unlock special recipes', cost:22000, level:0,maxLevel:5},
 ];
-const ROOM_UPGRADE_COST=[0,5000,15000,40000];// cost to upgrade to level 1,2,3
+const ROOM_UPGRADE_COST=[0,5000,15000,40000,100000,250000];// cost to upgrade to level 1-5
 const HOUSE_FURNITURE=[
   // Main Hall
   {id:'chest',      name:'Treasure Chest',  emoji:'🪙', desc:'+3% gold find',              cat:'main',    cost:1000, bonus:{goldFind:0.03}},
@@ -7240,10 +7290,11 @@ function renderHouse(){
         b.textContent='Upgrade Lv.'+(lv+1)+' — '+upgCost+'g';
         b.onclick=(()=>{const rid=room.id,uc=upgCost,rem=room.emoji,rname=room.name;return()=>{
           if(G.gold<uc){toast('Not enough gold!','er');return;}G.gold-=uc;
-          if(rid==='main'){G.houseMainLevel=(G.houseMainLevel||1)+1;save();renderHouse();
-            toast(rem+' '+rname+' upgraded to Lv.'+G.houseMainLevel+'! New room slot unlocked!','ok');
-          }else{G.houseRoomLevels[rid]=(G.houseRoomLevels[rid]||1)+1;save();renderHouse();
-            toast(rem+' '+rname+' upgraded to Lv.'+(G.houseRoomLevels[rid])+'!','ok');}
+          if(rid==='main'){const curLv=G.houseMainLevel||1;if(curLv>=5){toast('Main Hall max level 5!','er');G.gold+=uc;return;}
+            const otherRooms=HOUSE_ROOMS.filter(r=>r.id!=='main');const allSameLevel=otherRooms.every(r=>!G.houseRooms?.includes(r.id)||(G.houseRoomLevels[r.id]||1)>=curLv);
+            if(!allSameLevel){toast('All other rooms must be at least Lv.'+curLv+' first!','er');G.gold+=uc;return;}
+            G.houseMainLevel=curLv+1;save();renderHouse();toast(rem+' Main Hall Lv.'+G.houseMainLevel+'! All rooms can now upgrade to Lv.'+G.houseMainLevel,'ok');
+          }else{if((G.houseRoomLevels[rid]||0)>=(G.houseMainLevel||1)){toast('Upgrade Main Hall first to unlock higher room levels!','er');G.gold+=uc;return;}G.houseRoomLevels[rid]=(G.houseRoomLevels[rid]||1)+1;save();renderHouse();toast(rem+' '+rname+' Lv.'+(G.houseRoomLevels[rid])+'!','ok');}
         };})();d.appendChild(b);
       }else if(owned&&lv>=maxLv){
         d.innerHTML+='<div style="font-size:9px;color:var(--ok);margin-top:4px;">✅ Max Level</div>';
@@ -8209,6 +8260,7 @@ function renderPets(){
 function buyPet(petId){
   const pet=PETS[petId];if(!pet)return;
   if(G.pets&&G.pets[petId]){toast('Already owned!','er');return;}
+  if(pet.ascOnly&&(G.ascension||0)<1){toast('Wolf requires Ascension 1!','er');return;}
   if((G.gold||0)<pet.shopCost){toast(`Need ${fmt(pet.shopCost)}g to buy ${pet.name}!`,'er');return;}
   G.gold-=pet.shopCost;
   if(!G.pets)G.pets={};
@@ -8537,10 +8589,7 @@ async function sendChatMsg(){
 }
 
 // ── MULTIPLAYER PANEL ─────────────────────────────────────────────────────────
-function openMultiplayer(){
-  renderMPPanel();
-  openM('mMultiplayer');
-}
+function openMultiplayer(){ openOnlineMode(); }
 
 function renderMPPanel(){
   const body=document.getElementById('mpBody');if(!body)return;
