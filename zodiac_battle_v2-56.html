@@ -8367,10 +8367,10 @@ window.addEventListener('DOMContentLoaded', function(){
 // ══════════════════════════════════════════════════════════════════════════════
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function fbReady(){return !!(window.FB&&window._fbUser&&window.FB.auth);}
-function fbUID(){return window._fbUser?.uid||null;}
-function fbName(){return window._fbUser?.displayName||window._fbUser?.email||'Anonymous';}
-function fbAvatar(){return window._fbUser?.photoURL||null;}
+function fbReady(){return !!(window.FB&&window.FB.auth&&(window.FB.auth.currentUser||window._fbUser));}
+function fbUID(){return (window.FB?.auth?.currentUser?.uid)||(window._fbUser?.uid)||null;}
+function fbName(){const u=window.FB?.auth?.currentUser||window._fbUser;return u?.displayName||u?.email||'Anonymous';}
+function fbAvatar(){const u=window.FB?.auth?.currentUser||window._fbUser;return u?.photoURL||null;}
 
 // ── Sign-in callbacks ─────────────────────────────────────────────────────────
 window._onFBSignIn = function(user){
@@ -8395,7 +8395,10 @@ window._onFBSignOut = function(){
 
 // ── CLOUD SAVE ────────────────────────────────────────────────────────────────
 async function syncSaveToCloud(){
-  if(!fbReady())return;
+  if(!fbReady()){console.warn('syncSaveToCloud: not ready, fbUID=',fbUID());return;}
+  const uid=fbUID();
+  if(!uid){console.warn('syncSaveToCloud: no UID');return;}
+  console.log('syncSaveToCloud: uid=',uid,'auth.currentUser=',window.FB?.auth?.currentUser?.uid);
   try{
     const {db,doc,setDoc,serverTimestamp}=window.FB;
     // Small public profile doc (for leaderboard/search) — stays under 10KB
@@ -8415,11 +8418,11 @@ async function syncSaveToCloud(){
       isAnonymous:window._fbUser?.isAnonymous||false,
       lastSeen:serverTimestamp(),
     };
-    await setDoc(doc(db,'players',fbUID()),profile,{merge:true});
+    await setDoc(doc(db,'players',uid),profile,{merge:true});
     // Full save stored separately (subcollection avoids size limits on profile)
     const saveStr=JSON.stringify(G);
     if(saveStr.length<500000){
-      await setDoc(doc(db,'players',fbUID(),'saveData','latest'),{data:saveStr,ts:serverTimestamp()},{merge:true});
+      await setDoc(doc(db,'players',uid,'saveData','latest'),{data:saveStr,ts:serverTimestamp()},{merge:true});
     }
     console.log('Save synced to cloud ✓');
   }catch(e){console.error('Cloud save failed:',e.message,e.code);toast('Cloud save error: '+e.message,'er');}
