@@ -304,7 +304,7 @@ const firebaseConfig = {
 
 const fbApp  = initializeApp(firebaseConfig);
 const auth   = getAuth(fbApp);
-const db     = getFirestore(fbApp,'(default)'); // explicit default database
+const db     = getFirestore(fbApp);
 const rtdb   = getDatabase(fbApp);
 const gprov  = new GoogleAuthProvider();
 
@@ -317,6 +317,10 @@ window.FB = { auth, db, rtdb, gprov,
   where, addDoc, deleteDoc,
   ref, push, onChildAdded, rtServerTimestamp,
   rtQuery, limitToLast, get: rtGet, onValue, set, remove };
+
+// Direct references for debugging
+window.fbDB = db;
+window.fbAuth = auth;
 
 // ── AUTH STATE ────────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, user => {
@@ -8395,15 +8399,16 @@ window._onFBSignOut = function(){
 
 // ── CLOUD SAVE ────────────────────────────────────────────────────────────────
 async function syncSaveToCloud(){
+  if(!window.FB?.db){console.warn('syncSaveToCloud: db not ready');return;}
   if(!fbReady()){console.warn('syncSaveToCloud: not ready');return;}
   const currentUser=window.FB?.auth?.currentUser;
   if(!currentUser){console.warn('syncSaveToCloud: no currentUser');return;}
   const uid=currentUser.uid;
   if(!uid){console.warn('syncSaveToCloud: no UID');return;}
   try{
-    // Force token refresh to ensure Firestore auth works
-    await currentUser.getIdToken(true);
-    const {db,doc,setDoc,serverTimestamp}=window.FB;
+    await currentUser.getIdToken(false);// get token without forcing refresh
+    const db=window.fbDB||window.FB?.db;if(!db){console.error('No db instance!');return;}
+    const {doc,setDoc,serverTimestamp}=window.FB;
     // Small public profile doc (for leaderboard/search) — stays under 10KB
     const profile={
       uid:fbUID(),
@@ -8430,11 +8435,8 @@ async function syncSaveToCloud(){
     console.log('Save synced to cloud ✓');
   }catch(e){
     console.error('Cloud save failed:',e.message,e.code,'uid:',uid);
-    // Show detailed error for debugging
-    const msg=e.code==='permission-denied'
-      ? `Permission denied. UID: ${uid?.substring(0,8)}... Check Firebase Auth domain settings.`
-      : e.message;
-    toast('Cloud save error: '+msg,'er');
+    // Only show error on manual sync, not auto-sync
+    if(window._manualSync){toast('Cloud save error: '+e.message,'er');}
   }
 }
 
@@ -8647,7 +8649,7 @@ function renderMPPanel(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mMultiplayer');openLeaderboard()">🏆 Leaderboard</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mMultiplayer');openChat()">💬 Global Chat</button>
-      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="syncSaveToCloud().then(()=>toast('☁️ Synced!','ok'))">☁️ Sync Save</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="window._manualSync=true;syncSaveToCloud().then(()=>{toast('☁️ Synced!','ok');window._manualSync=false;}).catch(e=>{toast('Error: '+e.message,'er');window._manualSync=false;})">☁️ Sync Save</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="loadFromCloud()">📥 Load Cloud</button>
     </div>
     <button class="btn bd bblk" style="width:100%;font-size:11px;" onclick="mpSignOut()">🚪 Sign Out</button>`;
@@ -8820,7 +8822,7 @@ function openOnlineMode(){
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openFaction()">🏰 Faction</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openPvpArena()">⚔️ PvP Arena</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openLeaderboard()">🏆 Leaderboard</button>
-      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="syncSaveToCloud().then(()=>toast('☁️ Synced!','ok'))">☁️ Sync Save</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="window._manualSync=true;syncSaveToCloud().then(()=>{toast('☁️ Synced!','ok');window._manualSync=false;}).catch(e=>{toast('Error: '+e.message,'er');window._manualSync=false;})">☁️ Sync Save</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="loadFromCloud()">📥 Load Cloud</button>
     </div>
     <button class="btn bd bblk" style="width:100%;font-size:11px;" onclick="mpSignOut()">🚪 Sign Out</button>`;
