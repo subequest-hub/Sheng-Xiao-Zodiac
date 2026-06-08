@@ -1506,13 +1506,13 @@ const EVOLUTIONS={
   Rat:[{emoji:'🐀',name:'Rat'},{emoji:'🐁',name:'Mouse Knight'},{emoji:'👑🐀',name:'Rat Emperor'},{emoji:'⚡🐀',name:'Thunder Rat'},{emoji:'🌟🐀',name:'Cosmic Rat'},{emoji:'👑⚡🐀',name:'Rat Overlord'},{emoji:'🌌🐀',name:'Cosmic Rat Ascendant'}],
   Ox:[{emoji:'🐂',name:'Ox'},{emoji:'🦬',name:'Iron Ox'},{emoji:'🐃',name:'War Ox'},{emoji:'🛡️🐂',name:'Steel Ox'},{emoji:'⚔️🐂',name:'Berserker Ox'},{emoji:'👑🐂',name:'Ox Titan'},{emoji:'⚡🐂',name:'Thunder Titan Ox'}],
   Tiger:[{emoji:'🐅',name:'Tiger'},{emoji:'🐯',name:'Battle Tiger'},{emoji:'🔥🐅',name:'Inferno Tiger'},{emoji:'⚡🐅',name:'Storm Tiger'},{emoji:'❄️🐅',name:'Frost Tiger'},{emoji:'👑🐅',name:'Tiger God'},{emoji:'🌟🐅',name:'Celestial Tiger God'}],
-  Rabbit:[{emoji:'🐇',name:'Rabbit'},{emoji:'🐰',name:'Swift Hare'},{emoji:'⚡🐇',name:'Thunder Rabbit'},{emoji:'🌙🐇',name:'Moon Rabbit'},{emoji:'💨🐇',name:'Wind Rabbit'},{emoji:'👑🐇',name:'Rabbit Deity'}],
-  Dragon:[{emoji:'🐉',name:'Dragon'},{emoji:'🦕',name:'Ancient Dragon'},{emoji:'🌋🐉',name:'Volcano Dragon'},{emoji:'⚡🐉',name:'Storm Dragon'},{emoji:'❄️🐉',name:'Frost Dragon'},{emoji:'👑🐉',name:'Dragon God'}],
+  Rabbit:[{emoji:'🐇',name:'Rabbit'},{emoji:'🐰',name:'Swift Hare'},{emoji:'⚡🐇',name:'Thunder Rabbit'},{emoji:'🌙🐇',name:'Moon Rabbit'},{emoji:'💨🐇',name:'Wind Rabbit'},{emoji:'👑🐇',name:'Rabbit Deity'},{emoji:'🌌🐇',name:'Celestial Moon Deity'}],
+  Dragon:[{emoji:'🐉',name:'Dragon'},{emoji:'🦕',name:'Ancient Dragon'},{emoji:'🌋🐉',name:'Volcano Dragon'},{emoji:'⚡🐉',name:'Storm Dragon'},{emoji:'❄️🐉',name:'Frost Dragon'},{emoji:'👑🐉',name:'Dragon God'},{emoji:'🌌🐉',name:'Primordial Cosmic Dragon'}],
   Snake:[{emoji:'🐍',name:'Snake'},{emoji:'🐍',name:'Viper'},{emoji:'☠️🐍',name:'Death Viper'},{emoji:'🌑🐍',name:'Shadow Snake'},{emoji:'💀🐍',name:'Bone Serpent'},{emoji:'👑🐍',name:'Serpent King'},{emoji:'🌑🐍',name:'Void Serpent Emperor'}],
   Horse:[{emoji:'🐎',name:'Horse'},{emoji:'🦄',name:'Battle Steed'},{emoji:'⚡🐎',name:'Thunder Stallion'},{emoji:'🔥🐎',name:'Fire Horse'},{emoji:'💨🐎',name:'Wind Horse'},{emoji:'👑🐎',name:'Celestial Horse'},{emoji:'✨🐎',name:'Stellar Stallion'}],
   Goat:[{emoji:'🐐',name:'Goat'},{emoji:'🦌',name:'Mountain Goat'},{emoji:'🌋🐐',name:'Volcano Ram'},{emoji:'🛡️🐐',name:'Iron Ram'},{emoji:'⚔️🐐',name:'War Ram'},{emoji:'👑🐐',name:'Goat Emperor'},{emoji:'🏔️🐐',name:'Mountain Immortal'}],
-  Monkey:[{emoji:'🐒',name:'Monkey'},{emoji:'🦊',name:'Cunning Ape'},{emoji:'🌪️🐒',name:'Chaos Monkey'},{emoji:'🎭🐒',name:'Trickster'},{emoji:'🔥🐒',name:'Fire Ape'},{emoji:'👑🐒',name:'Monkey King'}],
-  Rooster:[{emoji:'🐓',name:'Rooster'},{emoji:'🦅',name:'War Eagle'},{emoji:'👑🐓',name:'Phoenix Rooster'},{emoji:'🔥🐓',name:'Fire Rooster'},{emoji:'⚡🐓',name:'Thunder Rooster'},{emoji:'👑🐓',name:'Rooster Emperor'}],
+  Monkey:[{emoji:'🐒',name:'Monkey'},{emoji:'🦊',name:'Cunning Ape'},{emoji:'🌪️🐒',name:'Chaos Monkey'},{emoji:'🎭🐒',name:'Trickster'},{emoji:'🔥🐒',name:'Fire Ape'},{emoji:'👑🐒',name:'Monkey King'},{emoji:'🌌🐒',name:'Sage Monkey Sovereign'}],
+  Rooster:[{emoji:'🐓',name:'Rooster'},{emoji:'🦅',name:'War Eagle'},{emoji:'👑🐓',name:'Phoenix Rooster'},{emoji:'🔥🐓',name:'Fire Rooster'},{emoji:'⚡🐓',name:'Thunder Rooster'},{emoji:'👑🐓',name:'Rooster Emperor'},{emoji:'🌌🐓',name:'Eternal Phoenix Emperor'}],
   Dog:[{emoji:'🐕',name:'Dog'},{emoji:'🐺',name:'Wolf Guard'},{emoji:'⭐🐕',name:'Celestial Hound'},{emoji:'🛡️🐕',name:'Guardian Dog'},{emoji:'⚔️🐕',name:'War Dog'},{emoji:'👑🐕',name:'Dog King'},{emoji:'⭐🐕',name:'Guardian Deity'}],
   Pig:[{emoji:'🐖',name:'Pig'},{emoji:'🦭',name:'Golden Pig'},{emoji:'💎🐖',name:'Fortune Boar'},{emoji:'🍀🐖',name:'Lucky Pig'},{emoji:'👑🐖',name:'Royal Pig'},{emoji:'👑🐖',name:'Pig Emperor'},{emoji:'💎🐖',name:'Fortune Immortal'}],
 };
@@ -3329,7 +3329,7 @@ function updateQuestProgress(key,delta=1){
   G.dailyQuests.forEach(q=>{
     if(q.completed||q.key!==key)return;
     q.progress=Math.min(q.target,q.progress+delta);
-    if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;updateHdr();save();toast(`📋 ${q.desc}! +${st}⭐`,'ok');}
+    if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;G.totalDailyDone=(G.totalDailyDone||0)+1;if(getTotalQuestPoints()>=1000)checkGodlyPieceUnlock('quests_1000');updateHdr();save();toast(`📋 ${q.desc}! +${st}⭐`,'ok');}
   });
   if(G.weeklyQuests)G.weeklyQuests.forEach(q=>{
     if(q.completed)return;
@@ -3338,19 +3338,22 @@ function updateQuestProgress(key,delta=1){
       if(!q.reqProgress)q.reqProgress=reqs.map(()=>0);
       reqs.forEach((r,i)=>{if(r.key===key)q.reqProgress[i]=Math.min(r.target,(q.reqProgress[i]||0)+delta);});
       if(reqs.every((r,i)=>(q.reqProgress[i]||0)>=r.target)){
-        q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;updateHdr();save();
+        q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;
+        G.totalWeeklyDone=(G.totalWeeklyDone||0)+1;
+        if(getTotalQuestPoints()>=1000)checkGodlyPieceUnlock('quests_1000');
+        updateHdr();save();
         toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');addBpXp(100);
       }
     }else{
       if(q.key!==key)return;
       q.progress=Math.min(q.target,(q.progress||0)+delta);
-      if(q.progress>=q.target){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;updateHdr();save();toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');}
+      if(q.progress>=q.target){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;G.totalWeeklyDone=(G.totalWeeklyDone||0)+1;if(getTotalQuestPoints()>=1000)checkGodlyPieceUnlock('quests_1000');updateHdr();save();toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');}
     }
   });
   if(G.monthlyQuests)G.monthlyQuests.forEach(q=>{
     if(q.completed||q.key!==key)return;
     q.progress=Math.min(q.target,q.progress+delta);
-    if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;updateHdr();save();toast(`🗓️ Monthly: ${q.desc}! +${st}⭐`,'ok');}
+    if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;G.totalMonthlyDone=(G.totalMonthlyDone||0)+1;if(getTotalQuestPoints()>=1000)checkGodlyPieceUnlock('quests_1000');updateHdr();save();toast(`🗓️ Monthly: ${q.desc}! +${st}⭐`,'ok');}
   });
   updateQuestNotif();
 }
@@ -4706,7 +4709,7 @@ function doAttack(){
   const isSuperCrit=!isMegaCrit&&critRoll<0.04+(f.trait==='lucky'?.03:0);
   const isCrit=!isMegaCrit&&!isSuperCrit&&critRoll<(0.15+(f.trait==='lucky'?.1:0));
   const _fEl2=getZodiacElement(f.zodiac);const isWeak=_fEl2===e.weak;
-  const xpGain=Math.floor((B.XP_HIT+Math.floor(e.level*.25))*(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(getWorldEventMult?getWorldEventMult('xp'):1));
+  const xpGain=Math.floor((B.XP_HIT+Math.floor(e.level*.25))*(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(1+getHouseBonus('xpBonus'))*(getWorldEventMult?getWorldEventMult('xp'):1));
   const sMult=1+G.streak*B.STREAK_BONUS;
   const atkBuff=getAtkBuff(f.zodiac)*skillBoost.atk;
   const weatherMult=getWeatherMult(getZodiacElement(f.zodiac));
@@ -4891,7 +4894,7 @@ function onWin(sMult=1){
   // Feature 8: goldFind stat multiplier
   const eqStatsW=getEquipmentStats(G.active);
   const goldTouchBonus=getAwakeningBonuses(G.active).gold_touch?0.50:0;
-  const goldFindMult=1+(eqStatsW.goldFind||0)/100+(G.prestigeShop?.goldFindBonus||0)+goldTouchBonus+getPetBonus('gold')+getHouseBonus('goldFind')+getHouseBonus('goldAll');
+  const goldFindMult=1+(eqStatsW.goldFind||0)/100+(G.prestigeShop?.goldFindBonus||0)+goldTouchBonus+getPetBonus('gold')+getHouseBonus('goldFind')+getHouseBonus('goldAll')+getHouseBonus('goldWin');
   let gold=Math.floor(e.gold*sMult*goldFindMult*(getWorldEventMult?getWorldEventMult('gold'):1));
   // Feature 3: finisher bonus gold
   if(G.finisherBonus){gold=Math.floor(gold*1.5);G.finisherBonus=false;toast('💀 FINISHER! +50% gold!','ok');}
@@ -4951,16 +4954,22 @@ function onWin(sMult=1){
   if(G.mineShafts>0){starsEarned+=(G.mineShafts||0);}
   if(G.starMines>0){starsEarned+=(G.starMines||0)*10;}
   if(G.voidVaults>0){starsEarned+=(G.voidVaults||0)*100;}
+  // House: Zodiac Altar gives +1 star per 10 battles
+  if(getHouseBonus('starBattle')>0){G._houseBattleCount=(G._houseBattleCount||0)+1;if(G._houseBattleCount%10===0){starsEarned+=1;}}
+  // House: Alchemy Set gives random potion drop on win
+  if(getHouseBonus('potionDrop')>0&&Math.random()<getHouseBonus('potionDrop')){G.pot.heal=(G.pot.heal||0)+1;addLog('rewards','🧪 Alchemy Set: +1 Potion!','House bonus');}
   addPassiveCraftingXP();
   // Garden plot countdown
   if(G.gardenPlots){Object.keys(G.gardenPlots).forEach(k=>{if(G.gardenPlots[k]&&G.gardenPlots[k].battlesLeft>0){G.gardenPlots[k].battlesLeft--;if(G.gardenPlots[k].battlesLeft===0)toast('🌾 Garden ready! Visit House to harvest.','ok');}});}
   if(getPetBonus('stars')>0)starsEarned=Math.floor(starsEarned*(1+getPetBonus('stars')));
   if(starsEarned>0){G.stars=(G.stars||0)+starsEarned;addLog('rewards',`⭐ +${starsEarned} stars earned!`,e.boss||e.isAreaBoss?'Boss kill bonus':'');}
   G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=e.xp+e.level*5;lvCheck(n);}});
-  G.party.forEach(n=>{const r=G.roster[n];if(r){const mx=getMaxHp(n);r.hp=Math.min(mx,r.hp+Math.floor(mx*B.HEAL_BETWEEN));}});
+  G.party.forEach(n=>{const r=G.roster[n];if(r){const mx=getMaxHp(n);r.hp=Math.min(mx,r.hp+Math.floor(mx*B.HEAL_BETWEEN));
+    // Moonwell: auto-heal extra 2% HP per battle
+    const moonHeal=getHouseBonus('autoHeal');if(moonHeal>0)r.hp=Math.min(mx,r.hp+Math.floor(mx*moonHeal));}});
   // Ensure active fighter is alive after between-battle heal; swap if still 0 HP
   {const _ar=G.roster[G.active];if(_ar&&_ar.hp<=0){const _al=getAlive();if(_al){G.active=_al.name;}}}
-  updateQuestProgress('wins',1);updateQuestProgress('goldToday',gold);updateQuestProgress('goldWeek',gold);updateQuestProgress('goldMonth',gold);
+  updateQuestProgress('wins',1);updateQuestProgress('goldToday',gold);updateQuestProgress('goldWeek',gold);updateQuestProgress('goldMonth',gold);updateQuestProgress('goldEarned',gold);
   // #11 Gold interest: every 5 battles, 5% on gold above 1000
   G.battlesSinceInterest=(G.battlesSinceInterest||0)+1;
   if(G.battlesSinceInterest>=5){
@@ -5086,7 +5095,8 @@ function potion(type){
   updateQuestProgress('potsUsed',1);addBpXp(5);addCraftingXP('alchemist',1);
   if(type==='heal'){
     let totalHealed=0;
-    G.party.forEach(n=>{const r=G.roster[n];if(r&&r.hp>0){const mx=getMaxHp(n);const old=r.hp;r.hp=mx;totalHealed+=mx-old;}});
+    const potPower=1+getHouseBonus('potionPower');
+    G.party.forEach(n=>{const r=G.roster[n];if(r&&r.hp>0){const mx=getMaxHp(n);const old=r.hp;r.hp=Math.min(mx,Math.floor(r.hp+(mx-r.hp)*potPower));if(r.hp<mx)r.hp=mx;totalHealed+=r.hp-old;}});
     setMsg('🧪 Full Party Heal! All HP restored!','','heal');
     spawnDmg('FULL HEAL!','hl',document.getElementById('squadSec'));renderSquad();
   }else if(type==='megaHeal'){
@@ -5894,7 +5904,7 @@ function buyItem(id,qty=1){
   else{if(G.gold<total){toast('Not enough gold!','er');return;}G.gold-=total;}
   if(id==='starDust'){G.stars=(G.stars||0)+5*qty;updateHdr();save();renderShop();toast(`✨ +${fmt(5*qty)} Stars!`,'ok');return;}
   if(id==='starVault'){const canBuyV=Math.min(qty,50-(G.starMines||0));if(canBuyV<=0){toast('Max 50 Star Mines!','er');G.stars+=item.starCost*qty;return;}if(canBuyV<qty)G.stars+=item.starCost*(qty-canBuyV);G.starMines=(G.starMines||0)+canBuyV;updateHdr();save();renderShop();toast(`🌟 +${canBuyV} Star Mine${canBuyV>1?'s':''}! Total: ${G.starMines}/50`,'ok');return;}
-  if(id==='starMegaVault'){const canBuyMV=Math.min(qty,100-(G.voidVaults||0));if(canBuyMV<=0){toast('Max 100 Void Vaults!','er');G.stars+=item.starCost*qty;return;}if(canBuyMV<qty)G.stars+=item.starCost*(qty-canBuyMV);G.voidVaults=(G.voidVaults||0)+canBuyMV;if((G.voidVaults||0)>=100)checkGodlyPieceUnlock('vault100');updateHdr();save();renderShop();toast(`🌌 +${canBuyMV} Void Vault${canBuyMV>1?'s':''}! Total: ${G.voidVaults}/100`,'ok');return;}
+  if(id==='starMegaVault'){const canBuyMV=Math.min(qty,100-(G.voidVaults||0));if(canBuyMV<=0){toast('Max 100 Void Vaults!','er');G.stars+=item.starCost*qty;return;}if(canBuyMV<qty)G.stars+=item.starCost*(qty-canBuyMV);G.voidVaults=(G.voidVaults||0)+canBuyMV;if((G.voidVaults||0)>=100)checkGodlyPieceUnlock('vault_100');updateHdr();save();renderShop();toast(`🌌 +${canBuyMV} Void Vault${canBuyMV>1?'s':''}! Total: ${G.voidVaults}/100`,'ok');return;}
   if(id==='expKey'){G.expKeys=(G.expKeys||0)+qty;toast(`🗺️ +${qty} Expedition Key${qty>1?'s':''}! (${G.expKeys} total)`);}
   if(id==='heal'||id==='shield'){const maxPot=1000;const cur=G.pot[id]||0;const canAdd=Math.min(qty,maxPot-cur);if(canAdd<=0){toast('Max 1000 potions!','er');if(!item.starCost)G.gold+=item.cost*qty;else G.stars+=item.starCost*qty;updateHdr();return;}if(canAdd<qty){if(!item.starCost)G.gold+=item.cost*(qty-canAdd);else G.stars+=item.starCost*(qty-canAdd);updateHdr();}G.pot[id]=(G.pot[id]||0)+canAdd;}
   if(id==='boost'){G.pot.boost=(G.pot.boost||0)+qty*10;}
@@ -6174,10 +6184,10 @@ function getGodlyProgressVal(sourceKey){
   // Returns [current, max, pct, label] for each source condition
   switch(sourceKey){
     case 'convergence':     {const s=Object.values(G.mythicalStacks||{}).reduce((a,b)=>a+b,0);return[s,10,Math.min(1,s/10),`${s}/10 Mythical Stacks`];}
-    case 'tower_1000_buff': {const f=G.towerBestFloor||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Buff Tower)`];}
-    case 'tower_1000_ironman':{const f=G.towerBestFloor||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Ironman Tower)`];}
-    case 'tower_1000_debuff':{const f=G.towerBestFloor||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Debuff Tower)`];}
-    case 'reborn_1000':     {const f=G.towerBestFloor||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Reborn Tower)`];}
+    case 'tower_1000_buff': {const f=G['towerBest_buff']||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Buff Tower)`];}
+    case 'tower_1000_ironman':{const f=G['towerBest_ironman']||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Ironman Tower)`];}
+    case 'tower_1000_debuff':{const f=G['towerBest_debuff']||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Debuff Tower)`];}
+    case 'reborn_1000':     {const f=G['towerBest_reborn']||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Reborn Tower)`];}
     case 'summon_100k':     {const s=G.totalSummons||0;return[s,100000,Math.min(1,s/100000),`${fmt(s)}/100K summons`];}
     case 'summon_1m':       {const s=G.totalSummons||0;return[s,1000000,Math.min(1,s/1000000),`${fmt(s)}/1M summons`];}
     case 'bp_100':          {const b=G.bpLevel||0;return[b,100,Math.min(1,b/100),`BP Level ${b}/100`];}
@@ -6273,8 +6283,8 @@ function renderBlacksmith(){
   const body=document.getElementById('blacksmithBody');if(!body)return;
   const rarityOrder=['Common','Uncommon','Rare','Epic','Legendary','Mythical'];
   const rerollCost=item=>Math.floor(10*(EQUIPMENT_RARITIES[item.rarity]?.mult||1)*(1+Math.floor((item.rerollCount||0)/10)*.2));  // cheap, softly scales every 10 rolls
-  const upgradeCost=item=>{const lv=item.smithLevel||0;const rarMult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;return Math.floor(5000*rarMult*Math.pow(1.15,lv));};
-  const enchantCost=item=>2+(item.enchantLevel||0);
+  const upgradeCost=item=>{const lv=item.smithLevel||0;const rarMult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;return Math.floor(5000*rarMult*Math.pow(1.15,lv)*(1+getHouseBonus('upgradeCost')));};
+  const enchantCost=item=>Math.max(1,Math.round((2+(item.enchantLevel||0))*(1-getHouseBonus('enchantPower'))));
   let html=`<div class="t2 ts mb2">Tap a stat to 🔒 lock it. Locked stats won't be rerolled.</div>`;
   const items=(G.equipment||[]).sort((a,b)=>rarityOrder.indexOf(b.rarity)-rarityOrder.indexOf(a.rarity));
   if(!items.length){body.innerHTML='<div class="t2 ts" style="text-align:center;padding:20px;">No equipment yet!</div>';return;}
