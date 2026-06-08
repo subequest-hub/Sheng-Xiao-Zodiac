@@ -304,7 +304,7 @@ const firebaseConfig = {
 
 const fbApp  = initializeApp(firebaseConfig);
 const auth   = getAuth(fbApp);
-const db     = getFirestore(fbApp); // uses (default) database
+const db     = getFirestore(fbApp,'(default)'); // explicit default database
 const rtdb   = getDatabase(fbApp);
 const gprov  = new GoogleAuthProvider();
 
@@ -8428,7 +8428,14 @@ async function syncSaveToCloud(){
       await setDoc(doc(db,'players',uid,'saveData','latest'),{data:saveStr,ts:serverTimestamp()},{merge:true});
     }
     console.log('Save synced to cloud ✓');
-  }catch(e){console.error('Cloud save failed:',e.message,e.code);toast('Cloud save error: '+e.message,'er');}
+  }catch(e){
+    console.error('Cloud save failed:',e.message,e.code,'uid:',uid);
+    // Show detailed error for debugging
+    const msg=e.code==='permission-denied'
+      ? `Permission denied. UID: ${uid?.substring(0,8)}... Check Firebase Auth domain settings.`
+      : e.message;
+    toast('Cloud save error: '+msg,'er');
+  }
 }
 
 async function loadFromCloud(){
