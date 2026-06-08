@@ -8407,35 +8407,43 @@ async function syncSaveToCloud(){
   const uid=currentUser.uid;
   window._lastSyncError=null;
   try{
-    if(window._manualSync) toast('Getting token...','ok');
     const token=await currentUser.getIdToken(true);
+    const base='https://firestore.googleapis.com/v1/projects/sheng-xiao-zodiac/databases/(default)/documents';
+    const headers={'Content-Type':'application/json','Authorization':'Bearer '+token};
     
-    // Decode token to verify project
-    const payload=JSON.parse(atob(token.split('.')[1]));
-    const tokenProject=payload.aud;
-    if(window._manualSync) toast('Token aud: '+tokenProject,'ok');
+    if(window._manualSync){
+      let results='Token: '+token.substring(0,20)+'...\n\n';
+      // Test 1: READ players collection (should work with open rules)
+      try{
+        const r1=await fetch(base+'/players',{headers:{'Authorization':'Bearer '+token}});
+        results+='GET /players: HTTP '+r1.status+'\n';
+      }catch(e){results+='GET /players: ERROR '+e.message+'\n';}
+      // Test 2: READ own doc
+      try{
+        const r2=await fetch(base+'/players/'+uid,{headers:{'Authorization':'Bearer '+token}});
+        results+='GET /players/'+uid.substring(0,8)+'...: HTTP '+r2.status+'\n';
+      }catch(e){results+='GET /players/uid: ERROR '+e.message+'\n';}
+      // Test 3: WRITE without auth (open rules test)
+      try{
+        const r3=await fetch(base+'/players/'+uid,{method:'PATCH',headers,body:JSON.stringify({fields:{test:{stringValue:'open'}}})});
+        const t3=await r3.text();
+        results+='PATCH /players/uid: HTTP '+r3.status+'\n'+t3.substring(0,150);
+      }catch(e){results+='PATCH: ERROR '+e.message+'\n';}
+      alert(results);
+      return;
+    }
     
-    const url='https://firestore.googleapis.com/v1/projects/sheng-xiao-zodiac/databases/(default)/documents/players/'+uid;
+    const url=base+'/players/'+uid;
     const body=JSON.stringify({fields:{
-      uid:{stringValue:uid},
-      name:{stringValue:fbName()||'Test'},
-      wins:{integerValue:String(G.wins||0)},
-      test:{stringValue:'hello from REST'}
+      uid:{stringValue:uid},name:{stringValue:fbName()||'Anonymous'},
+      wins:{integerValue:String(G.wins||0)},power:{doubleValue:calcPowerRating?calcPowerRating():0}
     }});
-    const r=await fetch(url,{
-      method:'PATCH',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body
-    });
-    const responseText=await r.text();
-    if(window._manualSync) alert('Project: '+tokenProject+'\nUID: '+uid+'\nHTTP '+r.status+': '+(r.ok?'SUCCESS':'FAILED')+'\n\n'+responseText.substring(0,400));
-    if(!r.ok) throw new Error('HTTP '+r.status+': '+responseText.substring(0,100));
+    const r=await fetch(url,{method:'PATCH',headers,body});
+    if(!r.ok){const t=await r.text();throw new Error('HTTP '+r.status+': '+t.substring(0,100));}
     console.log('Cloud sync OK');
-    if(window._manualSync) toast('☁️ Synced!','ok');
   }catch(e){
     console.error('Sync failed:',e.message);
     window._lastSyncError={msg:e.message,code:'rest-error',uid,time:new Date().toISOString()};
-    if(window._manualSync) alert('SYNC ERROR:\n'+e.message+'\nUID: '+uid);
   }
 }
 
