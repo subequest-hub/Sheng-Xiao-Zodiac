@@ -532,15 +532,21 @@ onAuthStateChanged(auth, user => {
   <div id="logPanel" style="display:none;border-top:1px solid rgba(71,85,105,.2);">
     <!-- Tab bar -->
     <div style="display:flex;border-bottom:1px solid rgba(71,85,105,.2);">
-      <button class="log-tab on" id="ltab-battle" onclick="switchLogTab('battle')">⚔️ Battle</button>
-      <button class="log-tab" id="ltab-rewards" onclick="switchLogTab('rewards')">🎁 Rewards</button>
-      <button class="log-tab" id="ltab-events" onclick="switchLogTab('events')">⚡ Events</button>
+      <button class="log-tab on" id="ltab-battle" onclick="switchLogTab('battle')">⚔️</button>
+      <button class="log-tab" id="ltab-rewards" onclick="switchLogTab('rewards')">🎁</button>
+      <button class="log-tab" id="ltab-events" onclick="switchLogTab('events')">⚡</button>
+      <button class="log-tab" id="ltab-world" onclick="switchLogTab('world')">🌐</button>
+      <button class="log-tab" id="ltab-guild" onclick="switchLogTab('guild')">🏰</button>
+      <button class="log-tab" id="ltab-trading" onclick="switchLogTab('trading')">🏪</button>
       <button onclick="toggleLog()" style="margin-left:auto;background:none;border:none;color:var(--txt2);font-size:13px;cursor:pointer;padding:0 10px;">▼</button>
     </div>
     <!-- Tab content -->
     <div id="logContent-battle" class="log-content" style="display:block;"></div>
     <div id="logContent-rewards" class="log-content" style="display:none;"></div>
     <div id="logContent-events" class="log-content" style="display:none;"></div>
+    <div id="logContent-world" class="log-content" style="display:none;"></div>
+    <div id="logContent-guild" class="log-content" style="display:none;"></div>
+    <div id="logContent-trading" class="log-content" style="display:none;"></div>
   </div>
   <!-- Hidden compatibility elements -->
   <button id="atkBtn" onclick="doAttack()" style="display:none;"></button>
@@ -2416,7 +2422,9 @@ function renderEquipmentManager(zodiacName){
 function getMythicalStacks(name){return(G.mythicalStacks&&G.mythicalStacks[name])||0;}
 function addMythicalStack(name){
   if(!G.mythicalStacks)G.mythicalStacks={};
-  G.mythicalStacks[name]=(G.mythicalStacks[name]||0)+1;
+  const _stackCap=Math.max(10,(G.ascension||0)*10);
+  if((G.mythicalStacks[name]||0)<_stackCap)
+    G.mythicalStacks[name]=(G.mythicalStacks[name]||0)+1;
   const stacks=G.mythicalStacks[name];
   // Don't directly bake into r stats — liveM() applies stack multiplier
   // Just recalculate base stats cleanly so they don't compound forever
@@ -5058,7 +5066,7 @@ function summon(count,free=false){
   addCraftingXP('summoner',count);
   const cost=count*2000;
   if(!free&&G.gold<cost){toast('Not enough gold!','er');return;}
-  if(!free)G.gold-=cost;
+  if(!free){G.gold-=cost;updateHdr();}
   G.totalSummons=(G.totalSummons||0)+count;
   if((G.totalSummons||0)>=100000)checkGodlyPieceUnlock('summon_100k');
   if((G.totalSummons||0)>=1000000)checkGodlyPieceUnlock('summon_1m');G.summonToday=(G.summonToday||0)+count;
@@ -5200,7 +5208,7 @@ function lvCheck(name){
   }
   updateHdr();renderSquad();
   // Auto-evolve: no dialog, no modal open
-  if(G.autoEvo){try{const ce=canEvolve(name);if(ce&&ce.can)doEvolve(name,true);}catch(e){}}
+  if(G.autoEvo){try{const _cev=canEvolve(name);if(_cev&&_cev.can&&!_cev.reason?.includes('Max'))doEvolve(name,true);}catch(e){}}
   // Auto-prestige: fires when level 50 reached
   if(G.autoPrs&&r.level>=50){try{const pStars2=(G.prestigeStars&&G.prestigeStars[name])||0;if(pStars2<10)_doPrestigeApply(name,true);}catch(e){}}
 }
@@ -5758,16 +5766,20 @@ function renderShop(){
     const canAfford=it.starCost?(G.stars||0)>=it.starCost:G.gold>=sc;
     const canx10=it.bulk&&!it.starCost&&G.gold>=sc*10;
     const canx100=it.bulk&&!it.starCost&&G.gold>=sc*100;
+    const maxQty=it.bulk&&!it.starCost?Math.floor(G.gold/sc):it.starCost?Math.floor((G.stars||0)/it.starCost):0;
+    const maxCost=it.starCost?maxQty*it.starCost:maxQty*sc;
     return`<div style="background:rgba(28,38,56,.5);padding:8px;border-radius:9px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:${it.bulk&&!it.starCost?'5':'0'}px;">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:${(it.bulk||it.starCost)?'5':'0'}px;">
         <div style="font-size:20px;">${it.emoji}</div>
         <div style="flex:1;"><div style="font-size:11px;font-weight:700;">${it.name}</div><div class="t2 ts">${itemDesc}${it.turns?' (qty stacks)':''}</div></div>
         <button class="btn bp" style="padding:4px 8px;font-size:10px;${!canAfford?'opacity:.4;':''}" onclick="buyItem('${it.id}',1)" ${!canAfford?'disabled':''}>×1 ${costDisplay}</button>
       </div>
-      ${it.bulk&&!it.starCost?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+      ${it.bulk&&!it.starCost?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
         <button class="btn bs" style="font-size:9px;${!canx10?'opacity:.4;':''}" onclick="buyItem('${it.id}',10)" ${!canx10?'disabled':''}>×10 (${sc*10}g)</button>
         <button class="btn bs" style="font-size:9px;${!canx100?'opacity:.4;':''}" onclick="buyItem('${it.id}',100)" ${!canx100?'disabled':''}>×100 (${sc*100>=1000?(sc*100/1000).toFixed(0)+'K':sc*100}g)</button>
+        ${maxQty>0?`<button class="btn bp" style="font-size:9px;" onclick="buyItem('${it.id}',${maxQty})">Max ×${maxQty}</button>`:''}
       </div>`:''}
+      ${it.starCost&&maxQty>1?`<div style="margin-top:4px;"><button class="btn bp" style="font-size:9px;width:100%;" onclick="buyItem('${it.id}',${maxQty})">Max ×${maxQty} (⭐${maxCost})</button></div>`:''}
     </div>`;
   }).join('');
 }
@@ -6101,6 +6113,8 @@ function renderGodlyIntel(){
   const body=document.getElementById('godlyIntelBody');
   const sub=document.getElementById('godlyIntelSubtitle');
   if(!body)return;
+  // Guard getOwnedGodlyIds
+  if(typeof getOwnedGodlyIds!=='function'){body.innerHTML='<div style="padding:20px;color:var(--txt2);text-align:center;">Loading...</div>';return;}
   const owned=getOwnedGodlyIds();
   const pending=G._pendingGodly||[];// pieces earned but not claimed
   const total=24;
@@ -6242,7 +6256,7 @@ function blacksmithUpgrade(itemId){
   // Track for godly unlock: check if any item reached 100
   if(item.smithLevel>=100)checkGodlyPieceUnlock('smith_100');
   updateHdr();save();renderBlacksmith();
-  toast(`⬆ ${item.name} → Lv.${item.smithLevel}! (${fmt(cost)}g) All stats +2%`,'ok');
+  toast(`⬆ ${item.name} → Lv.${item.smithLevel}! Next upgrade: ${fmt(Math.floor(5000*(EQUIPMENT_RARITIES[item.rarity]?.mult||1)*Math.pow(1.15,item.smithLevel)))}g`,'ok');
 }
 
 // ══ PRESTIGE SHOP ══
@@ -6301,8 +6315,22 @@ function getSeasonData(){
 function generateSeasonTiers(totalDays){
   const tiers=[];
   for(let i=1;i<=totalDays;i++){
-    const free=i%7===0?{stars:5,special:'summon'}:i%3===0?{gold:i*200}:{gold:i*100};
-    const prem=i%7===0?{stars:5,special:'mythicTicket'}:i%5===0?{stars:2,item:'revive'}:i%3===0?{gold:i*25,stars:1}:{gold:i*15};
+    // Free: meaningful gold scaling + stars on milestones
+    const isWeekly=i%7===0;const isMid=i===15;const isEnd=i===totalDays;
+    const freeGold=Math.floor(5000+i*2000);
+    const freeStars=isWeekly?5:i%3===0?2:0;
+    const free=isWeekly?{gold:freeGold,stars:freeStars,special:'summon'}
+               :isMid?{gold:50000,stars:10}
+               :isEnd?{gold:100000,stars:25}
+               :{gold:freeGold,stars:freeStars};
+    // Premium: 3-5× better than free
+    const premGold=Math.floor(freeGold*3);
+    const premStars=isWeekly?20:i%3===0?8:3;
+    const prem=isWeekly?{gold:premGold,stars:premStars,special:'mythicTicket'}
+               :isMid?{gold:150000,stars:30}
+               :isEnd?{gold:300000,stars:75,special:'mythicTicket'}
+               :i%5===0?{gold:premGold,stars:premStars,item:'revive'}
+               :{gold:premGold,stars:premStars};
     tiers.push({day:i,free,premium:prem});
   }
   return tiers;
@@ -6934,7 +6962,10 @@ const ACHIEVEMENTS_DATA=[
   {id:'am',n:'Mythic Army',d:'All 12 Mythical',cat:'📈',r:g=>Object.values(g.roster||{}).filter(z=>z.rarity==='Mythical').length>=12,rw:{stars:200}},
   {id:'a1',n:'Ascended',d:'First ascension',cat:'📈',r:g=>(g.ascension||0)>=1,rw:{stars:50}},
   {id:'a5',n:'Beyond Mortal',d:'5 ascensions',cat:'📈',r:g=>(g.ascension||0)>=5,rw:{stars:250}},
-  {id:'a10',n:'Deity',d:'10 ascensions',cat:'📈',r:g=>(g.ascension||0)>=10,rw:{stars:1000}},
+  {id:'a10', n:'Deity',         d:'10 ascensions',  cat:'📈',r:g=>(g.ascension||0)>=10, rw:{stars:1000}},
+  {id:'a25', n:'Transcendent',  d:'25 ascensions',  cat:'📈',r:g=>(g.ascension||0)>=25, rw:{stars:2500}},
+  {id:'a50', n:'Immortal God',  d:'50 ascensions',  cat:'📈',r:g=>(g.ascension||0)>=50, rw:{stars:5000}},
+  {id:'a100',n:'Beyond Eternity',d:'100 ascensions',cat:'📈',r:g=>(g.ascension||0)>=100,rw:{stars:10000}},
   {id:'cs50',n:'Skilled',d:'Any crafting skill 50',cat:'📈',r:g=>Object.values(g.craftingSkills||{}).some(v=>v>=50),rw:{stars:30}},
   {id:'cs100',n:'Grandmaster',d:'Any skill to 100',cat:'📈',r:g=>Object.values(g.craftingSkills||{}).some(v=>v>=100),rw:{stars:100}},
   {id:'g10k',n:'Goldfish',d:'Earn 10K gold',cat:'💰',r:g=>(g.totalGold||0)>=10000,rw:{stars:2}},
@@ -7209,8 +7240,10 @@ function renderHouse(){
         b.textContent='Upgrade Lv.'+(lv+1)+' — '+upgCost+'g';
         b.onclick=(()=>{const rid=room.id,uc=upgCost,rem=room.emoji,rname=room.name;return()=>{
           if(G.gold<uc){toast('Not enough gold!','er');return;}G.gold-=uc;
-          G.houseRoomLevels[rid]=(G.houseRoomLevels[rid]||1)+1;save();renderHouse();
-          toast(rem+' '+rname+' upgraded to Lv.'+(G.houseRoomLevels[rid])+'!','ok');
+          if(rid==='main'){G.houseMainLevel=(G.houseMainLevel||1)+1;save();renderHouse();
+            toast(rem+' '+rname+' upgraded to Lv.'+G.houseMainLevel+'! New room slot unlocked!','ok');
+          }else{G.houseRoomLevels[rid]=(G.houseRoomLevels[rid]||1)+1;save();renderHouse();
+            toast(rem+' '+rname+' upgraded to Lv.'+(G.houseRoomLevels[rid])+'!','ok');}
         };})();d.appendChild(b);
       }else if(owned&&lv>=maxLv){
         d.innerHTML+='<div style="font-size:9px;color:var(--ok);margin-top:4px;">✅ Max Level</div>';
@@ -8163,15 +8196,29 @@ function renderPets(){
         <div style="flex:1;"><div style="font-weight:700;">${pet.name} <span style="font-size:9px;color:var(--acc);">${owned?'Lv.'+lv+'/'+pet.maxLevel:'🔒'}</span></div>
         <div class="t2 ts">${pet.desc} · ${pet.effect}: +${(pet.baseVal*lv*100).toFixed(0)}%</div>
         ${locked?`<div style="font-size:9px;color:var(--txt2);">Unlock at ${pet.winReq} wins</div>`:''}
-        ${pet.buyOnly&&!owned?`<div style="font-size:9px;color:var(--txt2);">Buy in Shop for ${pet.shopCost}g</div>`:''}
+        ${pet.buyOnly&&!owned?`<div style="font-size:9px;color:var(--txt2);">Buy for ${pet.shopCost}g</div>`:''}
         </div>
-        ${owned?`<button class="btn ${isActive?'bp':'bs'}" style="font-size:9px;" onclick="G.activePet='${pet.id}';save();renderPets();toast('${pet.emoji} ${pet.name} activated!','ok')">${isActive?'Active':'Activate'}</button>`:''}
+        ${owned?`<button class="btn ${isActive?'bp':'bs'}" style="font-size:9px;" onclick="G.activePet='${pet.id}';save();renderPets();toast('${pet.emoji} ${pet.name} activated!','ok')">${isActive?'Active':'Activate'}</button>`:pet.buyOnly?`<button class="btn bs bblk" style="font-size:9px;" onclick="buyPet('${pet.id}')">Buy (${pet.shopCost}g)</button>`:''}
       </div>
       ${owned&&!isMaxLv?`<button class="btn bs bblk" style="font-size:9px;margin-top:5px;" onclick="upgradePet('${pet.id}')">⬆ Upgrade Lv.${lv+1} (${upgCost}g)</button>`:''}
     </div>`;
   });
   body.innerHTML=html;
 }
+
+function buyPet(petId){
+  const pet=PETS[petId];if(!pet)return;
+  if(G.pets&&G.pets[petId]){toast('Already owned!','er');return;}
+  if((G.gold||0)<pet.shopCost){toast(`Need ${fmt(pet.shopCost)}g to buy ${pet.name}!`,'er');return;}
+  G.gold-=pet.shopCost;
+  if(!G.pets)G.pets={};
+  G.pets[petId]=true;
+  if(!G.petLevels)G.petLevels={};
+  G.petLevels[petId]=1;
+  updateHdr();save();renderPets();
+  toast(`${pet.emoji} ${pet.name} purchased!`,'ok');
+}
+
 function upgradePet(petId){
   const pet=PETS[petId];if(!pet||!(G.pets&&G.pets[petId]))return;
   const lv=(G.petLevels&&G.petLevels[petId])||1;const cost=lv*pet.upgradeBase;
@@ -8279,9 +8326,8 @@ window._onFBSignIn = function(user){
   if(sub)sub.textContent=user.displayName||'Online';
   const profSub=document.getElementById('hubProfileSub');
   if(profSub)profSub.textContent=user.displayName||'View profile';
-  // Show GM button if developer
-  const gmBtn=document.getElementById('gmHubBtn');
-  if(gmBtn)gmBtn.style.display=isGM()?'':'none';
+  // Show GM button if developer (delay to ensure auth fully loaded)
+  setTimeout(()=>{const gmBtn=document.getElementById('gmHubBtn');if(gmBtn)gmBtn.style.display=isGM()?'flex':'none';},500);
   // Sync save to cloud on sign-in
   setTimeout(()=>syncSaveToCloud(),2000);
   // Start leaderboard listener
@@ -8409,7 +8455,10 @@ async function renderLeaderboard(){
       </div>`;
     });
     body.innerHTML=html;
-  }catch(e){body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+  }catch(e){
+    if(e.code==='permission-denied'){body.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt2);font-size:11px;">🔒 Permission error — make sure Firestore rules are published.<br><br>Go to Firebase Console → Firestore → Rules and tap Publish.</div>';}
+    else{body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+  }
 }
 
 // ── CHAT ──────────────────────────────────────────────────────────────────────
@@ -10050,7 +10099,11 @@ async function renderFriendsList(){
       });
     }
     body.innerHTML=html;
-  }catch(e){body.innerHTML=`<div style="color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+  }catch(e){
+    if(e.code==='permission-denied'||e.message?.includes('Missing or insufficient')){
+      body.innerHTML='<div style="padding:12px;text-align:center;font-size:10px;color:var(--txt2);">🔒 Permission error. Make sure Firestore rules are published in Firebase console.<br><br>Go to Firestore → Rules → Publish the rules provided.</div>';
+    }else{body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">${e.message}</div>`;}
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -10438,11 +10491,18 @@ async function renderServerBoss(){
       <div style="font-size:9px;color:var(--txt2);margin-top:4px;">Your damage dealt: ${fmt(myDmg)}</div>
     </div>
     <div style="font-size:10px;color:var(--txt2);margin-bottom:10px;">Every player chips away at this boss together. When HP reaches 0, ALL players receive a massive reward!</div>
+    ${(()=>{const t=new Date().toDateString();const h=(G._serverBossAttacks||{})[t]||0;const left=Math.max(0,10-h);return `<div style="font-size:10px;margin-bottom:6px;text-align:center;color:${left>0?'var(--ok)':'#ef4444'};">Daily attacks: ${h}/10 used · ${left} remaining</div>`;})()}
     <button class="btn bp" style="width:100%;margin-bottom:6px;" onclick="attackServerBoss()">⚔️ Attack Server Boss!</button>
     <div style="font-size:9px;color:var(--txt2);">Attacks cost 0 stamina. Deal damage based on your current power. Boss resets weekly.</div>`;
 }
 
 async function attackServerBoss(){
+  const today=new Date().toDateString();
+  if(!G._serverBossAttacks)G._serverBossAttacks={};
+  const todayHits=G._serverBossAttacks[today]||0;
+  const MAX_DAILY=10;
+  if(todayHits>=MAX_DAILY){toast(`Daily limit reached! ${MAX_DAILY} attacks per day. Come back tomorrow!`,'er');return;}
+  G._serverBossAttacks[today]=todayHits+1;
   const power=calcPowerRating?calcPowerRating():1000;
   const dmg=Math.floor(power*(0.5+Math.random()));
   G._serverBossDmg=(G._serverBossDmg||0)+dmg;
@@ -10589,7 +10649,8 @@ function renderSeasonalStory(){
       <div style="font-size:9px;color:var(--txt2);">Progress: ${questDone}/${questTotal} story quests</div>
     </div>
     ${questDone<questTotal
-      ?`<button class="btn bp" style="width:100%;" onclick="advanceSeasonalStory()">📜 Continue Story (Win 100 battles)</button>`
+      ?`<div style="margin-bottom:8px;"><div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${Math.min(100,Math.floor((G._seasonalStoryBattles||0)/100*100))}%;background:var(--acc);border-radius:2px;"></div></div><div style="font-size:9px;color:var(--txt2);margin-top:3px;">${G._seasonalStoryBattles||0}/100 battles</div></div>
+        <button class="btn bp" style="width:100%;" onclick="advanceSeasonalStory()">📜 Advance Story (Win 100 battles)</button>`
       :'<div style="text-align:center;padding:10px;font-size:11px;color:var(--ok);">✅ Chapter complete! Exclusive cosmetic reward claimed.</div>'}`;
 }
 
@@ -10800,7 +10861,13 @@ function isGM(){
   const user = window._fbUser;
   if(!user) return false;
   if(GM_UIDS.length && GM_UIDS.includes(user.uid)) return true;
-  if(GM_EMAILS.includes(user.email)) return true;
+  if(user.email && GM_EMAILS.includes(user.email)) return true;
+  // Also check providerData for email
+  if(user.providerData) {
+    for(const p of user.providerData){
+      if(p.email && GM_EMAILS.includes(p.email)) return true;
+    }
+  }
   return false;
 }
 
