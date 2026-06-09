@@ -2037,7 +2037,7 @@ function confirm2(msg,details,onConfirm){
   if(typeof onConfirm!=='function')return;
   const d=document.createElement('div');
   d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;display:flex;align-items:center;justify-content:center;';
-  d.innerHTML='<div style="background:var(--bg2,#1e293b);border:1px solid var(--acc,#f59e0b);border-radius:14px;padding:20px;max-width:85vw;text-align:center;">'
+  d.innerHTML='<div style="background:var(--bg2,#1e293b);border:1px solid var(--acc,#f59e0b);border-radius:14px;padding:20px;max-width:85vw;max-height:85vh;overflow-y:auto;text-align:center;">'
     +'<div style="font-size:14px;font-weight:700;margin-bottom:6px;">'+msg+'</div>'
     +'<div style="font-size:11px;color:#94a3b8;margin-bottom:16px;">'+details+'</div>'
     +'<div style="display:flex;gap:8px;justify-content:center;">'
@@ -4089,9 +4089,30 @@ function showAscensionPanel(){
   if((G.stars||0)>50){
     toast(`💡 Tip: Spend your ${fmt(G.stars||0)}⭐ on Prestige Shop before ascending! Stars reset on ascension.`,'ok');
   }
+  // Build detailed Ascension Essence breakdown
+  const wins=G.wins||0;const towerFloor=G.towerBestFloor||0;const bossKills=G.bossKills||0;
+  const godlyPieces=(G.equipment||[]).filter(e=>e.isGodly).length;
+  const eBase=(ascLvl+1)*10;
+  const eWins=Math.floor(wins/100);
+  const eTower=Math.floor(towerFloor/50);
+  const eBoss=Math.floor(bossKills/20);
+  const eGodly=godlyPieces*5;
+  const eTotal=eBase+eWins+eTower+eBoss+eGodly;
+  const essenceHtml=`
+    <div style="background:rgba(232,121,249,.08);border:1px solid rgba(232,121,249,.25);border-radius:9px;padding:8px;margin-top:10px;text-align:left;">
+      <div style="font-weight:700;color:#e879f9;font-size:11px;margin-bottom:5px;">💎 Ascension Essence: +${eTotal} (Total: ${(G._ascEssence||0)+eTotal})</div>
+      <div style="font-size:9px;color:var(--txt2);display:grid;gap:2px;">
+        <div class="row sb"><span>Base (Ascension ${ascLvl+1})</span><span style="color:var(--txt);">+${eBase}</span></div>
+        <div class="row sb"><span>Wins ÷100 (${fmt(wins)})</span><span style="color:${eWins>0?'#34d399':'var(--txt2)'};">+${eWins}</span></div>
+        <div class="row sb"><span>Tower floor ÷50 (${fmt(towerFloor)})</span><span style="color:${eTower>0?'#34d399':'var(--txt2)'};">+${eTower}</span></div>
+        <div class="row sb"><span>Boss kills ÷20 (${fmt(bossKills)})</span><span style="color:${eBoss>0?'#34d399':'var(--txt2)'};">+${eBoss}</span></div>
+        <div class="row sb"><span>Godly pieces ×5 (${godlyPieces})</span><span style="color:${eGodly>0?'#34d399':'var(--txt2)'};">+${eGodly}</span></div>
+      </div>
+      <div style="font-size:8px;color:var(--txt2);margin-top:4px;">💡 Push wins, tower floor, boss kills & collect Godly gear before ascending to maximize Essence!</div>
+    </div>`;
   confirm2(
     `⚔️ Begin Mirror Battle?`,
-    `Defeat your own squad to prove you are ready to ascend to Ascension ${ascLvl+1}! Stats will be ×${nextMult} permanently.`,
+    `Defeat your own squad to prove you are ready to ascend to Ascension ${ascLvl+1}! Stats will be ×${nextMult} permanently.${essenceHtml}`,
     function(){
       startMirrorFight(function(){_doAscend(ascLvl,nextMult);});
     }
