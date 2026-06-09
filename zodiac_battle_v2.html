@@ -938,6 +938,8 @@ onAuthStateChanged(auth, user => {
 
   <div class="sec-t mb2" style="margin-top:14px;">🔊 Audio & Feel</div>
   <div class="setting-row"><span>Sound Effects</span><label class="sw"><input type="checkbox" id="setSound" onchange="SET.sound=this.checked;saveSET()"><span class="swt"></span></label></div>
+  <div class="setting-row"><span>🔔 Show Toast Popups</span><label class="sw"><input type="checkbox" id="setToasts" checked onchange="SET.toasts=this.checked;saveSET()"><span class="swt"></span></label></div>
+  <div class="setting-row"><span>📱 Screen Orientation</span><select id="setOrientation" onchange="SET.orientation=this.value;saveSET();applyOrientationLock()" style="background:var(--bg3);color:var(--txt);border:none;border-radius:6px;padding:4px 8px;font-size:11px;"><option value="auto">Auto</option><option value="portrait">Portrait Lock</option><option value="landscape">Landscape Lock</option></select></div>
   <div class="setting-row"><span>Vibration</span><label class="sw"><input type="checkbox" id="setVib" onchange="SET.vibrate=this.checked;saveSET()"><span class="swt"></span></label></div>
 
   <div class="sec-t mb2" style="margin-top:14px;">🖥️ Display</div>
@@ -965,11 +967,20 @@ onAuthStateChanged(auth, user => {
 <script>
 // ══ BALANCE ══
 const B={BASE_HP:220,BASE_ATK:40,WIN_SCALE:0.02,XP_HIT:4,HEAL_BETWEEN:1.0,COMBO_MS:3000,TEL_MS:600,STREAK_BONUS:0.1,HIT_STOP:50};
+// Exponential enemy scaling — tracks player's multiplicative power curve
+function getWinScale(){return Math.pow(1.5,Math.pow(G.wins||0,0.35));}
 
 // ══ CORE UI UTILITIES ══
 function vib(pattern){try{if(SET.vibrate&&navigator.vibrate)navigator.vibrate(pattern);}catch(e){}}
 
 function toast(msg,type,dur){
+  // Toggle: when toasts are disabled, route everything except errors to the log
+  if(SET.toasts===false&&type!=='er'){
+    addLog(type==='warn'?'events':'rewards',msg,'');
+    const dot=document.getElementById('logNotifDot');
+    if(dot)dot.style.display='block';
+    return;
+  }
   // During battle, route reward/passive messages to the log instead of mid-screen
   const isBattleReward=G&&G.alive!==undefined&&type!=='er'&&(
     msg.includes('stars earned')||msg.includes('PERFECT WIN')||msg.includes('dropped!')||
@@ -1934,7 +1945,7 @@ const DEF=()=>({
 });
 let G=DEF();
 let _uid=Date.now();const uid=()=>(_uid++).toString(36);
-let SET={sound:false,vibrate:true,reduceMotion:false,autoDelay:1200,smartAuto:false,autoPot:false,showDmgNums:true,showHealNums:true,showStatus:true,showCombo:true,salvageRarity:'',perfMode:false,dmgSize:'medium',dmgTheme:'default',autoHarvest:true,autoReplant:true};
+let SET={sound:false,vibrate:true,reduceMotion:false,autoDelay:1200,smartAuto:false,autoPot:false,showDmgNums:true,showHealNums:true,showStatus:true,showCombo:true,salvageRarity:'',perfMode:false,dmgSize:'medium',dmgTheme:'default',autoHarvest:true,autoReplant:true,toasts:true,orientation:'auto'};
 function saveSET(){try{localStorage.setItem('zb_set',JSON.stringify(SET));}catch(e){}}
 function loadSET(){try{const r=localStorage.getItem('zb_set');if(r)Object.assign(SET,JSON.parse(r));}catch(e){}}
 let currentWeather=WEATHERS[0];
@@ -2531,10 +2542,9 @@ function addMythicalStack(name){
 function getMaxHp(name){const m=liveM(name);return m?m.maxHp:(G.roster[name]?G.roster[name].maxHp:0);}
 function healToFull(name){const r=G.roster[name];if(!r)return;r.hp=getMaxHp(name);}
 function getMythicalMult(stacks){
-  // Soft cap: linear up to 100 stacks, then logarithmic — prevents e+100 numbers
-  if(stacks<=0)return 1;
-  if(stacks<=100)return 1+stacks*0.03;      // +3% per stack up to 100 = +300% max
-  return(1+100*0.03)+Math.log(stacks-99)*0.6; // logarithmic after 100
+  // 10% per stack, no cap: 10=2x, 100=11x, 1000=101x
+  if(!stacks||stacks<=0)return 1;
+  return 1+stacks*0.10;
 }
 
 // ══ GODLY GEAR SETS (6 sets × 4 slots = 24 unique items) ══
@@ -3307,12 +3317,12 @@ function nextDungeonEnemy(){
   if(progress.enemiesDefeated>=3&&!progress.bossDefeated){
     template=DUNGEON_ENEMIES.find(e=>e.name===dungeon.bossName);
     if(!template){onDungeonComplete();return;}
-    const sc=1+G.wins*B.WIN_SCALE;
+    const sc=getWinScale();
     G.enemy={...template,maxHp:Math.floor(B.BASE_HP*template.hpM*sc*2.0),hp:Math.floor(B.BASE_HP*template.hpM*sc*2.0),atk:Math.floor(B.BASE_ATK*template.atkM*sc*2.0),isDungeonEnemy:true,isAreaBoss:true};
   }else{
     const name=dungeon.enemies[Math.floor(Math.random()*dungeon.enemies.length)];
     template=DUNGEON_ENEMIES.find(e=>e.name===name)||DUNGEON_ENEMIES[0];
-    const sc=1+G.wins*B.WIN_SCALE;
+    const sc=getWinScale();
     G.enemy={...template,maxHp:Math.floor(B.BASE_HP*template.hpM*sc*1.5),hp:Math.floor(B.BASE_HP*template.hpM*sc*1.5),atk:Math.floor(B.BASE_ATK*template.atkM*sc*1.5),isDungeonEnemy:true};
   }
   G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;
@@ -3781,6 +3791,23 @@ function spawnSand(){const c=document.getElementById('weatherOverlay');c.style.o
 // ══ INIT ══
 function buildStars(){const c=document.getElementById('stars');for(let i=0;i<55;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2+1;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;opacity:${Math.random()*.7+.3};`;c.appendChild(s);}}
 function shuffleQ(){const normals=ENEMIES.filter(e=>!e.boss&&e.emoji).sort(()=>Math.random()-.5);const boss=ENEMIES.find(e=>e.boss&&e.name==='Dragon King');if(boss)normals.splice(Math.floor(normals.length/2),0,boss);G.enemyQ=normals.filter(Boolean);}
+function applyOrientationLock(){
+  try{
+    const mode=SET.orientation||'auto';
+    if(mode==='auto'){
+      if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock();
+      return;
+    }
+    const lockType=mode==='landscape'?'landscape':'portrait';
+    if(screen.orientation&&screen.orientation.lock){
+      screen.orientation.lock(lockType).catch(()=>{
+        toast('⚠️ Orientation lock requires fullscreen/installed app','warn');
+      });
+    }else{
+      toast('⚠️ Orientation lock not supported on this browser','warn');
+    }
+  }catch(e){}
+}
 function applySettings(){
   if(document.body){if(SET.reduceMotion)document.body.style.setProperty('--motion','0.01ms');else document.body.style.removeProperty('--motion');}
   applyTheme(G.activeTheme||'default');
@@ -3805,44 +3832,79 @@ function unlockSpeedButtons(){[4,5].forEach(n=>{const btn=document.getElementByI
 function checkOfflineRewards(){
   const lastSave=G._lastSave;if(!lastSave)return;
   const elapsed=Date.now()-lastSave;if(elapsed<60000)return;
-  // #45: Full offline battle simulation — up to 24 hours
   const ms=Math.min(elapsed,24*60*60*1000);const mins=Math.floor(ms/60000);
-  const goldPerMin=(1+Math.floor(G.wins*.1))*(1+(G.prestigeShop?.goldFindBonus||0));
-  const earned=Math.floor(mins*goldPerMin);
-  // Simulate battles: ~1 battle per 30s avg
   const simBattles=Math.floor(ms/30000);
   let simGold=0,simXp=0,simStars=0;
-  const area=getCurrentArea();
-  if(simBattles>0&&G.party.length>0){
-    const ePool=ENEMIES.filter(e=>!e.boss);
+  const ePool=ENEMIES.filter(e=>!e.boss);
+  if(simBattles>0&&G.party.length>0&&ePool.length){
     for(let i=0;i<Math.min(simBattles,2880);i++){
       const e=ePool[Math.floor(Math.random()*ePool.length)];
-      const sc=1+G.wins*B.WIN_SCALE;
+      const sc=getWinScale();
       const g=Math.floor(e.gold*sc*(1+(G.prestigeShop?.goldFindBonus||0))+getPetBonus('gold')*e.gold);
       simGold+=g;simXp+=e.xp+e.level;
-      if(Math.random()<0.05+getLuckBonuses(G.active).dropRate)rollEquipmentDrop();
     }
-    // Distribute XP
-    G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=Math.floor(simXp/G.party.length);lvCheck(n);}});
-    // Mine shaft stars
-    simStars+=(G.mineShafts||0)*simBattles+(G.starMines||0)*10*simBattles+(G.voidVaults||0)*100*simBattles;
+    simStars=(G.mineShafts||0)*simBattles+(G.starMines||0)*10*simBattles+(G.voidVaults||0)*100*simBattles;
   }
-  // Expeditions
-  let expBonus=0;
+  let expBonus=0;const expReturns=[];
   Object.entries(G.expeditions||{}).forEach(([name,exp])=>{
     if(exp.active&&Date.now()-exp.start>=exp.duration){
-      exp.active=false;const g=Math.floor((50+exp.level*10)*(1+(G.prestigeShop?.expBonus||0)));expBonus+=g;
-      const r=G.roster[name];if(r){r.xp+=10+exp.level*1;lvCheck(name);}
+      const g=Math.floor((50+exp.level*10)*(1+(G.prestigeShop?.expBonus||0)+getHouseBonus('expedBonus')));
+      expBonus+=g;expReturns.push(name);
     }
   });
   const totalGold=simGold+expBonus;
-  if(totalGold>0||simStars>0){
-    G.gold+=totalGold;G.totalGold+=totalGold;
-    if(simStars>0){G.stars=(G.stars||0)+simStars;}
-    const hrs=Math.floor(mins/60);const minsLeft=mins%60;
-    const timeStr=hrs>0?`${hrs}h${minsLeft}m`:`${mins}m`;
-    toast(`💤 Offline ${timeStr}: ~${simBattles} battles! +${totalGold}g +${simXp} XP${simStars>0?' +'+simStars+'⭐':''}!`,'ok');
+  if(totalGold<=0&&simStars<=0&&mins<1)return;
+  G._pendingOffline={ms,mins,simBattles,simGold,simXp,simStars,expBonus,expReturns,totalGold};
+  setTimeout(()=>openOfflineRewardsModal(),300);
+}
+function openOfflineRewardsModal(){
+  const p=G._pendingOffline;if(!p)return;
+  const hrs=Math.floor(p.mins/60);const minsLeft=p.mins%60;
+  const timeStr=hrs>0?`${hrs}h ${minsLeft}m`:`${p.mins}m`;
+  const goldPerHr=p.mins>0?Math.floor(p.totalGold/p.mins*60):0;
+  const starsPerHr=p.mins>0?Math.floor(p.simStars/p.mins*60):0;
+  const body=document.getElementById('offlineRewardsBody');
+  if(!body)return;
+  body.innerHTML=`
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:36px;">💤</div>
+      <div style="font-family:'Cinzel',serif;color:var(--acc);font-size:15px;font-weight:700;margin-top:4px;">Welcome Back!</div>
+      <div class="t2 ts">You were away for <b style="color:var(--txt);">${timeStr}</b></div>
+    </div>
+    <div style="background:rgba(28,38,56,.6);border-radius:10px;padding:10px;margin-bottom:8px;">
+      <div class="row sb mb1"><span class="t2">⚔️ Simulated battles</span><b>${fmt(p.simBattles)}</b></div>
+      <div class="row sb mb1"><span class="t2">💰 Gold earned</span><b style="color:#fbbf24;">+${fmt(p.totalGold)}g</b></div>
+      <div class="row sb mb1"><span class="t2">📈 Gold rate</span><span class="ts t2">${fmt(goldPerHr)}/hr</span></div>
+      <div class="row sb mb1"><span class="t2">✨ XP earned</span><b style="color:#60a5fa;">+${fmt(p.simXp)}</b></div>
+      ${p.simStars>0?`<div class="row sb mb1"><span class="t2">⭐ Stars earned</span><b style="color:#a78bfa;">+${fmt(p.simStars)}</b></div><div class="row sb mb1"><span class="t2">📈 Star rate</span><span class="ts t2">${fmt(starsPerHr)}/hr</span></div>`:''}
+      ${p.expReturns.length?`<div class="row sb"><span class="t2">🗺️ Expeditions</span><b>${p.expReturns.join(', ')} returned</b></div>`:''}
+    </div>
+    <button class="btn bp" style="width:100%;" onclick="claimOfflineRewards()">🎁 Claim Rewards</button>
+  `;
+  openM('mOfflineRewards');
+}
+function claimOfflineRewards(){
+  const p=G._pendingOffline;if(!p)return;
+  G.gold+=p.totalGold;G.totalGold+=p.totalGold;
+  if(p.simStars>0)G.stars=(G.stars||0)+p.simStars;
+  if(p.simXp>0&&G.party.length){
+    const xpEach=Math.floor(p.simXp/G.party.length);
+    G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=xpEach;lvCheck(n);}});
   }
+  // Resolve expeditions
+  Object.entries(G.expeditions||{}).forEach(([name,exp])=>{
+    if(exp.active&&p.expReturns.includes(name)){
+      exp.active=false;
+      const r=G.roster[name];if(r){r.xp+=10+exp.level*1;lvCheck(name);}
+    }
+  });
+  // Drop chance for equipment based on battles
+  for(let i=0;i<Math.min(p.simBattles,2880);i++){
+    if(Math.random()<0.05+getLuckBonuses(G.active).dropRate)rollEquipmentDrop();
+  }
+  delete G._pendingOffline;
+  updateHdr();save();renderSquad();closeM('mOfflineRewards');
+  toast(`💤 Claimed offline rewards!`,'ok');
 }
 
 // ══ KEY HANDLER ══
@@ -3890,7 +3952,7 @@ function addPassiveCraftingXP(){
 
 function getNightmareBoss(){
   // Nightmare boss - scales with ascension/wins
-  const sc=1+(G.ascension||0)*2+G.wins*B.WIN_SCALE*2;
+  const sc=getWinScale()*(1+(G.ascension||0)*2);
   return {
     name:'Nightmare Titan',emoji:'💀',type:'dark',weak:'light',
     level:50+(G.ascension||0)*10,
@@ -4320,6 +4382,9 @@ function init(){
     G.tutDone=true;save();
   },1700);
   document.getElementById('setSound').checked=SET.sound;document.getElementById('setVib').checked=SET.vibrate;document.getElementById('setMotion').checked=SET.reduceMotion;document.getElementById('setSmartAuto').checked=SET.smartAuto;const _apc=document.getElementById('autoPotChk');if(_apc)_apc.checked=SET.autoPot||false;const _apt=document.getElementById('autoPotToggle');if(_apt)_apt.checked=SET.autoPot||false;document.getElementById('setAutoDelay').value=String(SET.autoDelay);
+  const _toastChk=document.getElementById('setToasts');if(_toastChk)_toastChk.checked=SET.toasts!==false;
+  const _orientSel=document.getElementById('setOrientation');if(_orientSel)_orientSel.value=SET.orientation||'auto';
+  applyOrientationLock();
   const aeChk=document.getElementById('setAutoEquip');if(aeChk)aeChk.checked=G.autoEquip!==false;
   const ahChk=document.getElementById('setAutoHarvest');if(ahChk)ahChk.checked=SET.autoHarvest!==false;
   const arChk=document.getElementById('setAutoReplant');if(arChk)arChk.checked=SET.autoReplant!==false;
@@ -4356,7 +4421,7 @@ function spawnEnemy(){
     if(!G.enemyQ||!G.enemyQ.length)shuffleQ();
     let t=G.enemyQ.shift();
     if(!t||!t.emoji){shuffleQ();t=G.enemyQ.shift()||ENEMIES[0];}// guard stale/corrupt queue
-    const sc=1+G.wins*B.WIN_SCALE;
+    const sc=getWinScale();
     G.enemy={...t,maxHp:Math.floor(B.BASE_HP*(t.hpM||1)*sc),hp:Math.floor(B.BASE_HP*(t.hpM||1)*sc),atk:Math.floor(B.BASE_ATK*(t.atkM||1)*sc)};
     G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;
     G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;G.lastAttacker='';G.speedBreakUsed=false;
@@ -4840,16 +4905,10 @@ function calcPowerRating(){
   let total=0;
   G.party.forEach(name=>{
     const m=liveM(name);if(!m)return;
-    const base=(m.atk+m.def+m.spd)+(m.maxHp*.1);
-    const rarMult={Normal:1,Shiny:1.2,Omega:1.4,Mythical:1.8}[m.rarity]||1;
-    const evoMult=1+getEvoStage(name)*.15;
-    const pStars=(G.prestigeStars&&G.prestigeStars[name])||0;
-    const stackMult=getMythicalMult(getMythicalStacks(name));
+    // Direct combat-relevant sum: ATK+DEF+SPD weighted, plus HP/10, plus equipment score
     const eqScore=getAllEquipped(name).reduce((s,e)=>s+getEquipmentScore(e,name),0);
-    // Use log scale to prevent overflow — still reflects relative power
-    const raw=base*rarMult*evoMult*(1+pStars*.05)*stackMult+eqScore;
-    const safeRaw=isFinite(raw)&&raw>0?raw:1;
-    total+=Math.floor(Math.log10(safeRaw+1)*1000);
+    const combat=(m.atk*2+m.def+m.spd)+(m.maxHp*0.1);
+    total+=Math.floor(combat+eqScore);
   });
   return total;
 }
@@ -5059,7 +5118,7 @@ function nextEnemy(){
       else toast(`👑 Boss Rush done (with faints). +${bonus}g +${bonusStars}⭐`,'ok');
       G._bossRushFainted=false;spawnEnemy();
     }else{
-      const t=bosses[G.bossRushFloor];const sc=1+G.wins*B.WIN_SCALE;
+      const t=bosses[G.bossRushFloor];const sc=getWinScale();
       const floorMult=15*Math.pow(2.5,G.bossRushFloor);const atkFloorMult=8*Math.pow(2.0,G.bossRushFloor);
       G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc*floorMult),hp:Math.floor(B.BASE_HP*t.hpM*sc*floorMult),atk:Math.floor(B.BASE_ATK*t.atkM*sc*atkFloorMult)};
       G.alive=true;G.combo=0;G.enemyStatus={};G.enemyPhase=0;G._battleStartTime=Date.now();G._phoenixUsedThisBattle=false;
@@ -6609,11 +6668,11 @@ function startTowerBattle(){
   G.towerActive=true;G.bossRushActive=false;
   if(!G.enemyQ||!G.enemyQ.length)shuffleQ();
   let t=G.enemyQ.shift();if(!t||!t.emoji){shuffleQ();t=G.enemyQ.shift()||ENEMIES[0];}
-  const floor=G.towerFloor||0;
-  // During ironman/reborn, scale by floor only — real wins would make floor 1 impossible
+  // Exponential scaling tracks player's multiplicative power curve
+  // ~7.6x at 100 wins, ~94x at 1000, ~2953x at 5000
   const sc=(G._ironmanMode||G._rebornMode)
     ? 1+floor*.05
-    : 1+G.wins*B.WIN_SCALE+floor*.05;
+    : getWinScale()*(1+floor*.05);
   G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc),hp:Math.floor(B.BASE_HP*t.hpM*sc),atk:Math.floor(B.BASE_ATK*t.atkM*sc),level:Math.max(t.level,Math.floor(floor*.2)+1)};
   G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
   G.towerFloor=(G.towerFloor||0)+1;if(G.towerFloor>G.towerBest)G.towerBest=G.towerFloor;if(G.towerFloor>(G.towerBestFloor||0))G.towerBestFloor=G.towerFloor;
@@ -6643,7 +6702,7 @@ function startTowerBattle(){
 }
 function startBossRush(){
   G.bossRushActive=true;G.towerActive=false;G.bossRushFloor=0;G._bossRushFainted=false;
-  const bosses=ENEMIES.filter(e=>e.boss);const t=bosses[0];const sc=1+G.wins*B.WIN_SCALE;
+  const bosses=ENEMIES.filter(e=>e.boss);const t=bosses[0];const sc=getWinScale();
   // Boss Rush is WAY harder: 15x HP, 8x ATK, scales exponentially per floor
   const rushMult=15;const atkMult=8;
   G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc*rushMult),hp:Math.floor(B.BASE_HP*t.hpM*sc*rushMult),atk:Math.floor(B.BASE_ATK*t.atkM*sc*atkMult)};
@@ -8063,7 +8122,7 @@ function getGuildResearchBonus(stat){
 }
 function startGuildBoss(bossId){
   const boss=GUILD_BOSSES.find(b=>b.id===bossId);if(!boss)return;
-  const sc=1+G.wins*B.WIN_SCALE;
+  const sc=getWinScale();
   G.enemy={...boss,boss:true,isGuildBoss:true,
     maxHp:Math.floor(B.BASE_HP*boss.hpM*sc),hp:Math.floor(B.BASE_HP*boss.hpM*sc),
     atk:Math.floor(B.BASE_ATK*boss.atkM*sc),level:boss.floor,xp:500,gold:100,
@@ -8435,7 +8494,7 @@ function startWorldBoss(id){
     {id:'storm_king',name:'Storm King',emoji:'⛈️',hpM:1200,atkM:20,gold:12000,stars:50,type:'lightning',weak:'earth'},
   ];
   const wb=WORLD_BOSSES.find(b=>b.id===id);if(!wb)return;
-  const sc=1+G.wins*B.WIN_SCALE;
+  const sc=getWinScale();
   const defeats=(G.worldBossDefeats&&G.worldBossDefeats[id])||0;
   const scaleMult=Math.pow(2,defeats);
   G.enemy={...wb,boss:true,isWorldBoss:true,level:50+defeats*10,xp:1000,
@@ -8456,7 +8515,7 @@ function startNightmareBoss(){
   if(!nb){toast('No Nightmare Boss available today.','warn');return;}
   // Find the matching NIGHTMARE_BOSSES entry for drops (default to first)
   const nbData=NIGHTMARE_BOSSES.find(b=>b.hpM===nb.hpM)||NIGHTMARE_BOSSES[0];
-  const sc=1+(G.ascension||0)*2+G.wins*B.WIN_SCALE*2;
+  const sc=getWinScale()*(1+(G.ascension||0)*2);
   G.enemy={
     id:nbData.id,name:nb.name,emoji:nb.emoji,type:nb.type,weak:nb.weak,
     boss:true,isNightmareBoss:true,level:nb.level,xp:5000,
@@ -11731,6 +11790,9 @@ function triggerPWAInstall(){
 
 <!-- ═══ GM PANEL ═══ -->
 <div class="modal" id="mGMPanel"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:#a855f7;font-size:14px;">🛡️ GM Panel</span><button class="xbtn" onclick="closeM('mGMPanel')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="gmtab-events" onclick="switchGMTab('events')">🌍 Events</button><button class="log-tab" id="gmtab-boss" onclick="switchGMTab('boss')">🐉 Boss</button><button class="log-tab" id="gmtab-announce" onclick="switchGMTab('announce')">📢 Announce</button><button class="log-tab" id="gmtab-players" onclick="switchGMTab('players')">👥 Players</button><button class="log-tab" id="gmtab-server" onclick="switchGMTab('server')">📊 Server</button><button class="log-tab" id="gmtab-world" onclick="switchGMTab('world')">🌍 World</button></div><div id="gmPanelBody"></div></div></div></div>
+
+<!-- ═══ OFFLINE REWARDS ═══ -->
+<div class="modal" id="mOfflineRewards"><div class="panel" style="max-width:340px;"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">💤 Offline Rewards</span></div><div class="pb" id="offlineRewardsBody"></div></div></div>
 
 <!-- ═══ GAME GUIDE ═══ -->
 <div class="modal" id="mGameGuide" style="padding:0;">
