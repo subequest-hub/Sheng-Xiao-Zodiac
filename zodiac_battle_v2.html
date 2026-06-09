@@ -727,7 +727,7 @@ onAuthStateChanged(auth, user => {
         <span class="hub-icon">🎨</span><span class="hub-label">Themes</span>
         <span class="hub-sub" id="hubThemeName">Default</span>
       </button>
-      <button class="hub-btn" onclick="closeM('mMore');showTab('codex')">
+      <button class="hub-btn" onclick="closeM('mMore');openGameGuide()">
         <span class="hub-icon">📖</span><span class="hub-label">Codex</span>
         <span class="hub-sub">Lore & enemies</span>
       </button>
@@ -878,7 +878,7 @@ onAuthStateChanged(auth, user => {
 <div class="modal" id="mAwards"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏅 Achievements</span><button class="xbtn" onclick="closeM('mAwards')">✕</button></div><div class="pb" id="awardsList"><div id="awardsBody"></div></div></div></div>
 <div class="modal" id="mStats"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">📊 Lifetime Stats</span><button class="xbtn" onclick="closeM('mStats')">✕</button></div><div class="pb" id="statsList"></div></div></div>
 <div class="modal" id="mDmgMeter"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">💥 Damage Log</span><button class="xbtn" onclick="closeM('mDmgMeter')">✕</button></div><div class="pb" id="dmgMeterBody"></div></div></div>
-<div class="modal" id="mCodex"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">📖 Codex</span><button class="xbtn" onclick="closeM('mCodex')">✕</button></div><div class="pb" id="codexBody"></div></div></div>
+
 <div class="modal" id="mBattlePass"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🎫 Battle Pass — 100 Tiers</span><button class="xbtn" onclick="closeM('mBattlePass')">✕</button></div><div class="pb" id="bpBody"></div></div></div>
 <div class="modal" id="mCollection"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">📦 Collection</span><button class="xbtn" onclick="closeM('mCollection')">✕</button></div><div class="pb" id="collectionBody"></div></div></div>
 <div class="modal" id="mSkillTree"><div class="panel"><div class="ph"><button class="bkbtn" onclick="closeM('mSkillTree');openM('mDetail')">← Back</button><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;" id="stTitle">Skill Tree</span><button class="xbtn" onclick="closeM('mSkillTree')">✕</button></div><div class="pb" id="skillTreeBody"></div></div></div>
@@ -924,6 +924,7 @@ onAuthStateChanged(auth, user => {
   <div class="sec-t mb2" style="margin-top:14px;">💾 Data</div>
   <div class="bgrp mb2"><button class="btn bp" onclick="exportSave()">📤 Export</button><button class="btn bs" onclick="importSave()">📥 Import</button></div>
   <button id="pwaInstallBtn" class="btn bp mb2" style="display:none;background:linear-gradient(135deg,#0f172a,#1e3a8a);border-color:#3b82f6;" onclick="triggerPWAInstall()">📲 Install App on Device</button>
+  <div id="pwaInstallHint" style="font-size:9px;color:var(--txt2);text-align:center;margin-bottom:8px;">To install: open the game from <b>subequest-hub.github.io</b> in your browser, then tap ⋮ → Add to Home Screen</div>
   <button class="btn bp bblk mb2" onclick="closeM('mSettings');openGameGuide()" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);">📖 Game Guide</button>
   <button class="btn bs bblk mb2" onclick="closeM('mSettings');reopenTutorial()">🎓 Replay Tutorial</button>
   <button class="btn bs bblk mb2" onclick="repairSave()" style="background:rgba(16,185,129,.15);border-color:#10b981;color:#34d399;">🔧 Repair Save (fix missing zodiacs)</button>
@@ -1123,7 +1124,7 @@ function showTab(tab){
     blacksmith:'mBlacksmith', setbuilder:'mSetBuilder', prestigeshop:'mPrestigeShop',
     battlepass:'mBattlePass', seasonpass:'mSeasonPass', awards:'mAwards',
     collection:'mCollection', profile:'mProfile', pets:'mPets', skinsthemes:'mSkinsThemes',
-    codex:'mCodex', battlestats:'mBattleStats', dmgmeter:'mDmgMeter', stats:'mBattleStats',
+    battlestats:'mBattleStats', dmgmeter:'mDmgMeter', stats:'mBattleStats',
     settings:'mSettings', map:'mAreaMap', crafting:'mCrafting', guild:'mGuild', house:'mHouse',
     inventory:'mInventory', worldboss:'mWorldBoss'
   };
@@ -1150,7 +1151,6 @@ function showTab(tab){
       if(tab==='profile')renderProfile();
       if(tab==='pets')renderPets();
       if(tab==='skinsthemes')renderSkinsThemes();
-      if(tab==='codex')renderCodex();
       if(tab==='battlestats')renderBattleStats();
       if(tab==='dmgmeter')renderDmgMeter();
       if(tab==='settings'){}// settings modal already has content
@@ -1735,21 +1735,21 @@ const MONTHLY_QUEST_POOL=[
 function generateBPTiers(){
   const t=[];
   for(let i=1;i<=100;i++){
-    const xpReq=Math.floor(150*Math.pow(1.12,i-1));
-    // Free track: meaningful gold, occasional equipment drops (no heal as reward)
-    const f=i%10===0?{gold:i*80,stars:i>=50?Math.floor(i/25):0}
-           :i%5===0?{item:i%20===0?'revive':'expKey'}
-           :i%3===0?{gold:i*25}
-           :{gold:i*10};
-    // Premium track: ~5x free, with skill points, stars, and big milestones
-    const p=i%10===0?{gold:i*400,stars:Math.floor(i/10),skillPt:i%20===0?2:1}
-           :i%5===0?{gold:i*120,skillPt:1}
-           :i%2===0?{gold:i*60,item:'expKey'}
-           :{gold:i*40};
-    if(i===25)p.special='shinyTicket';
-    if(i===50){p.special='omegaTicket';p.stars=(p.stars||0)+5;}
-    if(i===75){p.special='mythicTicket';p.stars=(p.stars||0)+10;}
-    if(i===100){p.special='prestigeOrb';p.stars=(p.stars||0)+25;}
+    const xpReq=Math.floor(15000*Math.pow(1.12,i-1)); // 100x harder to level
+    // Free track: 100x more gold, stars at every tier
+    const f=i%10===0?{gold:i*8000,stars:i>=10?Math.floor(i/5):2}
+           :i%5===0?{gold:i*2500,stars:Math.floor(i/10)+1,item:i%20===0?'revive':'expKey'}
+           :i%3===0?{gold:i*2500,stars:1}
+           :{gold:i*1000,stars:i%2===0?1:0};
+    // Premium track: ~5x free, with big stars and milestones
+    const p=i%10===0?{gold:i*40000,stars:Math.floor(i/5)+10,skillPt:i%20===0?5:2}
+           :i%5===0?{gold:i*12000,stars:Math.floor(i/5)+3,skillPt:2}
+           :i%2===0?{gold:i*6000,stars:Math.floor(i/10)+2,item:'expKey'}
+           :{gold:i*4000,stars:Math.floor(i/10)+1};
+    if(i===25){p.special='shinyTicket';p.stars=(p.stars||0)+25;}
+    if(i===50){p.special='omegaTicket';p.stars=(p.stars||0)+100;}
+    if(i===75){p.special='mythicTicket';p.stars=(p.stars||0)+250;}
+    if(i===100){p.special='prestigeOrb';p.stars=(p.stars||0)+1000;p.gold=(p.gold||0)+10000000;}
     t.push({tier:i,xpReq,free:f,premium:p});
   }
   return t;
@@ -2580,7 +2580,7 @@ const GODLY_SETS={
     setBonusDesc:'All fire damage +200%. Burns enemies automatically every turn.',
     setBonus:{fireDmg:3.0,autoBurn:true},
     pieces:{
-      weapon:{id:'gs_fire_sword',sourceKey:'prestige_10',sourceDesc:'Prestige any zodiac 10 times',name:'Hellfire Blade',icon:'🔥',emoji:'🔥',
+      weapon:{id:'gs_fire_sword',sourceKey:'prestige_10',sourceDesc:'Prestige all 12 zodiacs to 10 stars (120 total)',name:'Hellfire Blade',icon:'🔥',emoji:'🔥',
         ability:{name:'Immolation',desc:'Attacks apply 5-turn burn; burn damage scales with ATK',
           trigger:'attack',effect:'burn',turns:5}},
       armor:{id:'gs_fire_armor',sourceKey:'ascension_10',sourceDesc:'Ascension 10',name:'Dragon Scale Mail',icon:'🐉',emoji:'🔥',
@@ -2941,10 +2941,10 @@ function checkMythicConvergence(){
 function startMythicConvergence(){
   const totalStacks=Object.values(G.mythicalStacks||{}).reduce((a,b)=>a+b,0);
   if(totalStacks<10){toast(`Need 10 total Mythical Stacks (have ${totalStacks})!`,'er');return;}
-  // Spawn a massively boosted convergence boss
-  const stackBonus=1+totalStacks*0.05;const asc=G.ascension||0;
-  const t=TRANSCENDENT_ENEMIES[TRANSCENDENT_ENEMIES.length-1];// Zodiac Sovereign
-  G.enemy={...t,level:100+totalStacks,maxHp:Math.floor(B.BASE_HP*t.hpM*stackBonus*(1+asc)),hp:Math.floor(B.BASE_HP*t.hpM*stackBonus*(1+asc)),atk:Math.floor(B.BASE_ATK*t.atkM*stackBonus*(1+asc)),gold:Math.floor(t.gold*stackBonus),isConvergence:true,isBoss:true};
+  // Spawn convergence boss ~100× harder than original
+  const stackBonus=1+totalStacks*0.5;const asc=G.ascension||0;
+  const t=TRANSCENDENT_ENEMIES[TRANSCENDENT_ENEMIES.length-1];
+  G.enemy={...t,level:500+totalStacks*10,maxHp:Math.floor(B.BASE_HP*t.hpM*stackBonus*(1+asc)*100),hp:Math.floor(B.BASE_HP*t.hpM*stackBonus*(1+asc)*100),atk:Math.floor(B.BASE_ATK*t.atkM*stackBonus*(1+asc)*10),gold:Math.floor(t.gold*stackBonus*50),isConvergence:true,isBoss:true};
   G.alive=true;G.combo=0;G.enemyStatus={};G.enemyPhase=0;G._battleStartTime=Date.now();G._phoenixUsedThisBattle=false;
   closeAllM();renderEnemy();buildTurns();updateModeBadge();
   setMsg(`🌟 MYTHIC CONVERGENCE! ☯️ Zodiac Sovereign!`,`${totalStacks} mythical stacks power this being. Defeat for Godly gear!`,'');
@@ -3096,12 +3096,14 @@ function _doPrestigeApply(name, silent=false){
   const r=G.roster[name];
   if(!G.prestigeStars)G.prestigeStars={};
   G.prestigeStars[name]=(G.prestigeStars[name]||0)+1;
+  const savedTowerFloor=(G.towerActive&&_towerVariant==='prestige')?G.towerFloor:null;
   r.level=1;r.xp=0;r.xpNext=100;
   const z=getZodiac(name);const st=calcStats(z,r.rarity,1);
   r.maxHp=st.maxHp;r.atk=st.atk;r.def=st.def;r.spd=st.spd;
   r.hp=Math.floor(st.maxHp*0.5); // start at 50% HP after prestige
+  if(savedTowerFloor!==null)G.towerFloor=savedTowerFloor; // preserve prestige tower floor
   G.prestigeCount=(G.prestigeCount||0)+1;
-  if(G.prestigeCount>=10)checkGodlyPieceUnlock('prestige_10');
+  if(G.prestigeCount>=120)checkGodlyPieceUnlock('prestige_10');
   checkAchievs();checkAllAchievements();checkGuildMissions();save();updateHdr();
   toast(`⭐ ${name} prestiged! Star ${G.prestigeStars[name]}/10`,'ok');
   renderSquad();
@@ -3138,18 +3140,20 @@ function liveM(name){
   const affBoost=getAffinityMult(name);
   const eqStats=getEquipmentStats(name);
   const totalBoost=pBoost*affBoost;
-  const boostedMaxHp=Math.floor((r.maxHp+eqStats.hp)*totalBoost*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.hpBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).hp*(1+getPetBonus('hp'))*getSkinStatBoost(name));
+  const boostedMaxHp=Math.floor((r.maxHp+eqStats.hp)*totalBoost*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.hpBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).hp*(1+getPetBonus('hp'))*getSkinStatBoost(name)*(1+getHouseBonus('bossDmg')*0));
   // Clamp current HP to boosted max without mutating r.maxHp base value
   if(r.hp>boostedMaxHp)r.hp=boostedMaxHp;
   if(!z)return null;// guard: zodiac not found in ZODIACS
   const _aff=getAffinityBonus?getAffinityBonus(name):0;
   const _affMult=1+_aff;
+  const _houseAtk=1+getHouseBonus('atk');
+  const _houseDef=1;// DEF house bonus via training dummy goes through atk path
   return{
     zodiac:name,emoji:evoEmoji,color:z?.color||'#666',trait:z?.trait||'fierce',affinityBonus:_aff,
     element:ZEL[name]||'fire',rarity:r.rarity,
     level:r.level,xp:r.xp,xpNext:r.xpNext,stars:r.stars,
     maxHp:boostedMaxHp,hp:r.hp,
-    atk:Math.floor((r.atk+eqStats.atk)*totalBoost*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.atkBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).atk*(1+getPetBonus('atk'))*getSkinStatBoost(name)*(1+getGuildResearchBonus('atk')+getTowerShopMult('atk')-1)),def:Math.floor((r.def+eqStats.def)*totalBoost*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.defBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).def*(1+getPetBonus('def'))),spd:Math.floor((r.spd+eqStats.spd)*totalBoost*(G.ascensionMult||1)*(1+(G.prestigeShop?.spdBonus||0))*getMasteryBonus(name).spd*(1+getPetBonus('spd'))),
+    atk:Math.floor((r.atk+eqStats.atk)*totalBoost*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.atkBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).atk*(1+getPetBonus('atk'))*getSkinStatBoost(name)*(1+getGuildResearchBonus('atk')+getTowerShopMult('atk')-1)*_houseAtk),def:Math.floor((r.def+eqStats.def)*totalBoost*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.defBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).def*(1+getPetBonus('def'))),spd:Math.floor((r.spd+eqStats.spd)*totalBoost*(G.ascensionMult||1)*(1+(G.prestigeShop?.spdBonus||0))*getMasteryBonus(name).spd*(1+getPetBonus('spd'))),
     prestigeStars:pStars,
     eqCritRate:eqStats.critRate,eqCritDmg:eqStats.critDmg,eqDodge:eqStats.dodge,
     eqUltCharge:eqStats.ultCharge,eqGoldFind:eqStats.goldFind,eqElementDmg:eqStats.elementDmg,eqBossDmg:eqStats.bossDmg,
@@ -3961,102 +3965,28 @@ function canAscend(){
   };
 }
 function showAscensionPanel(){
-  const{ok,count,needed}=canAscend();
+  const{ok,count,needed,r}=canAscend();
   const ascLvl=G.ascension||0;
   const nextMult=((ascLvl+1)*0.5+1).toFixed(1);
   if(!ok){
     const reqs=[];
-    if(!r.zodiacOk)reqs.push(`${r.qualified}/${r.neededZodiac} zodiacs at max prestige+evo`);
-    if(!r.towerOk)reqs.push(`Tower ${r.towerFloors}/${r.neededTower} floors`);
-    if(!r.bossOk)reqs.push(`${r.bossKills}/${r.neededBoss} boss kills`);
-    if(!r.winsOk)reqs.push(`${fmt(r.wins)}/${fmt(r.neededWins)} wins`);
-    toast(`⬆️ Not ready: ${reqs.join(' · ')}!`,'er');
+    if(r&&!r.zodiacOk)reqs.push(`${r.qualified}/${r.neededZodiac} zodiacs at max prestige+evo`);
+    if(r&&!r.towerOk)reqs.push(`Tower ${r.towerFloors}/${r.neededTower} floors`);
+    if(r&&!r.bossOk)reqs.push(`${r.bossKills}/${r.neededBoss} boss kills`);
+    if(r&&!r.winsOk)reqs.push(`${fmt(r.wins)}/${fmt(r.neededWins)} wins`);
+    toast(`⬆️ Not ready: ${reqs.length?reqs.join(' · '):'Check requirements'}!`,'er');
     return;
   }
-  // Ascension 2+: must defeat mirror of previous self first
-  if((G.ascension||0)>=1){
-    if(G.mirrorFightActive){toast('⚔️ Defeat your previous self first!','er');return;}
-    startMirrorFight(function(){_doAscend(ascLvl,nextMult);});
-    return;
-  }
-  // Offer star buyout before ascending
+  // All ascensions require mirror fight first
+  if(G.mirrorFightActive){toast('⚔️ Defeat your previous self first!','er');return;}
   if((G.stars||0)>50){
-    const _sb=document.createElement('div');
-    _sb.innerHTML=`<div style='margin-bottom:8px;font-size:11px;'>You have <b>${fmt(G.stars||0)}⭐</b> stars. Spend them on the Prestige Shop before ascending?</div><button class='btn bp mb2' style='width:100%;' onclick='spendAllStarsOnPrestigeShop()'>✨ Max Spend Stars on Prestige Shop</button>`;
     toast(`💡 Tip: Spend your ${fmt(G.stars||0)}⭐ on Prestige Shop before ascending! Stars reset on ascension.`,'ok');
   }
   confirm2(
-    `⬆️ Ascend to Level ${ascLvl+1}?`,
-    `Full reset. Keep: Ascension Shop, stars, achievements, pets, skins. Start with 1 random owned zodiac. Stats x${nextMult} permanently. Beat your Ascension ${ascLvl} echo to proceed!`,
+    `⚔️ Begin Mirror Battle?`,
+    `Defeat your own squad to prove you are ready to ascend to Ascension ${ascLvl+1}! Stats will be ×${nextMult} permanently.`,
     function(){
-      const newAsc=(G.ascension||0)+1;
-      const newMult=newAsc*0.5+1;
-      // Pick 1 random owned zodiac to keep
-      const ownedNames=Object.keys(G.roster);
-      const startName=ownedNames[Math.floor(Math.random()*ownedNames.length)]||'Rat';
-      const startZ=getZodiac(startName);
-      const startSt=calcStats(startZ,'Normal',1);
-      const newRoster={[startName]:{level:1,xp:0,xpNext:100,rarity:'Normal',maxHp:startSt.maxHp,hp:startSt.maxHp,atk:startSt.atk,def:startSt.def,spd:startSt.spd}};
-      // Keep ascension shop (prestigeShop) but rename flag
-      const keptAscShop=JSON.parse(JSON.stringify(G.prestigeShop||{}));
-      const keptAscShopBought=JSON.parse(JSON.stringify(G.prestigeShopBought||{}));
-      const keptStars=G.stars||0;
-      const keptAchiev=JSON.parse(JSON.stringify(G.achiev||[]));
-      const keptThemes=JSON.parse(JSON.stringify(G.unlockedThemes||['default']));
-      const keptTheme=G.activeTheme||'default';
-      const keptSkins=JSON.parse(JSON.stringify(G.skins||{}));
-      const keptActiveSkins=JSON.parse(JSON.stringify(G.activeSkins||{}));
-      const keptSkinMastery=JSON.parse(JSON.stringify(G.skinMastery||{}));
-      const keptPets=JSON.parse(JSON.stringify(G.pets||{}));
-      const keptPetLvl=JSON.parse(JSON.stringify(G.petLevels||{}));
-      const keptActivePet=G.activePet||null;
-      const keptName=G.playerName||'Zodiac Warrior';
-      const keptTitle=G.playerTitle||'';
-      const keptAvatar=G.playerAvatar||'';
-      const keptLogin={days:G.loginDays||0,streak:G.loginStreak||0,date:G.lastLoginDate||'',day:G.loginRewardDay||1};
-      const keptCodex=JSON.parse(JSON.stringify(G.codexUnlocked||{}));
-      const keptWBoss=JSON.parse(JSON.stringify(G.worldBossDefeats||{}));
-      const keptPlaytime=G.playtime||0;
-      // Preserve Godly items through ascension
-      const keptGodly=(G.equipment||[]).filter(e=>e.isGodly&&e.persistent);
-      // Full reset via DEF()
-      const fresh=DEF();
-      Object.assign(G,fresh);
-      // Restore permanent keeps
-      G.ascension=newAsc;
-      G.ascensionMult=newMult;
-      G.stars=fresh.stars; // stars from DEF() = 0 but we kept stars above? Actually keep stars
-      G.stars=(G.stars||0); // will be overwritten — restore from pre-reset
-      G.prestigeShop=keptAscShop;
-      G.prestigeShopBought=keptAscShopBought;
-      G.stars=keptStars;
-      G.achiev=keptAchiev;
-      G.unlockedThemes=keptThemes;G.activeTheme=keptTheme;
-      G.skins=keptSkins;G.activeSkins=keptActiveSkins;G.skinMastery=keptSkinMastery;
-      G.pets=keptPets;G.petLevels=keptPetLvl;G.activePet=keptActivePet;
-      G.playerName=keptName;G.playerTitle=keptTitle;G.playerAvatar=keptAvatar;
-      G.loginDays=keptLogin.days;G.loginStreak=keptLogin.streak;
-      G.lastLoginDate=keptLogin.date;G.loginRewardDay=keptLogin.day;
-      G.tutDone=true;
-      G.codexUnlocked=keptCodex;
-      G.worldBossDefeats=keptWBoss;
-      G.playtime=keptPlaytime;G.sessionStart=Date.now();
-      // Restore Godly items (unequipped since roster changed)
-      keptGodly.forEach(g=>{g.equippedOn=null;});
-      G.equipment=keptGodly;
-      // Start with 1 zodiac
-      G.roster=newRoster;
-      G.party=[startName];
-      G.active=startName;
-      // Re-init quests
-      G.dailyDate='';G.nextWeeklyReset=0;G.nextMonthlyReset=0;
-      initDailyQuests();initWeeklyQuests();initMonthlyQuests();
-      checkAchievs();save();updateHdr();renderSquad();spawnEnemy();
-      if(typeof awardAscensionEssence==='function') awardAscensionEssence();
-  toast(`🌟 Ascension ${G.ascension}! ×${G.ascensionMult} stats. Starting fresh as ${startZ.emoji} ${startName}!`,'ok');
-  if(typeof _pushActivity==='function')_pushActivity('📈',`${G.playerName||fbName()||'A player'} reached Ascension ${G.ascension}!`,'#a78bfa');
-  if(typeof _updateServerStats==='function')_updateServerStats('totalAscensions',1);
-  if(typeof _pushTicker==='function')_pushTicker(`📈 ${G.playerName||'A player'} just ascended to level ${G.ascension}!`);
+      startMirrorFight(function(){_doAscend(ascLvl,nextMult);});
     }
   );
 }
@@ -4916,6 +4846,9 @@ function onWin(sMult=1){
     const wbId=G._activeWorldBoss||'titan';
     G.worldBossDefeats[wbId]=(G.worldBossDefeats[wbId]||0)+1;
     const wd=G.worldBossDefeats[wbId];
+    // Check if all world bosses have been defeated 5+ times
+    const wbKeys=Object.keys(G.worldBossDefeats);
+    if(wbKeys.length>=3&&Math.min(...wbKeys.map(k=>G.worldBossDefeats[k]||0))>=5)checkGodlyPieceUnlock('worldboss_5x');
     toast('🌍 WORLD BOSS DEFEATED! ×'+wd+' times! Next: ×'+Math.pow(10,wd).toLocaleString()+' stronger!','ok');
     vib([200,100,200,100,400,100,400]);addBpXp(500);
   }
@@ -5020,15 +4953,28 @@ function nextEnemy(){
     G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});
   }
   renderSquad();
-  if(G.towerActive){startTowerBattle();return;}
+  if(G.towerActive){
+    // Reborn tower: capture the enemy zodiac we just defeated before moving on
+    if(G._rebornMode&&G.enemy)rebornPickupZodiac(G.enemy.name);
+    startTowerBattle();return;
+  }
   if(G.inDungeon&&G.dungeonData){if(G.dungeonProgress&&G.dungeonProgress.bossDefeated)onDungeonComplete();else nextDungeonEnemy();return;}
   if(G.bossRushActive){
     const bosses=ENEMIES.filter(e=>e.boss);G.bossRushFloor=(G.bossRushFloor||0)+1;
-    if(G.bossRushFloor>=bosses.length){G.bossRushActive=false;G.towerActive=false;const bonus=500;G.gold+=bonus;G.totalGold+=bonus;updateHdr();
-    if(!G._bossRushFainted)checkGodlyPieceUnlock('boss_rush_perf');
-    G._bossRushFainted=false;
-    toast(`👑 BOSS RUSH COMPLETE! +${bonus}g!`,'ok');spawnEnemy();}
-    else{const t=bosses[G.bossRushFloor];const sc=1+G.wins*B.WIN_SCALE;G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc*1.5),hp:Math.floor(B.BASE_HP*t.hpM*sc*1.5),atk:Math.floor(B.BASE_ATK*t.atkM*sc*1.5)};G.alive=true;G.combo=0;G.enemyStatus={};G.enemyPhase=0;G._battleStartTime=Date.now();G._phoenixUsedThisBattle=false;renderEnemy();buildTurns();setMsg(`⚔️ BOSS RUSH ${G.bossRushFloor+1}/${bosses.length}: ${t.emoji} ${t.name}`,'','');if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}}
+    if(G.bossRushFloor>=bosses.length){G.bossRushActive=false;G.towerActive=false;
+      const perfect=!G._bossRushFainted;const bonus=perfect?50000:5000;const bonusStars=perfect?100:10;
+      G.gold+=bonus;G.totalGold+=bonus;G.stars=(G.stars||0)+bonusStars;updateHdr();
+      if(perfect){checkGodlyPieceUnlock('boss_rush_perf');toast(`👑 BOSS RUSH PERFECT! +${bonus}g +${bonusStars}⭐ + GODLY DROP!`,'ok');}
+      else toast(`👑 Boss Rush done (with faints). +${bonus}g +${bonusStars}⭐`,'ok');
+      G._bossRushFainted=false;spawnEnemy();
+    }else{
+      const t=bosses[G.bossRushFloor];const sc=1+G.wins*B.WIN_SCALE;
+      const floorMult=15*Math.pow(2.5,G.bossRushFloor);const atkFloorMult=8*Math.pow(2.0,G.bossRushFloor);
+      G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc*floorMult),hp:Math.floor(B.BASE_HP*t.hpM*sc*floorMult),atk:Math.floor(B.BASE_ATK*t.atkM*sc*atkFloorMult)};
+      G.alive=true;G.combo=0;G.enemyStatus={};G.enemyPhase=0;G._battleStartTime=Date.now();G._phoenixUsedThisBattle=false;
+      renderEnemy();buildTurns();setMsg(`👑 BOSS RUSH ${G.bossRushFloor+1}/${bosses.length}: ${t.emoji} ${t.name} [×${Math.round(floorMult)} STR]`,'','');
+      if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}
+    }
     return;
   }
   // Horde: check if we have queued horde enemies from this wave
@@ -5308,7 +5254,7 @@ function lvCheck(name){
   if(r.level%20===0){G.stars=(G.stars||0)+1;toast(`${name} Lv.${r.level}! +1⭐`,'ok');}else toast(`${name} Lv.${r.level}!`,'ok');
   if(name===G.active){const c=document.getElementById('afCube');if(c){c.classList.add('lvUpFlash');setTimeout(()=>c.classList.remove('lvUpFlash'),700);}}
   addLog('events','⬆️ '+name+' Level Up! Lv.'+r.level,'');addBpXp(15);
-  if(name===G.active&&r.level%5===0)addSkillPoint(name);// 1 point every 5 levels
+  if(r.level%5===0)addSkillPoint(name);// 1 point every 5 levels for ALL zodiacs
   if(r.level>G.level)G.level=r.level;
   }
   updateHdr();renderSquad();
@@ -6204,7 +6150,7 @@ function getGodlyProgressVal(sourceKey){
     case 'eq_summon_rare':  {return[0,0,0,'~0.01% from equipment summons'];}
     case 'nightmare_50':    {const n=G.nightmareBossKills||0;return[n,50,Math.min(1,n/50),`${n}/50 Nightmare kills`];}
     case 'wins_10k':        {const w=G.wins||0;return[w,10000,Math.min(1,w/10000),`${fmt(w)}/10,000 wins`];}
-    case 'prestige_10':     {const p=G.prestigeCount||0;return[p,10,Math.min(1,p/10),`${p}/10 prestiges`];}
+    case 'prestige_10':     {const p=G.prestigeCount||0;return[p,120,Math.min(1,p/120),`${p}/120 total prestiges (all 12 zodiacs ×10)`];}
     case 'dungeon_week':    {const d=Object.keys(G.weeklyDungeonsDone||{}).length;const tot=(DAILY_DUNGEONS||[]).length;return[d,tot,tot?Math.min(1,d/tot):0,`${d}/${tot} dungeons this week`];}
     case 'boss_rush_perf':  {return[0,0,0,'Clear Boss Rush without any faint'];}
     case 'mirror_10':       {const m=G.mirrorWins||0;return[m,10,Math.min(1,m/10),`${m}/10 Mirror Battle wins`];}
@@ -6575,8 +6521,8 @@ function startTowerBattle(){
   if(isTowerVariant('boss'))G.enemy.boss=true;
   // Timed tower: check if reached 100
   if(isTowerVariant('timed')&&G.towerFloor>=100){endTimedTower(true);return;}
-  // Reborn tower: collect zodiac on win
-  if(G._rebornMode&&G.enemy)rebornPickupZodiac(G.enemy.name);
+  // Reborn tower: swap to reborn roster so only captured zodiacs are used
+  if(G._rebornMode&&G._rebornRoster){G.roster=G._rebornRoster;G.party=(G._rebornParty||[]).slice(0,6).filter(n=>G.roster[n]);G.active=G.party[0]||G.active;}
   renderEnemy();renderBattleCards();buildTurns();
   setMsg(`🗼 Tower Floor ${G.towerFloor}!`,`${G.enemy.emoji} ${G.enemy.name} (Lv.${G.enemy.level})`,'');
   document.getElementById('moreTowerFloor').textContent=G.towerBest||0;
@@ -6584,12 +6530,13 @@ function startTowerBattle(){
   save();
 }
 function startBossRush(){
-  G.bossRushActive=true;G.towerActive=false;G.bossRushFloor=0;
+  G.bossRushActive=true;G.towerActive=false;G.bossRushFloor=0;G._bossRushFainted=false;
   const bosses=ENEMIES.filter(e=>e.boss);const t=bosses[0];const sc=1+G.wins*B.WIN_SCALE;
-  G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc*1.5),hp:Math.floor(B.BASE_HP*t.hpM*sc*1.5),atk:Math.floor(B.BASE_ATK*t.atkM*sc*1.5)};
-  G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
-  renderEnemy();renderBattleCards();buildTurns();setMsg(`👑 BOSS RUSH! ${t.emoji} ${t.name}`,'Defeat all bosses!','');
-  if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}
+  // Boss Rush is WAY harder: 15x HP, 8x ATK, scales exponentially per floor
+  const rushMult=15;const atkMult=8;
+  G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc*rushMult),hp:Math.floor(B.BASE_HP*t.hpM*sc*rushMult),atk:Math.floor(B.BASE_ATK*t.atkM*sc*atkMult)};
+  G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;G._bossRushRegen=true;
+  renderEnemy();renderBattleCards();buildTurns();setMsg(`👑 BOSS RUSH! ${t.emoji} ${t.name} — EXTREME MODE`,'No healing between bosses. Each boss is 15× stronger!','');
   if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}
 }
 
@@ -8160,9 +8107,28 @@ function renderGuild(){
   const content=document.createElement('div');content.id='guildTabContent';body.appendChild(content);
   if(activeTab==='bosses'){
     content.innerHTML='<div class="sec-t mb2">👹 Guild Bosses</div>';
+    // Rank Up challenge section
+    const nextRankObj=GUILD_RANKS.find(r=>r.minRep>(G.guildRep||0));
+    const curRankObj=getGuildRank();
+    const rankDiv=document.createElement('div');rankDiv.style.cssText='background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px;margin-bottom:10px;';
+    if(nextRankObj&&GUILD_RANK_TESTS[nextRankObj.id]){
+      const test=GUILD_RANK_TESTS[nextRankObj.id];
+      const canChallenge=(G.guildRep||0)>=nextRankObj.minRep;
+      rankDiv.innerHTML=`<div style="font-weight:700;font-size:12px;margin-bottom:4px;">⬆️ Rank Up Challenge</div>
+        <div style="font-size:10px;color:var(--txt2);margin-bottom:6px;">Beat <b style="color:var(--acc);">${test.name}</b> to become ${nextRankObj.emoji} ${nextRankObj.name}</div>
+        <div style="font-size:9px;color:var(--txt2);margin-bottom:6px;">Rep: ${G.guildRep||0}/${nextRankObj.minRep}</div>`;
+      const rb=document.createElement('button');rb.className='btn '+(canChallenge?'bp':'bs')+' bblk';
+      rb.textContent=canChallenge?`⚔️ Challenge for ${nextRankObj.emoji} ${nextRankObj.name}`:`Need ${nextRankObj.minRep} Rep (have ${G.guildRep||0})`;
+      if(canChallenge)rb.onclick=()=>{closeM('mGuild');startGuildRankTest(nextRankObj.id);};
+      rankDiv.appendChild(rb);
+    }else if(!nextRankObj){
+      rankDiv.innerHTML=`<div style="text-align:center;color:var(--ok);font-weight:700;">👑 ${curRankObj.emoji} MAX RANK ACHIEVED</div>`;
+    }else{
+      rankDiv.innerHTML=`<div style="font-size:10px;color:var(--txt2);">Need ${nextRankObj.minRep} Rep to challenge for ${nextRankObj.emoji} ${nextRankObj.name}</div>`;
+    }
+    content.appendChild(rankDiv);
     const bg=document.createElement('div');bg.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:5px;';
     GUILD_BOSSES.forEach(boss=>{
-      const kills=(G.guildBossKills||0);
       const d=document.createElement('div');
       d.style.cssText='background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.3);border-radius:9px;padding:9px;text-align:center;';
       d.innerHTML='<div style="font-size:28px;">'+boss.emoji+'</div><div style="font-size:10px;font-weight:700;">'+boss.name+'</div><div style="font-size:8px;color:var(--txt2);">+'+boss.rep+' Rep · 🪙'+boss.coins+'</div>';
