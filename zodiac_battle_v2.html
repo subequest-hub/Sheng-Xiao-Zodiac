@@ -932,6 +932,8 @@ onAuthStateChanged(auth, user => {
   <div class="setting-row"><span>Auto-Battle Speed</span><select id="setAutoDelay" onchange="SET.autoDelay=+this.value;saveSET()" style="background:var(--bg3);color:var(--txt);border:none;border-radius:6px;padding:4px 8px;font-size:11px;"><option value="800">Fast (0.8s)</option><option value="1200" selected>Normal (1.2s)</option><option value="2000">Slow (2s)</option></select></div>
   <div class="setting-row"><span>Auto-Heal (low HP)</span><label class="sw"><input type="checkbox" id="autoPotChk" onchange="SET.autoPot=this.checked;saveSET()"><span class="swt"></span></label></div>
   <div class="setting-row"><span>Auto-Equip Gear</span><label class="sw"><input type="checkbox" id="setAutoEquip" onchange="G.autoEquip=this.checked;save()"><span class="swt"></span></label></div>
+  <div class="setting-row"><span>🌿 Auto-Harvest Garden</span><label class="sw"><input type="checkbox" id="setAutoHarvest" onchange="SET.autoHarvest=this.checked;saveSET()"><span class="swt"></span></label></div>
+  <div class="setting-row"><span>🌱 Auto-Replant Garden</span><label class="sw"><input type="checkbox" id="setAutoReplant" onchange="SET.autoReplant=this.checked;saveSET()"><span class="swt"></span></label></div>
   <div class="setting-row"><span>Auto-Salvage Below</span><select id="setSalvageRarity" onchange="SET.salvageRarity=this.value;saveSET();autoSalvageLowRarity()" style="background:var(--bg3);color:var(--txt);border:none;border-radius:6px;padding:4px 8px;font-size:11px;"><option value="">Off</option><option value="Common">Keep Uncommon+</option><option value="Uncommon">Keep Rare+</option><option value="Rare">Keep Epic+</option><option value="Epic">Keep Legendary+</option><option value="Legendary">Keep Mythical+</option><option value="Mythical">Keep Godly only</option></select></div>
 
   <div class="sec-t mb2" style="margin-top:14px;">🔊 Audio & Feel</div>
@@ -1387,7 +1389,7 @@ function getPetDesc(petId){
 function getPetBonus(effect){
   if(!G.activePet||!G.pets[G.activePet])return 0;
   const pet=PETS[G.activePet];if(!pet||pet.effect!==effect)return 0;
-  return getPetEffectiveVal(G.activePet);
+  return getPetEffectiveVal(G.activePet)*(1+getHouseBonus('petBonus'));
 }
 
 // ══ SKINS ══
@@ -1932,7 +1934,7 @@ const DEF=()=>({
 });
 let G=DEF();
 let _uid=Date.now();const uid=()=>(_uid++).toString(36);
-let SET={sound:false,vibrate:true,reduceMotion:false,autoDelay:1200,smartAuto:false,autoPot:false,showDmgNums:true,showHealNums:true,showStatus:true,showCombo:true,salvageRarity:'',perfMode:false,dmgSize:'medium',dmgTheme:'default'};
+let SET={sound:false,vibrate:true,reduceMotion:false,autoDelay:1200,smartAuto:false,autoPot:false,showDmgNums:true,showHealNums:true,showStatus:true,showCombo:true,salvageRarity:'',perfMode:false,dmgSize:'medium',dmgTheme:'default',autoHarvest:true,autoReplant:true};
 function saveSET(){try{localStorage.setItem('zb_set',JSON.stringify(SET));}catch(e){}}
 function loadSET(){try{const r=localStorage.getItem('zb_set');if(r)Object.assign(SET,JSON.parse(r));}catch(e){}}
 let currentWeather=WEATHERS[0];
@@ -2449,7 +2451,8 @@ function salvageItem(itemId){
 function enchantItem(itemId){
   const item=(G.equipment||[]).find(e=>e.id===itemId);if(!item)return;
   if((item.enchantLevel||0)>=100){toast('Max enchant level (100) reached!','er');return;}
-  const cost=5+(item.enchantLevel||0)*2;
+  const rarMult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;
+  const cost=Math.max(1,Math.ceil(rarMult*2*Math.pow(1.08,item.enchantLevel||0)*(1-getHouseBonus('enchantPower'))));
   if((G.stars||0)<cost){toast(`Need ${cost}⭐ to enchant!`,'er');return;}
   G.stars-=cost;item.enchantLevel=(item.enchantLevel||0)+1;
   Object.keys(item.stats).forEach(k=>{item.stats[k]=Math.floor(item.stats[k]*1.10);});
@@ -2736,17 +2739,20 @@ function rollSpecificPieceGodly(pieceId){
   });
   if(!chosenPiece){return null;}
   const typeData=EQUIPMENT_TYPES[slot]||EQUIPMENT_TYPES.weapon;
-  const baseVal=Math.floor(100+(G.ascension||1)*30);
-  const mult=EQUIPMENT_RARITIES.Godly?.mult||10;
+  // Godly base is 5x higher than Legendary equivalent so it's always endgame BiS
+  const asc=G.ascension||1;
+  const baseVal=Math.floor(1000+asc*200);
+  const mult=EQUIPMENT_RARITIES.Godly?.mult||12;
   const item={
     id:uid(),slot,name:chosenPiece.name,icon:chosenPiece.icon,rarity:'Godly',
-    level:100+(G.ascension||1)*10,equippedOn:null,stats:{},enchantLevel:0,
+    level:100+asc*10,equippedOn:null,stats:{},enchantLevel:0,
     isGodly:true,godlyId:chosenPiece.id,godlyAbility:chosenPiece.ability,
     godlySetName:chosenPiece.setName,godlySetEmoji:chosenPiece.setEmoji,
     godlySetColor:chosenPiece.setColor,persistent:true,gearXp:0,gearLevel:0,lockedStats:[],
   };
   (typeData.stats||['atk']).forEach(stat=>{
-    const val=Math.floor(baseVal*mult*(0.9+Math.random()*0.2));
+    // Tight ±5% range — godly stats are consistently elite, not lottery
+    const val=Math.floor(baseVal*mult*(0.95+Math.random()*0.10));
     if(stat==='allStats'){item.stats.atk=val;item.stats.def=val;item.stats.spd=val;item.stats.hp=val*2;}
     else if(stat==='critRate')item.stats.critRate=Math.floor(val*0.8);
     else if(stat==='critDmg')item.stats.critDmg=Math.floor(val*4);
@@ -3868,7 +3874,7 @@ function addCraftingXP(sk,amt){
   if(!G.craftingSkills)G.craftingSkills={};
   if(!G.craftingXP)G.craftingXP={};
   var cs=CRAFTING_SKILLS[sk];var cur=getCraftingLevel(sk);if(cur>=cs.maxLevel)return;
-  var bonXp=(getCraftingBonus('scholar').xpBonus||1);
+  var bonXp=(getCraftingBonus('scholar').xpBonus||1)*(1+getHouseBonus('skillXp')+getHouseBonus('craftXp'));
   G.craftingXP[sk]=(G.craftingXP[sk]||0)+amt*bonXp;
   while(G.craftingXP[sk]>=XP_PER_LEVEL&&(G.craftingSkills[sk]||0)<cs.maxLevel){
     G.craftingXP[sk]-=XP_PER_LEVEL;G.craftingSkills[sk]=(G.craftingSkills[sk]||0)+1;
@@ -4315,6 +4321,8 @@ function init(){
   },1700);
   document.getElementById('setSound').checked=SET.sound;document.getElementById('setVib').checked=SET.vibrate;document.getElementById('setMotion').checked=SET.reduceMotion;document.getElementById('setSmartAuto').checked=SET.smartAuto;const _apc=document.getElementById('autoPotChk');if(_apc)_apc.checked=SET.autoPot||false;const _apt=document.getElementById('autoPotToggle');if(_apt)_apt.checked=SET.autoPot||false;document.getElementById('setAutoDelay').value=String(SET.autoDelay);
   const aeChk=document.getElementById('setAutoEquip');if(aeChk)aeChk.checked=G.autoEquip!==false;
+  const ahChk=document.getElementById('setAutoHarvest');if(ahChk)ahChk.checked=SET.autoHarvest!==false;
+  const arChk=document.getElementById('setAutoReplant');if(arChk)arChk.checked=SET.autoReplant!==false;
   const sdChk=document.getElementById('setShowDmg');if(sdChk)sdChk.checked=SET.showDmgNums!==false;
   const shChk=document.getElementById('setShowHeal');if(shChk)shChk.checked=SET.showHealNums!==false;
   const ssChk=document.getElementById('setShowStatus');if(ssChk)ssChk.checked=SET.showStatus!==false;
@@ -4428,6 +4436,8 @@ function spawnEnemy(){
   };
   G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;
   G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;G.lastAttacker='';G.speedBreakUsed=false;G._battleStartTime=Date.now();G._phoenixUsedThisBattle=false;
+  // Kitchen Potion Rack: free extra potion each battle
+  const _extraPot=Math.floor(getHouseBonus('extraPotion')||0);if(_extraPot>0){G.pot=G.pot||{};G.pot.heal=(G.pot.heal||0)+_extraPot;}
   unlockCodexEntry(enemyTemplate.name);clearCT();resetTel();hideEnemySkillWarning();
   const abEl=document.getElementById('armorBreak');if(abEl)abEl.style.display='none';
   changeWeather();renderEnemy();renderBattleCards();
@@ -4688,7 +4698,7 @@ function doAttack(){
   const isCrit=!isMegaCrit&&!isSuperCrit&&critRoll<(0.15+(f.trait==='lucky'?.1:0));
   const _fEl2=getZodiacElement(f.zodiac);const isWeak=_fEl2===e.weak;
   const xpGain=Math.floor((B.XP_HIT+Math.floor(e.level*.25))*(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(1+getHouseBonus('xpBonus'))*(getWorldEventMult?getWorldEventMult('xp'):1));
-  const sMult=1+G.streak*B.STREAK_BONUS;
+  const sMult=(1+G.streak*B.STREAK_BONUS)*(1+getHouseBonus('comboDmg'));
   const atkBuff=getAtkBuff(f.zodiac)*skillBoost.atk;
   const weatherMult=getWeatherMult(getZodiacElement(f.zodiac));
   const rageMult=checkRage(f.zodiac);
@@ -4872,7 +4882,7 @@ function onWin(sMult=1){
   // Feature 8: goldFind stat multiplier
   const eqStatsW=getEquipmentStats(G.active);
   const goldTouchBonus=getAwakeningBonuses(G.active).gold_touch?0.50:0;
-  const goldFindMult=1+(eqStatsW.goldFind||0)/100+(G.prestigeShop?.goldFindBonus||0)+goldTouchBonus+getPetBonus('gold')+getHouseBonus('goldFind')+getHouseBonus('goldAll')+getHouseBonus('goldWin');
+  const goldFindMult=1+(eqStatsW.goldFind||0)/100+(G.prestigeShop?.goldFindBonus||0)+goldTouchBonus+getPetBonus('gold')+getHouseBonus('goldFind')+getHouseBonus('goldAll')+getHouseBonus('goldWin')+getHouseBonus('battleReward');
   let gold=Math.floor(e.gold*sMult*goldFindMult*(getWorldEventMult?getWorldEventMult('gold'):1));
   // Feature 3: finisher bonus gold
   if(G.finisherBonus){gold=Math.floor(gold*1.5);G.finisherBonus=false;toast('💀 FINISHER! +50% gold!','ok');}
@@ -4942,7 +4952,37 @@ function onWin(sMult=1){
   if(getHouseBonus('potionDrop')>0&&Math.random()<getHouseBonus('potionDrop')){G.pot.heal=(G.pot.heal||0)+1;addLog('rewards','🧪 Alchemy Set: +1 Potion!','House bonus');}
   addPassiveCraftingXP();
   // Garden plot countdown
-  if(G.gardenPlots){Object.keys(G.gardenPlots).forEach(k=>{if(G.gardenPlots[k]&&G.gardenPlots[k].battlesLeft>0){G.gardenPlots[k].battlesLeft--;if(G.gardenPlots[k].battlesLeft===0)toast('🌾 Garden ready! Visit House to harvest.','ok');}});}
+  if(G.gardenPlots){Object.keys(G.gardenPlots).forEach(k=>{
+    if(!G.gardenPlots[k])return;
+    if(G.gardenPlots[k].battlesLeft>0){
+      G.gardenPlots[k].battlesLeft--;
+      if(G.gardenPlots[k].battlesLeft===0){
+        // Auto-harvest (if enabled)
+        if(SET.autoHarvest!==false){
+          const seed=GARDEN_SEEDS.find(s=>s.id===k);if(!seed)return;
+          const rw=seed.reward;const dbl=G._gardenDouble?2:1;
+          G.totalHarvests=(G.totalHarvests||0)+1;
+          if(rw.godlyChance){
+            if(Math.random()<0.001){checkGodlyPieceUnlock('house_harvest');addLog('rewards','🌑 VOID SEED: GODLY DROP! ✨','#ffd700');}
+            else{const s=rw.stars*dbl;G.stars=(G.stars||0)+s;addLog('rewards',seed.emoji+' Auto-harvest: +'+s+'⭐','#a78bfa');}
+          }
+          if(rw.potion){const amt=rw.amount*dbl;G.pot=G.pot||{};G.pot[rw.potion]=(G.pot[rw.potion]||0)+amt;addLog('rewards',seed.emoji+' Auto-harvest: +'+amt+' '+rw.potion+' potion','#34d399');}
+          if(rw.stars&&!rw.godlyChance){const s=rw.stars*dbl;G.stars=(G.stars||0)+s;addLog('rewards',seed.emoji+' Auto-harvest: +'+s+'⭐','#a78bfa');}
+          if(rw.gold){const g=rw.gold*dbl;G.gold+=g;G.totalGold+=g;addLog('rewards',seed.emoji+' Auto-harvest: +'+fmt(g)+'g','#fbbf24');}
+          if(rw.xp){const x=rw.xp*dbl;G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=x;lvCheck(n);}});addLog('rewards',seed.emoji+' Auto-harvest: +'+x+' XP','#60a5fa');}
+          G._gardenDouble=false;addCraftingXP('herbalist',1);
+          // Auto-replant (if enabled)
+          if(SET.autoReplant!==false){
+            G.gardenPlots[k]={battlesLeft:seed.turns};
+          }else{
+            delete G.gardenPlots[k];
+            addLog('rewards',seed.emoji+' '+seed.name+' ready — visit House to replant','#34d399');
+          }
+          updateHdr();
+        }
+      }
+    }
+  });}
   if(getPetBonus('stars')>0)starsEarned=Math.floor(starsEarned*(1+getPetBonus('stars')));
   if(starsEarned>0){G.stars=(G.stars||0)+starsEarned;addLog('rewards',`⭐ +${starsEarned} stars earned!`,e.boss||e.isAreaBoss?'Boss kill bonus':'');}
   G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=e.xp+e.level*5;lvCheck(n);}});
@@ -6290,9 +6330,9 @@ function claimPendingGodly(pieceId){
 function renderBlacksmith(){
   const body=document.getElementById('blacksmithBody');if(!body)return;
   const rarityOrder=['Common','Uncommon','Rare','Epic','Legendary','Mythical'];
-  const rerollCost=item=>Math.floor(10*(EQUIPMENT_RARITIES[item.rarity]?.mult||1)*(1+Math.floor((item.rerollCount||0)/10)*.2));  // cheap, softly scales every 10 rolls
-  const upgradeCost=item=>{const lv=item.smithLevel||0;const rarMult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;return Math.floor(5000*rarMult*Math.pow(1.15,lv)*(1+getHouseBonus('upgradeCost')));};
-  const enchantCost=item=>Math.max(1,Math.round((2+(item.enchantLevel||0))*(1-getHouseBonus('enchantPower'))));
+  const rerollCost=item=>Math.floor(50*(EQUIPMENT_RARITIES[item.rarity]?.mult||1)*(1+Math.floor((item.rerollCount||0)/5)*.3));
+  const upgradeCost=item=>{const lv=item.smithLevel||0;const rarMult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;return Math.floor(50*rarMult*Math.pow(1.08,lv)*(1+getHouseBonus('upgradeCost')));};
+  const enchantCost=item=>{const lv=item.enchantLevel||0;const rarMult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;return Math.max(1,Math.ceil(rarMult*2*Math.pow(1.08,lv)*(1-getHouseBonus('enchantPower'))));  };
   let html=`<div class="t2 ts mb2">Tap a stat to 🔒 lock it. Locked stats won't be rerolled.</div>`;
   const items=(G.equipment||[]).sort((a,b)=>rarityOrder.indexOf(b.rarity)-rarityOrder.indexOf(a.rarity));
   if(!items.length){body.innerHTML='<div class="t2 ts" style="text-align:center;padding:20px;">No equipment yet!</div>';return;}
@@ -6334,23 +6374,27 @@ function enchantItemFromBlacksmith(itemId){
 }
 function blacksmithReroll(itemId){
   const item=(G.equipment||[]).find(e=>e.id===itemId);if(!item)return;
-  const cost=Math.floor(10*(EQUIPMENT_RARITIES[item.rarity]?.mult||1)*(1+Math.floor((item.rerollCount||0)/10)*.2));
+  const rarMult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;
+  const cost=Math.floor(50*rarMult*(1+Math.floor((item.rerollCount||0)/5)*.3));
   if(G.gold<cost){toast('Not enough gold!','er');return;}
   G.gold-=cost;
   const locked=item.lockedStats||[];
   const rollable=Object.keys(item.stats||{}).filter(k=>!locked.includes(k));
   if(!rollable.length){toast('All stats are locked!','er');G.gold+=cost;return;}
-  const mult=EQUIPMENT_RARITIES[item.rarity].mult;const base=Math.floor(5+item.level*2);
+  const mult=rarMult;const base=item.isGodly?Math.floor(1000+(G.ascension||1)*200):Math.floor(5+item.level*2);
+  // Godly: tight ±5% range. Others: normal ±20% range
+  const lo=item.isGodly?0.95:0.8;const hi=item.isGodly?0.05:0.4;
   const oldStats={...item.stats};
   rollable.forEach(k=>{
-    if(k==='critRate')item.stats[k]=Math.floor(base*mult*(0.8+Math.random()*0.4)*0.5);
-    else if(k==='critDmg')item.stats[k]=Math.floor(base*mult*(0.8+Math.random()*0.4)*2);
-    else if(k==='dodge')item.stats[k]=Math.floor(base*mult*(0.8+Math.random()*0.4)*0.3);
-    else if(k==='ultCharge')item.stats[k]=Math.floor(base*mult*(0.8+Math.random()*0.4)*0.4);
-    else item.stats[k]=Math.floor(base*mult*(0.8+Math.random()*0.4));
+    const rv=lo+Math.random()*hi;
+    if(k==='critRate')item.stats[k]=Math.floor(base*mult*rv*0.5);
+    else if(k==='critDmg')item.stats[k]=Math.floor(base*mult*rv*2);
+    else if(k==='dodge')item.stats[k]=Math.floor(base*mult*rv*0.3);
+    else if(k==='ultCharge')item.stats[k]=Math.floor(base*mult*rv*0.4);
+    else item.stats[k]=Math.floor(base*mult*rv);
   });
   item.rerollCount=(item.rerollCount||0)+1;
-  const changes=rollable.map(k=>`${k}:${oldStats[k]}→${item.stats[k]}`).join(', ');
+  const changes=rollable.map(k=>`${k}:${fmt(oldStats[k])}→${fmt(item.stats[k])}`).join(', ');
   updateHdr();save();renderBlacksmith();
   addCraftingXP('blacksmith',1);toast(`🎲 Rerolled: ${changes} (roll #${item.rerollCount})`,'ok');
 }
@@ -6358,16 +6402,16 @@ function blacksmithUpgrade(itemId){
   const item=(G.equipment||[]).find(e=>e.id===itemId);if(!item)return;
   const lv=item.smithLevel||0;
   if(lv>=100){toast('Max upgrade level (100) reached!','er');return;}
-  // Cost scales steeply: base 5000g * rarity * 1.15^level
   const rarMult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;
-  const cost=Math.floor(5000*rarMult*Math.pow(1.15,lv));
+  const cost=Math.floor(50*rarMult*Math.pow(1.08,lv)*(1+getHouseBonus('upgradeCost')));
   if(G.gold<cost){toast(`Need ${fmt(cost)}g to upgrade!`,'er');return;}
   G.gold-=cost;item.smithLevel=lv+1;
   Object.keys(item.stats).forEach(k=>{item.stats[k]=Math.floor(item.stats[k]*1.02);});
-  // Track for godly unlock: check if any item reached 100
   if(item.smithLevel>=100)checkGodlyPieceUnlock('smith_100');
+  const nextCost=Math.floor(50*rarMult*Math.pow(1.08,item.smithLevel));
   updateHdr();save();renderBlacksmith();
-  toast(`⬆ ${item.name} → Lv.${item.smithLevel}! Next upgrade: ${fmt(Math.floor(5000*(EQUIPMENT_RARITIES[item.rarity]?.mult||1)*Math.pow(1.15,item.smithLevel)))}g`,'ok');
+  addCraftingXP('blacksmith',1);
+  toast(`⬆ ${item.name} → Lv.${item.smithLevel}! Next: ${fmt(nextCost)}g`,'ok');
 }
 
 // ══ PRESTIGE SHOP ══
@@ -6620,7 +6664,7 @@ function startExpedition(zodiacName){
 }
 function checkExpeditionReturns(){
   if(!G.expeditions)return;const now=Date.now();let changed=false;
-  Object.entries(G.expeditions).forEach(([name,exp])=>{if(exp.active&&now-exp.start>=exp.duration){exp.active=false;changed=true;const gold=Math.floor((50+exp.level*10)*(1+(G.prestigeShop?.expBonus||0)));const xp=40+exp.level*5;G.gold+=gold;G.totalGold+=gold;const r=G.roster[name];if(r){r.xp+=xp;lvCheck(name);}toast(`🗺️ ${name} returned! +${gold}g +${xp}XP`,'ok');addBpXp(20);}});
+  Object.entries(G.expeditions).forEach(([name,exp])=>{if(exp.active&&now-exp.start>=exp.duration){exp.active=false;changed=true;const expMult=1+(G.prestigeShop?.expBonus||0)+getHouseBonus('expedBonus');const gold=Math.floor((50+exp.level*10)*expMult);const xp=40+exp.level*5;G.gold+=gold;G.totalGold+=gold;const r=G.roster[name];if(r){r.xp+=xp;lvCheck(name);}toast(`🗺️ ${name} returned! +${gold}g +${xp}XP`,'ok');addBpXp(20);}});
   if(changed){save();updateHdr();renderSquad();}
 }
 function getExpeditionTimeLeft(name){
@@ -7345,11 +7389,14 @@ const HOUSE_VISITORS=[
   {id:'gardener', name:'Moon Gardener',    emoji:'🌿',desc:'Plants give double herbs',    interval:7},
 ];
 const GARDEN_SEEDS=[
-  {id:'s_hp',    name:'Heal Herb',    emoji:'🌿',desc:'Craft into Healing Potion',turns:5, reward:{potion:'heal',amount:1}},
-  {id:'s_str',   name:'Power Root',   emoji:'🌱',desc:'Craft into Power Boost',   turns:8, reward:{potion:'boost',amount:1}},
-  {id:'s_star',  name:'Star Bloom',   emoji:'🌸',desc:'+3 stars when harvested',  turns:6, reward:{stars:3}},
-  {id:'s_gold',  name:'Gold Flower',  emoji:'🌻',desc:'+500 gold when harvested', turns:4, reward:{gold:500}},
-  {id:'s_xp',    name:'Wisdom Moss',  emoji:'🍀',desc:'+200 XP when harvested',   turns:5, reward:{xp:200}},
+  {id:'s_hp',    name:'Heal Herb',    emoji:'🌿', desc:'+2 Healing Potions',          turns:5,  reward:{potion:'heal',amount:2}},
+  {id:'s_str',   name:'Power Root',   emoji:'🌱', desc:'+1 Boost Potion',             turns:8,  reward:{potion:'boost',amount:1}},
+  {id:'s_star',  name:'Star Bloom',   emoji:'🌸', desc:'+10 stars when harvested',    turns:10, reward:{stars:10}},
+  {id:'s_gold',  name:'Gold Flower',  emoji:'🌻', desc:'+5,000 gold when harvested',  turns:6,  reward:{gold:5000}},
+  {id:'s_xp',    name:'Wisdom Moss',  emoji:'🍀', desc:'+500 XP to all party',        turns:7,  reward:{xp:500}},
+  {id:'s_shield',name:'Iron Thorn',   emoji:'🌾', desc:'+1 Shield Potion',            turns:9,  reward:{potion:'shield',amount:1}},
+  {id:'s_elixir',name:'Moon Blossom', emoji:'🌺', desc:'+1 Mega Elixir',              turns:15, reward:{potion:'elixir',amount:1}},
+  {id:'s_rare',  name:'Void Seed',    emoji:'🌑', desc:'Rare: +50 stars or Godly drop',turns:25, reward:{stars:50,godlyChance:true}},
 ];
 
 function getHouseBonus(bonusKey){
@@ -7358,15 +7405,26 @@ function getHouseBonus(bonusKey){
   G.houseFurniture.forEach(fid=>{
     const f=HOUSE_FURNITURE.find(x=>x.id===fid);
     if(!f)return;
-    if(f.bonus[bonusKey])total+=f.bonus[bonusKey];
+    if(f.bonus[bonusKey]!==undefined)total+=f.bonus[bonusKey];
   });
+  // Trophy Wall: +1% all stats per 10 achievements
   if(bonusKey==='all'&&G.houseFurniture.includes('trophy')){
     total+=Math.floor((G.achiev||[]).length/10)*0.01;
   }
-  // Room level bonuses
+  // Room level bonuses — every room contributes per level
   const roomBonuses={
-    xpBonus:['library',0.05],goldFind:['treasury',0.03],
-    atk:['dojo',0.03],crit:['observatory',0.02],
+    xpBonus:    ['library',    0.05],
+    goldFind:   ['treasury',   0.03],
+    atk:        ['dojo',       0.03],
+    crit:       ['observatory',0.02],
+    starDrop:   ['shrine',     0.01],
+    potionPower:['kitchen',    0.05],
+    craftXp:    ['workshop',   0.04],
+    goldAll:    ['treasury',   0.02],
+    enchantPower:['forge',     0.02],
+    upgradeCost:['forge',     -0.02],// negative = discount
+    bossDmg:    ['arena',      0.03],
+    expedBonus: ['dungeon_room',0.05],
   };
   if(roomBonuses[bonusKey]){
     const [roomId,perLevel]=roomBonuses[bonusKey];
@@ -7399,14 +7457,20 @@ function harvestGarden(seedId){
   const plot=G.gardenPlots[seedId];
   if(!plot||plot.battlesLeft>0){toast('Not ready yet!','er');return;}
   const rw=seed.reward;
-  checkHarvestGodly();
+  const dbl=G._gardenDouble;G._gardenDouble=false;
+  const mult=dbl?2:1;
   G.totalHarvests=(G.totalHarvests||0)+1;
-  if(Math.random()<0.001)checkGodlyPieceUnlock('house_harvest');// 0.1% chance per harvest
-  if(rw.potion){G.pot[rw.potion]=(G.pot[rw.potion]||0)+rw.amount;toast(seed.emoji+' Harvested! +'+rw.amount+' '+rw.potion,'ok');}
-  if(rw.stars){G.stars=(G.stars||0)+rw.stars;toast(seed.emoji+' Harvested! +'+rw.stars+' ⭐','ok');}
-  if(rw.gold){G.gold+=rw.gold;G.totalGold+=rw.gold;toast(seed.emoji+' Harvested! +'+rw.gold+' gold','ok');}
-  if(rw.xp){G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=rw.xp;lvCheck(n);}});toast(seed.emoji+' Harvested! +'+rw.xp+' XP to party','ok');}
+  // Void Seed: 0.1% godly, otherwise +50 stars
+  if(rw.godlyChance){
+    if(Math.random()<0.001){checkGodlyPieceUnlock('house_harvest');toast('🌑 VOID SEED: GODLY DROP! ✨','ok');}
+    else{const s=rw.stars*mult;G.stars=(G.stars||0)+s;toast('🌑 Void Seed: +'+s+'⭐','ok');}
+  }
+  if(rw.potion){const amt=rw.amount*mult;G.pot=G.pot||{};G.pot[rw.potion]=(G.pot[rw.potion]||0)+amt;toast(seed.emoji+' Harvested! +'+amt+' '+rw.potion+' potion'+(amt>1?'s':''),'ok');}
+  if(rw.stars&&!rw.godlyChance){const s=rw.stars*mult;G.stars=(G.stars||0)+s;toast(seed.emoji+' Harvested! +'+s+'⭐','ok');}
+  if(rw.gold){const g=rw.gold*mult;G.gold+=g;G.totalGold+=g;toast(seed.emoji+' Harvested! +'+fmt(g)+' gold','ok');}
+  if(rw.xp){const x=rw.xp*mult;G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=x;lvCheck(n);}});toast(seed.emoji+' Harvested! +'+x+' XP to party','ok');}
   delete G.gardenPlots[seedId];updateHdr();save();renderHouse();
+  addCraftingXP('herbalist',1);
 }
 function plantSeed(seedId){
   const seed=GARDEN_SEEDS.find(s=>s.id===seedId);if(!seed)return;
@@ -7479,8 +7543,11 @@ function renderHouse(){
         b.onclick=(()=>{const rid=room.id,uc=upgCost,rem=room.emoji,rname=room.name;return()=>{
           if(G.gold<uc){toast('Not enough gold!','er');return;}G.gold-=uc;
           if(rid==='main'){const curLv=G.houseMainLevel||1;if(curLv>=5){toast('Main Hall max level 5!','er');G.gold+=uc;return;}
-            const otherRooms=HOUSE_ROOMS.filter(r=>r.id!=='main');const allSameLevel=otherRooms.every(r=>!G.houseRooms?.includes(r.id)||(G.houseRoomLevels[r.id]||1)>=curLv);
-            if(!allSameLevel){toast('All other rooms must be at least Lv.'+curLv+' first!','er');G.gold+=uc;return;}
+            const otherRooms=HOUSE_ROOMS.filter(r=>r.id!=='main');
+            const allBought=otherRooms.every(r=>G.houseRooms?.includes(r.id));
+            if(!allBought){toast('Buy ALL rooms before upgrading Main Hall!','er');G.gold+=uc;return;}
+            const allSameLevel=otherRooms.every(r=>(G.houseRoomLevels[r.id]||1)>=curLv);
+            if(!allSameLevel){toast('Upgrade ALL rooms to Lv.'+curLv+' first!','er');G.gold+=uc;return;}
             G.houseMainLevel=curLv+1;save();renderHouse();toast(rem+' Main Hall Lv.'+G.houseMainLevel+'! All rooms can now upgrade to Lv.'+G.houseMainLevel,'ok');
           }else{if((G.houseRoomLevels[rid]||0)>=(G.houseMainLevel||1)){toast('Upgrade Main Hall first to unlock higher room levels!','er');G.gold+=uc;return;}G.houseRoomLevels[rid]=(G.houseRoomLevels[rid]||1)+1;save();renderHouse();toast(rem+' '+rname+' Lv.'+(G.houseRoomLevels[rid])+'!','ok');}
         };})();d.appendChild(b);
