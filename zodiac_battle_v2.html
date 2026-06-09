@@ -13,6 +13,30 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="description" content="Deep idle RPG battle game based on the Chinese Zodiac. Summon, evolve, ascend.">
 <link rel="manifest" href="manifest.json">
+<script>
+// Override manifest start_url dynamically for GitHub Pages subpath hosting
+(function(){
+  try{
+    const base=location.pathname.replace(/\/[^/]+$/, '/');
+    const file=location.pathname.split('/').pop();
+    const manifest={
+      name:'Zodiac Battle',short_name:'Zodiac Battle',
+      start_url: location.pathname + location.search,
+      scope: base,
+      display:'standalone',orientation:'portrait',
+      background_color:'#0a0f1e',theme_color:'#f59e0b',
+      icons:[
+        {src:base+'icon-192.png',sizes:'192x192',type:'image/png'},
+        {src:base+'icon-512.png',sizes:'512x512',type:'image/png'}
+      ]
+    };
+    const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const link=document.querySelector('link[rel="manifest"]');
+    if(link)link.href=url;
+  }catch(e){}
+})();
+</script>
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -390,7 +414,7 @@ onAuthStateChanged(auth, user => {
       <span style="font-size:12px;">⭐</span>
       <div><div style="font-size:9px;font-weight:700;color:var(--txt);" id="hStarVal">0</div><div style="font-size:6px;color:var(--txt2);">Stars</div></div>
     </div>
-    <div onclick="renderShop();openM('mShop')" style="display:flex;align-items:center;gap:2px;background:rgba(30,41,59,.7);border:1px solid rgba(71,85,105,.3);border-radius:8px;padding:3px 4px;cursor:pointer;">
+    <div onclick="if(G._ironmanMode){toast('💀 Ironman Tower: Shop is locked!','er');return;}renderShop();openM('mShop')" style="display:flex;align-items:center;gap:2px;background:rgba(30,41,59,.7);border:1px solid rgba(71,85,105,.3);border-radius:8px;padding:3px 4px;cursor:pointer;">
       <span style="font-size:12px;">💰</span>
       <div style="min-width:0;overflow:hidden;"><div style="font-size:9px;font-weight:700;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="hG">0</div><div style="font-size:6px;color:var(--txt2);">Gold</div></div>
     </div>
@@ -410,6 +434,9 @@ onAuthStateChanged(auth, user => {
   <div id="vignette" style="position:absolute;inset:0;pointer-events:none;z-index:3;" aria-hidden="true"></div>
   <div id="weatherBadge" style="position:absolute;top:6px;right:6px;font-size:9px;background:rgba(0,0,0,.5);padding:1px 6px;border-radius:6px;display:none;z-index:6;"></div>
   <div id="timedTowerClock" style="position:absolute;top:40px;left:6px;font-size:11px;font-weight:900;color:var(--acc);z-index:6;display:none;"></div>
+  <div id="abandonRunBtn" style="position:absolute;top:6px;left:6px;z-index:9;display:none;">
+    <button onclick="confirmAbandonRun()" style="padding:3px 9px;background:rgba(127,29,29,.85);border:1px solid #ef4444;border-radius:7px;color:#fca5a5;font-size:9px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px);">✕ Abandon</button>
+  </div>
   <div id="armorBreak" style="display:none;z-index:6;position:absolute;top:60px;left:6px;font-size:9px;color:#fb923c;background:rgba(0,0,0,.5);padding:1px 5px;border-radius:5px;">DEF↓<span id="armorBreakN"></span></div>
   <div id="eStatus" style="position:absolute;top:60px;right:6px;display:flex;gap:2px;flex-wrap:wrap;z-index:6;pointer-events:none;max-width:100px;justify-content:flex-end;display:none;"></div>
   <!-- Damage numbers top-left -->
@@ -1094,6 +1121,16 @@ function closeAllM(){
   document.querySelectorAll('.modal.on').forEach(m=>closeM(m.id));
 }
 function showTab(tab){
+  // During Reborn Tower: only Fight, Squad, Summon allowed
+  if(G._rebornMode&&!['battle','squad','summon'].includes(tab)){
+    toast('♻️ Reborn Tower: only Fight, Squad & Summon available!','er');
+    return;
+  }
+  // During Ironman Tower: only Fight and Squad allowed (no summon, no shop — it happens automatically)
+  if(G._ironmanMode&&!['battle','squad'].includes(tab)){
+    toast('💀 Ironman Tower: only Fight & Squad available!','er');
+    return;
+  }
   const tabs=['battle','squad','summon','quests','shop','more'];
   const navMap={battle:'nb-battle',squad:'nb-squad',summon:'nb-summon',quests:'nb-quests',shop:'nb-shop',more:'nb-more'};
   tabs.forEach(t=>{
@@ -2470,7 +2507,7 @@ function renderEquipmentManager(zodiacName){
 }
 
 // ══ MYTHICAL STACKS ══
-function getMythicalStacks(name){return(G.mythicalStacks&&G.mythicalStacks[name])||0;}
+function getMythicalStacks(name){return((G.mythicalStacks&&G.mythicalStacks[name])||0)+((G._ironmanStacks&&G._ironmanStacks[name])||0);}
 function addMythicalStack(name){
   if(!G.mythicalStacks)G.mythicalStacks={};
   const _stackCap=Math.max(10,(G.ascension||0)*10);
@@ -2735,6 +2772,8 @@ function _hasGodlyPiece(pieceId){return getOwnedGodlyIds().has(pieceId);}
 // Central godly unlock checker — queues piece as pending for Hub → Godly Gear claim
 function checkGodlyPieceUnlock(sourceKey){
   const map={
+    convergence:       'gs_sovereign_blade',
+    house_harvest:     'gs_light_prism',
     tower_1000_buff:   'gs_sovereign_plate',
     summon_100k:       'gs_sovereign_crown',
     bp_100:            'gs_sovereign_rune',
@@ -3703,7 +3742,7 @@ function fireTeamCombo(combo){
 function checkSpeedBreak(fighter){
   if(!G.enemy)return false;
   const eSpdProxy=G.enemy.atk*.6+40;
-  if(fighter.spd>=eSpdProxy*2){if(!G.speedBreakUsed){G.speedBreakUsed=true;toast(`⚡ SPEED BREAK! Double turn for ${fighter.zodiac}!`,'ok');return true;}}
+  if(fighter.spd>=eSpdProxy*2){if(!G.speedBreakUsed){G.speedBreakUsed=true;addLog('combat',`⚡ SPEED BREAK! Double turn for ${fighter.zodiac}!`,'#fbbf24');return true;}}
   G.speedBreakUsed=false;return false;
 }
 
@@ -4239,10 +4278,17 @@ function init(){
   applySettings();injectAnimatedSkinStyles();try{checkOfflineRewards();}catch(e){console.warn('offlineRewards:',e.message);}G._lastSave=Date.now();applyTheme(G.activeTheme||'default');checkPetUnlocks();G.sessionStartTime=Date.now();G.sessionWins=0;G.sessionGold=0;G.sessionDmg=0;
   initQuests();checkDailyLogin();checkDungeonReset();
   {const _nbd=getToday();if(G.nightmareBossDate!==_nbd){G.nightmareBossDefeatedToday=false;G.nightmareBossDate=_nbd;}}
-  // Reset all transient battle flags — these should never persist across sessions
-  G.towerActive=false;G.bossRushActive=false;G.inDungeon=false;G.dungeonData=null;
+  // Reset transient battle flags — but preserve active run state (ironman/reborn)
+  const _wasIronman=G._ironmanMode;const _wasReborn=G._rebornMode;
+  const _wasTowerActive=G.towerActive&&(_wasIronman||_wasReborn);
+  G.bossRushActive=false;G.inDungeon=false;G.dungeonData=null;
   G.mirrorFightActive=false;G.mirrorSnapshot=null;G.mirrorFightQueue=[];
   G.alive=false;G.enemy=null;G.enemySkillQueue=null;
+  // Only reset towerActive if not in an active ironman/reborn run
+  if(!_wasTowerActive)G.towerActive=false;
+  // Re-apply run rosters on reload
+  if(_wasIronman&&G._ironmanRunRoster){G.roster=G._ironmanRunRoster;G.party=(G._ironmanParty||[]).slice(0,6).filter(n=>G._ironmanRunRoster[n]);if(G.party.length)G.active=G.party[0];}
+  if(_wasReborn&&G._rebornRunRoster){G.roster=G._rebornRunRoster;G.party=(G._rebornParty||[]).slice(0,6).filter(n=>G._rebornRunRoster[n]);if(G.party.length)G.active=G.party[0];}
   // Purge any corrupt/stale entries from saved enemyQ
   G.enemyQ=(G.enemyQ||[]).filter(e=>e&&e.emoji&&e.name&&e.hpM);
   shuffleQ();
@@ -4256,6 +4302,8 @@ function init(){
   // Sync speed slider to saved speed on load
   if(G.speed)setSpd(G.speed);else setSpd(1);
   setInterval(()=>{checkExpeditionReturns();updateExpeditionUI();},30000);checkExpeditionReturns();
+  // Apply mode badge/nav greying if resuming an active run after page reload
+  try{updateModeBadge();}catch(e){}
   let p=0;const bar=document.getElementById('lprog');
   const iv=setInterval(()=>{p+=Math.random()*30;if(p>100)p=100;bar.style.width=p+'%';if(p>=100)clearInterval(iv);},180);
   // Dismiss loading screen - multiple fallback methods
@@ -4864,6 +4912,7 @@ function onWin(sMult=1){
   }
   if(e.isConvergence){
     toast('🌟 MYTHIC CONVERGENCE DEFEATED! Godly gear incoming!','ok');
+    checkGodlyPieceUnlock('convergence');
     rollGodlyDrop();G._convergenceNotified=false;// allow re-triggering
   }
   if(G._trialActive){onTrialWaveWin();return;}
@@ -4954,8 +5003,10 @@ function nextEnemy(){
   }
   renderSquad();
   if(G.towerActive){
-    // Reborn tower: capture the enemy zodiac we just defeated before moving on
+    // Reborn tower: capture the enemy zodiac we just defeated
     if(G._rebornMode&&G.enemy)rebornPickupZodiac(G.enemy.name);
+    // Ironman tower: automatic free ×1 summon after each win
+    if(G._ironmanMode)ironmanAutoSummon();
     startTowerBattle();return;
   }
   if(G.inDungeon&&G.dungeonData){if(G.dungeonProgress&&G.dungeonProgress.bossDefeated)onDungeonComplete();else nextDungeonEnemy();return;}
@@ -5016,7 +5067,7 @@ function nextEnemy(){
     spawnEnemy();buildTurns();
     const _hordeAreaIdx=AREAS.findIndex(a=>a.id===(G.currentArea||'meadow'));
     setMsg(`⚔️ HORDE! ${hordeSize} enemies incoming!`,`Area ${_hordeAreaIdx+1} — ${hordeSize}× wave`,'');
-    toast(`⚔️ Horde of ${hordeSize}!`,'ok');
+    addLog('combat',`⚔️ Horde of ${hordeSize}! Defeat them all.`,'#f87171');
   }else{
     G._hordeQueue=[];
     spawnEnemy();buildTurns();
@@ -5354,7 +5405,7 @@ function updateModeBadge(){
   if(ban)ban.textContent=areaText;
   if(bmn)bmn.textContent=modeText;
   if(!mb)return;
-  if(G.towerActive){mb.textContent='🗼 Tower — Floor '+(G.towerFloor||0);mb.style.display='block';}
+  if(G.towerActive){mb.textContent=(G._rebornMode?'♻️ Reborn Tower — Floor '+(G.towerFloor||0)+' (Quests/Shop/Hub locked)':G._ironmanMode?'💀 Ironman Tower — Floor '+(G.towerFloor||0)+' (Auto-summon after each win)':'🗼 Tower — Floor '+(G.towerFloor||0));mb.style.display='block';}
   else if(G.bossRushActive){mb.textContent='👑 Boss Rush — '+(G.bossRushFloor+1);mb.style.display='block';}
   else if(G.inDungeon&&G.dungeonData){mb.textContent='💎 '+G.dungeonData.name;mb.style.display='block';}
   else if(G.nightmareMode){mb.textContent='⚠️ Nightmare ×'+(G.ascensionMult||1);mb.style.display='block';}
@@ -5363,6 +5414,17 @@ function updateModeBadge(){
   else if(_guildRankTestActive){mb.textContent=`⚔️ Guild Rank Trial — ${GUILD_RANK_TESTS[_guildRankTestId||'']?.name||'Rank Test'}`;mb.style.display='block';mb.style.background='linear-gradient(135deg,#b45309,#92400e)';mb.style.color='#fde68a';}
   else if(G.mirrorFightActive){mb.textContent='⚔️ Mirror Battle — Defeat your past self!';mb.style.display='block';mb.style.background='linear-gradient(135deg,#7c3aed,#1e3a8a)';mb.style.color='#e9d5ff';}
   else{mb.style.display='none';}
+  // Show abandon button only for reborn/ironman tower variants
+  const abandonBtn=document.getElementById('abandonRunBtn');
+  if(abandonBtn)abandonBtn.style.display=(G.towerActive&&(G._rebornMode||G._ironmanMode))?'block':'none';
+  const anyRunLocked=!!(G._rebornMode||G._ironmanMode);
+  ['nb-quests','nb-shop','nb-more'].forEach(id=>{
+    const btn=document.getElementById(id);
+    if(btn){btn.style.opacity=anyRunLocked?'0.3':'';btn.style.pointerEvents=anyRunLocked?'none':'';}
+  });
+  // Ironman also locks summon — it happens automatically
+  const summonBtn=document.getElementById('nb-summon');
+  if(summonBtn){summonBtn.style.opacity=G._ironmanMode?'0.3':'';summonBtn.style.pointerEvents=G._ironmanMode?'none':'';}
 }
 
 // ══ SESSION TIMER ══
@@ -6503,7 +6565,11 @@ function startTowerBattle(){
   G.towerActive=true;G.bossRushActive=false;
   if(!G.enemyQ||!G.enemyQ.length)shuffleQ();
   let t=G.enemyQ.shift();if(!t||!t.emoji){shuffleQ();t=G.enemyQ.shift()||ENEMIES[0];}
-  const floor=G.towerFloor||0;const sc=1+G.wins*B.WIN_SCALE+floor*.05;
+  const floor=G.towerFloor||0;
+  // During ironman/reborn, scale by floor only — real wins would make floor 1 impossible
+  const sc=(G._ironmanMode||G._rebornMode)
+    ? 1+floor*.05
+    : 1+G.wins*B.WIN_SCALE+floor*.05;
   G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc),hp:Math.floor(B.BASE_HP*t.hpM*sc),atk:Math.floor(B.BASE_ATK*t.atkM*sc),level:Math.max(t.level,Math.floor(floor*.2)+1)};
   G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
   G.towerFloor=(G.towerFloor||0)+1;if(G.towerFloor>G.towerBest)G.towerBest=G.towerFloor;if(G.towerFloor>(G.towerBestFloor||0))G.towerBestFloor=G.towerFloor;
@@ -6521,8 +6587,10 @@ function startTowerBattle(){
   if(isTowerVariant('boss'))G.enemy.boss=true;
   // Timed tower: check if reached 100
   if(isTowerVariant('timed')&&G.towerFloor>=100){endTimedTower(true);return;}
-  // Reborn tower: swap to reborn roster so only captured zodiacs are used
-  if(G._rebornMode&&G._rebornRoster){G.roster=G._rebornRoster;G.party=(G._rebornParty||[]).slice(0,6).filter(n=>G.roster[n]);G.active=G.party[0]||G.active;}
+  // Reborn tower: always keep G.roster pointing at run roster
+  if(G._rebornMode&&G._rebornRunRoster){G.roster=G._rebornRunRoster;G.party=(G._rebornParty||[]).slice(0,6).filter(n=>G.roster[n]);if(G.party.length)G.active=G.active&&G.roster[G.active]?G.active:G.party[0];}
+  // Ironman tower: same — keep run roster active
+  if(G._ironmanMode&&G._ironmanRunRoster){G.roster=G._ironmanRunRoster;G.party=(G._ironmanParty||[]).slice(0,6).filter(n=>G.roster[n]);if(G.party.length)G.active=G.active&&G.roster[G.active]?G.active:G.party[0];}
   renderEnemy();renderBattleCards();buildTurns();
   setMsg(`🗼 Tower Floor ${G.towerFloor}!`,`${G.enemy.emoji} ${G.enemy.name} (Lv.${G.enemy.level})`,'');
   document.getElementById('moreTowerFloor').textContent=G.towerBest||0;
@@ -6670,41 +6738,97 @@ function startTowerVariant(variantId){
     };
   }
   if(variantId==='ironman'){
-    // Reset to fresh state for the run
-    G.party=[...G.party];// keep party but reset HP
-    G.party.forEach(n=>{const r=G.roster[n];if(r){r.hp=getMaxHp(n);}});
-    toast('💀 Ironman Tower! No items, no buffs. Good luck!','ok');
+    G._savedParty=[...G.party];
+    const z=ZODIACS[Math.floor(Math.random()*ZODIACS.length)];
+    const st=calcStats(z,'Common',1);
+    // Deep-copy real roster/party before ANY mutation
+    G._ironmanRealRoster=JSON.parse(JSON.stringify(G.roster));
+    G._ironmanRealParty=JSON.parse(JSON.stringify(G.party));
+    G._ironmanRealActive=G.active;
+    G._ironmanRealEquip=JSON.parse(JSON.stringify(G.equipment||[]));
+    G._ironmanRealGold=G.gold;
+    G._ironmanRealStars=G.stars;
+    // Build fresh run roster - completely separate object
+    const runRoster={};
+    runRoster[z.name]={level:1,xp:0,xpNext:100,hp:st.maxHp,maxHp:st.maxHp,atk:st.atk,def:st.def,spd:st.spd,rarity:'Common',stars:0,evoStage:0};
+    G._ironmanRunRoster=runRoster;
+    G._ironmanParty=[z.name];
+    G._ironmanMode=true;
+    // Swap to run state
+    G.roster=G._ironmanRunRoster;
+    G.party=[z.name];
+    G.active=z.name;
+    G.equipment=[];// no equipment in ironman run
+    save();// save with run state so reload restores correctly
+    toast('💀 Ironman Tower! Starting as '+z.emoji+' '+z.name+' (Common Lv.1). Auto-summon after each win!','ok');
   }
   if(variantId==='reborn'){
     G._savedParty=[...G.party];
     const z=ZODIACS[Math.floor(Math.random()*ZODIACS.length)];
     const st=calcStats(z,'Common',1);
-    // Temporarily replace roster with only the starting zodiac
-    G._rebornRoster=JSON.parse(JSON.stringify(G.roster));// backup real roster
-    G.roster={[z.name]:{level:1,xp:0,xpNext:100,hp:st.maxHp,maxHp:st.maxHp,atk:st.atk,def:st.def,spd:st.spd,rarity:'Common',stars:0}};
+    G._rebornRealRoster=JSON.parse(JSON.stringify(G.roster));
+    G._rebornRealParty=JSON.parse(JSON.stringify(G.party));
+    G._rebornRealActive=G.active;
+    G._rebornRealEquip=JSON.parse(JSON.stringify(G.equipment||[]));
+    const runRoster={};
+    runRoster[z.name]={level:1,xp:0,xpNext:100,hp:st.maxHp,maxHp:st.maxHp,atk:st.atk,def:st.def,spd:st.spd,rarity:'Common',stars:0,evoStage:0};
+    G._rebornRunRoster=runRoster;
     G._rebornParty=[z.name];G._rebornMode=true;
+    G.roster=G._rebornRunRoster;
     G.party=[z.name];G.active=z.name;
-    toast('♻️ Reborn Tower! You are '+z.emoji+' '+z.name+' (Common Lv.1)','ok');
+    G.equipment=[];
+    save();
+    toast('♻️ Reborn Tower! You are '+z.emoji+' '+z.name+' (Common Lv.1). Capture zodiacs by defeating them!','ok');
   }
   G.towerActive=true;G.bossRushActive=false;
-  closeAllM();startTowerBattle();updateModeBadge();
+  closeAllM();startTowerBattle();
+  updateModeBadge();// update nav greying immediately
+}
+function confirmAbandonRun(){
+  const mode=G._rebornMode?'Reborn':G._ironmanMode?'Ironman':'Tower';
+  confirm2(`✕ Abandon ${mode} Tower?`,`Floor ${G.towerFloor||0} progress will be lost. Your real squad will be fully restored.`,function(){
+    G.alive=false;clearInterval(autoIv);autoIv=null;
+    endTowerRun();
+    spawnEnemy();
+    toast(`↩️ ${mode} Tower abandoned. Back to your squad!`,'ok');
+  });
 }
 function endTowerRun(){
-  // Restore pre-run snapshot for ironman/reborn
-  if(G._preRunSnapshot){
+  // Restore pre-run snapshot for ironman
+  if(G._preRunSnapshot&&!G._rebornMode){
     const snap=G._preRunSnapshot;
     G.gold=snap.gold;G.stars=snap.stars;
     G.party=snap.party;G.active=snap.active;
     G.roster=snap.roster;G.equipment=snap.equipment;
-    delete G._preRunSnapshot;
     toast('↩️ Returned to your squad!','ok');
     updateHdr();renderSquad();
-  }else if(G._savedParty){
-    G.party=G._savedParty;delete G._savedParty;
   }
-  // Restore reborn real roster if not already done via snapshot
-  if(G._rebornRoster&&!G._preRunSnapshot){G.roster=G._rebornRoster;}
-  delete G._rebornMode;delete G._rebornRoster;delete G._rebornParty;
+  // Reborn: restore the clean real roster backup
+  if(G._rebornMode&&G._rebornRealRoster){
+    G.roster=G._rebornRealRoster;
+    G.party=G._rebornRealParty||G._savedParty||G.party;
+    G.active=G._rebornRealActive||G.party[0];
+    G.equipment=G._rebornRealEquip||G.equipment;
+    toast('↩️ Reborn run ended — your real squad is restored!','ok');
+    updateHdr();renderSquad();
+  }else if(G._savedParty){
+    G.party=G._savedParty;
+  }
+  // Ironman: restore the clean real roster backup
+  if(G._ironmanMode&&G._ironmanRealRoster){
+    G.roster=G._ironmanRealRoster;
+    G.party=G._ironmanRealParty||G._savedParty||G.party;
+    G.active=G._ironmanRealActive||G.party[0];
+    G.equipment=G._ironmanRealEquip||G.equipment;
+    // Don't restore gold/stars — keep anything earned during the run
+    toast('↩️ Ironman run ended — your real squad is restored!','ok');
+    updateHdr();renderSquad();
+  }
+  delete G._ironmanMode;delete G._ironmanRunRoster;delete G._ironmanParty;
+  delete G._ironmanRealRoster;delete G._ironmanRealParty;delete G._ironmanRealActive;
+  delete G._ironmanRealEquip;delete G._ironmanStacks;delete G._ironmanPity;
+  delete G._rebornRealRoster;delete G._rebornRealParty;delete G._rebornRealActive;
+  delete G._rebornRunRoster;delete G._savedParty;
   _towerBuffs=[];_towerDebuffs=[];G.towerActive=false;updateModeBadge();save();
 }
 function endTimedTower(success){
@@ -6718,6 +6842,54 @@ function endTimedTower(success){
   }else toast('⏱️ Times up! Floor '+G.towerFloor,'er');
   endTowerRun();
 }
+function ironmanAutoSummon(){
+  if(!G._ironmanMode)return;
+  const floor=G.towerFloor||0;
+  // Use same odds as real summon system with pity
+  if(!G._ironmanPity)G._ironmanPity=0;
+  G._ironmanPity++;
+  let rarity;
+  if(G._ironmanPity>=200){G._ironmanPity=0;rarity='Mythical';}
+  else{
+    const softBoost=G._ironmanPity>150?(G._ironmanPity-150)*0.01:0;
+    const rv=Math.random();
+    if(rv<(0.005+softBoost)){G._ironmanPity=0;rarity='Mythical';}
+    else if(rv<0.045)rarity='Omega';
+    else if(rv<0.195)rarity='Shiny';
+    else rarity='Normal';
+  }
+  const zodiacs=ZODIACS.map(z=>z.name);
+  const name=zodiacs[Math.floor(Math.random()*zodiacs.length)];
+  const lv=Math.max(1,Math.floor(floor*0.8));
+  const z=getZodiac(name);
+  const st=calcStats(z,rarity,lv);
+  if(!G._ironmanRunRoster)G._ironmanRunRoster=G.roster;
+  const existing=G._ironmanRunRoster[name];
+  const rarOrder=['Normal','Shiny','Omega','Mythical'];
+  if(existing){
+    if(rarity==='Mythical'&&existing.rarity==='Mythical'){
+      // Mythical duplicate → add stack just like real summon
+      if(!G._ironmanStacks)G._ironmanStacks={};
+      G._ironmanStacks[name]=(G._ironmanStacks[name]||0)+1;
+      toast('💀 Auto-Summon: '+z.emoji+' '+name+' 💫 MYTHICAL STACK x'+(G._ironmanStacks[name])+'!','ok');
+    }else if(rarOrder.indexOf(rarity)>rarOrder.indexOf(existing.rarity)){
+      existing.rarity=rarity;
+      const st2=calcStats(z,rarity,existing.level);
+      existing.maxHp=st2.maxHp;existing.atk=st2.atk;existing.def=st2.def;existing.spd=st2.spd;
+      toast('💀 Auto-Summon: '+z.emoji+' '+name+' ⬆️ upgraded to '+rarity+'!','ok');
+    }else{
+      toast('💀 Auto-Summon: '+z.emoji+' '+name+' ('+rarity+') — duplicate','ok');
+    }
+  }else{
+    G._ironmanRunRoster[name]={level:lv,xp:0,xpNext:100,hp:st.maxHp,maxHp:st.maxHp,atk:st.atk,def:st.def,spd:st.spd,rarity,stars:0,evoStage:0};
+    if(!G._ironmanParty)G._ironmanParty=[];
+    if(G._ironmanParty.length<6)G._ironmanParty.push(name);
+    G.party=[...G._ironmanParty.slice(0,6)];
+    toast('💀 Auto-Summon: '+z.emoji+' '+name+' ('+rarity+' Lv.'+lv+') joined! ['+G._ironmanPity+' pity]','ok');
+  }
+  G.roster=G._ironmanRunRoster;
+  renderSquad();
+}
 function rebornPickupZodiac(enemyName){
   if(!G._rebornMode)return;
   const z=ZODIACS.find(z2=>enemyName.toLowerCase().includes(z2.name.toLowerCase()));if(!z)return;
@@ -6728,12 +6900,14 @@ function rebornPickupZodiac(enemyName){
   const rarity=rarities[ri+(Math.random()<0.3&&ri<5?1:0)];
   const lv=Math.max(1,Math.floor(floor*.8));
   const st=calcStats(z,rarity,lv);
-  if(!G._rebornRoster)G._rebornRoster={};
-  G._rebornRoster[z.name]={level:lv,xp:0,xpNext:100,hp:st.maxHp,maxHp:st.maxHp,atk:st.atk,def:st.def,spd:st.spd,rarity,stars:0};
+  // Write into run roster (G.roster) — NOT into _rebornRealRoster
+  if(!G._rebornRunRoster)G._rebornRunRoster=G.roster;
+  G._rebornRunRoster[z.name]={level:lv,xp:0,xpNext:100,hp:st.maxHp,maxHp:st.maxHp,atk:st.atk,def:st.def,spd:st.spd,rarity,stars:0};
+  G.roster=G._rebornRunRoster;
   if(!G._rebornParty)G._rebornParty=[];
   G._rebornParty.push(z.name);
   if(G._rebornParty.length<=6)G.party=[...G._rebornParty.slice(0,6)];
-  toast('♻️ Captured '+z.emoji+' '+z.name+'! ('+rarity+') '+G._rebornParty.length+'/12','ok');
+  toast('♻️ Captured '+z.emoji+' '+z.name+'! ('+rarity+' Lv.'+lv+') — '+G._rebornParty.length+'/12','ok');
 }
 function renderTowerShop(){
   const body=document.getElementById('towerShopBody');if(!body)return;
@@ -7226,6 +7400,8 @@ function harvestGarden(seedId){
   if(!plot||plot.battlesLeft>0){toast('Not ready yet!','er');return;}
   const rw=seed.reward;
   checkHarvestGodly();
+  G.totalHarvests=(G.totalHarvests||0)+1;
+  if(Math.random()<0.001)checkGodlyPieceUnlock('house_harvest');// 0.1% chance per harvest
   if(rw.potion){G.pot[rw.potion]=(G.pot[rw.potion]||0)+rw.amount;toast(seed.emoji+' Harvested! +'+rw.amount+' '+rw.potion,'ok');}
   if(rw.stars){G.stars=(G.stars||0)+rw.stars;toast(seed.emoji+' Harvested! +'+rw.stars+' ⭐','ok');}
   if(rw.gold){G.gold+=rw.gold;G.totalGold+=rw.gold;toast(seed.emoji+' Harvested! +'+rw.gold+' gold','ok');}
