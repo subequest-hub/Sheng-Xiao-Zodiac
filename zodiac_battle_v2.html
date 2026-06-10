@@ -939,6 +939,8 @@ onAuthStateChanged(auth, user => {
   <div class="sec-t mb2" style="margin-top:14px;">🔊 Audio & Feel</div>
   <div class="setting-row"><span>Sound Effects</span><label class="sw"><input type="checkbox" id="setSound" onchange="SET.sound=this.checked;saveSET()"><span class="swt"></span></label></div>
   <div class="setting-row"><span>🔔 Show Toast Popups</span><label class="sw"><input type="checkbox" id="setToasts" checked onchange="SET.toasts=this.checked;saveSET()"><span class="swt"></span></label></div>
+  <div class="setting-row"><span>🔄 Auto-Reset Completed Quests</span><label class="sw"><input type="checkbox" id="setAutoResetQuests" onchange="SET.autoResetQuests=this.checked;saveSET()"><span class="swt"></span></label></div>
+  <div class="t2 ts" style="margin:-4px 0 8px;padding-left:2px;">Automatically rerolls completed quests for a new one. Still costs ⭐ (Daily 500 / Weekly 5000 / Monthly 20000) — only triggers if you can afford it.</div>
   <div class="setting-row"><span>📱 Screen Orientation</span><select id="setOrientation" onchange="SET.orientation=this.value;saveSET();applyOrientationLock()" style="background:var(--bg3);color:var(--txt);border:none;border-radius:6px;padding:4px 8px;font-size:11px;"><option value="auto">Auto</option><option value="portrait">Portrait Lock</option><option value="landscape">Landscape Lock</option></select></div>
   <div class="setting-row"><span>Vibration</span><label class="sw"><input type="checkbox" id="setVib" onchange="SET.vibrate=this.checked;saveSET()"><span class="swt"></span></label></div>
 
@@ -1056,6 +1058,8 @@ function setMsg(cur,sub,type){
 
 let _lastNmSpawn=0;
 function spawnDmg(val,type,target){
+  // Format numeric values — strings like '+5g' passed through as-is
+  const display=typeof val==='number'?fmt(val):String(val);
   // Non-combat types: route to log only, no floating numbers
   const logOnlyTypes=['xp','hl'];
   if(logOnlyTypes.includes(type)){
@@ -1071,7 +1075,7 @@ function spawnDmg(val,type,target){
     const d=document.createElement('div');
     const colors={mc:'#f87171',crit:'#fbbf24',cr:'#fbbf24',sc:'#fb923c'};
     d.style.cssText='font-size:'+(type==='mc'?'16':type==='sc'?'14':'12')+'px;font-weight:900;color:'+(colors[type]||'#fff')+';text-shadow:0 1px 4px rgba(0,0,0,.8);animation:dmgFloat 1.2s ease-out forwards;pointer-events:none;';
-    d.textContent=(type==='mc'||type==='sc'||type==='cr'?'💥 ':'')+val;
+    d.textContent=(type==='mc'||type==='sc'||type==='cr'?'💥 ':'')+display;
     corner.insertBefore(d,corner.firstChild);
     while(corner.children.length>3)corner.removeChild(corner.lastChild);
     setTimeout(function(){if(d.parentNode)d.remove();},1200);
@@ -1102,7 +1106,7 @@ function spawnDmg(val,type,target){
   if(rect.width===0)return;
   const topPos=Math.max(120,rect.top+10+Math.random()*15);
   el.style.cssText='position:fixed;left:'+(rect.left+rect.width*.3+Math.random()*rect.width*.4)+'px;top:'+topPos+'px;color:'+(colors[type]||'#fff')+';font-size:'+(sizes[type]||'14px')+';font-weight:900;z-index:8888;pointer-events:none;font-family:Cinzel,serif;text-shadow:0 2px 4px rgba(0,0,0,.9);animation:dmgFloat 1s ease-out forwards;';
-  el.textContent=(type==='miss'?'MISS':'')+val;
+  el.textContent=(type==='miss'?'MISS':'')+display;
   document.body.appendChild(el);
   setTimeout(()=>{if(el.parentNode)el.remove();},1100);
 }
@@ -1324,10 +1328,10 @@ const PRESTIGE_SHOP_ITEMS=[
   {id:'expBoost',name:'Expedition Loot',emoji:'🗺️',desc:'+20% expedition rewards',baseCost:8,stat:'expBonus',val:0.20},
   {id:'bpBoost',name:'BP XP',emoji:'🎫',desc:'+20% Battle Pass XP',baseCost:4,stat:'bpXpBonus',val:0.20},
 ];
-// Cost scales: baseCost * 1.5^purchases (meaningful escalation per upgrade)
+// Cost scales: baseCost * 1.12^purchases (long-term sink without becoming absurd)
 function getPrestigeShopCost(item){
   const bought=(G.prestigeShopBought&&G.prestigeShopBought[item.id])||0;
-  return Math.max(1,Math.ceil(item.baseCost*Math.pow(1.5,bought)));
+  return Math.max(1,Math.ceil(item.baseCost*Math.pow(1.12,bought)));
 }
 
 // ══ STAR REWARDS ══
@@ -1728,7 +1732,9 @@ const DAILY_QUEST_POOL=[
   {id:'boss1',  rarity:'Epic',     desc:'Defeat a boss',          target:1,   key:'bossToday',  reward:0, stars:3,  emoji:'👑'},
   {id:'boss3',  rarity:'Legendary',desc:'Defeat 3 bosses',        target:3,   key:'bossToday',  reward:0, stars:6,  emoji:'💀'},
   {id:'ult5',   rarity:'Common',   desc:'Use Ultimate 5 times',   target:5,   key:'ultToday',   reward:0, stars:1,  emoji:'⚡'},
+  {id:'ult15',  rarity:'Rare',     desc:'Use Ultimate 15 times',  target:15,  key:'ultToday',   reward:0, stars:3,  emoji:'⚡'},
   {id:'summon1',rarity:'Rare',     desc:'Summon once',            target:1,   key:'summonToday',reward:0, stars:2,  emoji:'🌟'},
+  {id:'summon5',rarity:'Epic',     desc:'Summon 5 times',         target:5,   key:'summonToday',reward:0, stars:4,  emoji:'🌟'},
 ];
 // Weekly challenge pool — each is a multi-requirement gauntlet taking hours
 const WEEKLY_QUEST_POOL=[
@@ -1784,19 +1790,21 @@ const WEEKLY_QUEST_POOL=[
 const MONTHLY_QUEST_POOL=[
   {id:'m_win300',   rarity:'Legendary', desc:'Win 300 battles',        target:300, key:'wins',      reward:0,stars:40, emoji:'⚔️'},
   {id:'m_boss30',   rarity:'Legendary', desc:'Defeat 30 bosses',       target:30,  key:'bossMonth', reward:0,stars:60, emoji:'👑'},
-  {id:'m_ult100',   rarity:'Epic',      desc:'Use Ultimate 100 times', target:100, key:'ultWeek',   reward:0,stars:30, emoji:'⚡'},
+  {id:'m_ult100',   rarity:'Epic',      desc:'Use Ultimate 100 times', target:100, key:'ultMonth',   reward:0,stars:30, emoji:'⚡'},
+  {id:'m_summon50', rarity:'Epic',      desc:'Summon 50 times',        target:50,  key:'summonMonth',reward:0,stars:35, emoji:'🌟'},
+  {id:'m_gold2m',   rarity:'Legendary', desc:'Earn 2,000,000 gold',    target:2000000,key:'goldEarned',reward:0,stars:50, emoji:'💰'},
 ];
 
 function generateBPTiers(){
   const t=[];
   for(let i=1;i<=100;i++){
-    const xpReq=Math.floor(15000*Math.pow(1.12,i-1)); // 100x harder to level
-    // Free track: 100x more gold, stars at every tier
+    const xpReq=Math.floor(200+i*60); // Tier 1=260 XP, Tier 100=6200 XP, total ~330K
+    // Free track
     const f=i%10===0?{gold:i*8000,stars:i>=10?Math.floor(i/5):2}
            :i%5===0?{gold:i*2500,stars:Math.floor(i/10)+1,item:i%20===0?'revive':'expKey'}
            :i%3===0?{gold:i*2500,stars:1}
            :{gold:i*1000,stars:i%2===0?1:0};
-    // Premium track: ~5x free, with big stars and milestones
+    // Premium track
     const p=i%10===0?{gold:i*40000,stars:Math.floor(i/5)+10,skillPt:i%20===0?5:2}
            :i%5===0?{gold:i*12000,stars:Math.floor(i/5)+3,skillPt:2}
            :i%2===0?{gold:i*6000,stars:Math.floor(i/10)+2,item:'expKey'}
@@ -1931,6 +1939,7 @@ const DEF=()=>({
   guaranteedShiny:0,guaranteedOmega:0,guaranteedMythic:0,freePrestige:0,
   potsUsed:0,bossToday:0,comboToday:0,perfectToday:0,goldToday:0,summonToday:0,ultToday:0,escapeToday:0,evoToday:0,expToday:0,
   bossWeek:0,perfectWeek:0,goldWeek:0,summonWeek:0,ultWeek:0,
+  bossMonth:0,ultMonth:0,summonMonth:0,
   bossMonth:0,goldMonth:0,
   _lastSave:Date.now(),
   // New features state
@@ -1950,7 +1959,7 @@ const DEF=()=>({
 });
 let G=DEF();
 let _uid=Date.now();const uid=()=>(_uid++).toString(36);
-let SET={sound:false,vibrate:true,reduceMotion:false,autoDelay:1200,smartAuto:false,autoPot:false,showDmgNums:true,showHealNums:true,showStatus:true,showCombo:true,salvageRarity:'',perfMode:false,dmgSize:'medium',dmgTheme:'default',autoHarvest:true,autoReplant:true,toasts:true,orientation:'auto'};
+let SET={sound:false,vibrate:true,reduceMotion:false,autoDelay:1200,smartAuto:false,autoPot:false,showDmgNums:true,showHealNums:true,showStatus:true,showCombo:true,salvageRarity:'',perfMode:false,dmgSize:'medium',dmgTheme:'default',autoHarvest:true,autoReplant:true,toasts:true,orientation:'auto',autoResetQuests:false};
 function saveSET(){try{localStorage.setItem('zb_set',JSON.stringify(SET));}catch(e){}}
 function loadSET(){try{const r=localStorage.getItem('zb_set');if(r)Object.assign(SET,JSON.parse(r));}catch(e){}}
 let currentWeather=WEATHERS[0];
@@ -2492,7 +2501,7 @@ function renderEquipmentManager(zodiacName){
         <div style="font-size:18px;">${item.icon}</div>
         <div style="font-size:8px;color:${rd.color};font-weight:700;">${item.rarity}</div>
         <div style="font-size:9px;">${item.name}</div>
-        <div style="font-size:7px;color:var(--txt2);">${Object.entries(item.stats||{}).slice(0,2).map(([k,v])=>k+':'+v).join(' ')}</div>
+        <div style="font-size:7px;color:var(--txt2);">${Object.entries(item.stats||{}).slice(0,3).map(([k,v])=>{const _SN2={atk:'ATK',def:'DEF',hp:'HP',spd:'SPD',critRate:'CritR',critDmg:'CritD',dodge:'Dodge',ultCharge:'UltChg',goldFind:'Gold+',elementDmg:'ElemD',bossDmg:'Boss+'};return(_SN2[k]||k)+':'+fmt(v);}).join(' · ')}</div>
         ${item.enchantLevel>0?`<div style="font-size:8px;color:#a78bfa;">✨+${item.enchantLevel}</div>`:''}
         ${item.awakeningId?`<div style="font-size:8px;color:#f59e0b;font-weight:700;">${item.awakeningEmoji} AWAKENED</div>`:item.rarity==='Mythical'?`<div style="font-size:7px;color:var(--txt2);">Enchant to +10 to Awaken</div>`:''}
         <button class="btn bs" style="font-size:7px;padding:2px 5px;margin-top:3px;" onclick="unequipItem('${item.id}')">Unequip</button>
@@ -2512,7 +2521,7 @@ function renderEquipmentManager(zodiacName){
         <div style="font-size:16px;">${item.icon}</div>
         <div style="font-size:8px;color:${rd.color};font-weight:700;">${item.rarity}</div>
         <div style="font-size:8px;">${item.name}</div>
-        <div style="font-size:7px;color:var(--txt2);">${Object.entries(item.stats||{}).slice(0,1).map(([k,v])=>k+':'+v).join('')}</div>
+        <div style="font-size:7px;color:var(--txt2);">${Object.entries(item.stats||{}).slice(0,2).map(([k,v])=>{const _n={atk:'ATK',def:'DEF',hp:'HP',spd:'SPD',critRate:'CritR',critDmg:'CritD',dodge:'Dodge',ultCharge:'UltChg',goldFind:'Gold+',elementDmg:'ElemD',bossDmg:'Boss+'};return(_n[k]||k)+':'+fmt(v);}).join(' ')}</div>
         <div style="display:flex;gap:2px;margin-top:3px;">
           ${canEq?`<button class="btn bsuc" style="flex:1;font-size:7px;padding:2px 1px;" onclick="equipItem('${item.id}','${zodiacName}')">Equip</button>`:''}
           <button class="btn bs" style="flex:1;font-size:7px;padding:2px 1px;" onclick="salvageItem('${item.id}')">+${Math.floor((5+item.level)*(EQUIPMENT_RARITIES[item.rarity]?.mult||1))}g</button>
@@ -2591,7 +2600,7 @@ const GODLY_SETS={
       accessory:{id:'gs_void_eye',sourceKey:'vault_100',sourceDesc:'Own 100 Void Vaults',name:'Void Eye',icon:'👁️',emoji:'🌑',
         ability:{name:'Dark Vision',desc:'See through all enemy shields and immunities',
           trigger:'passive',effect:'ignore_shield'}},
-      relic:{id:'gs_void_core',sourceKey:'quests_1000',sourceDesc:'1,000 quest points (daily=1, weekly=5, monthly=10)',name:'Void Heart',icon:'🌀',emoji:'🌑',
+      relic:{id:'gs_void_core',sourceKey:'quests_1000',sourceDesc:'200 quest points (daily=1, weekly=5, monthly=10)',name:'Void Heart',icon:'🌀',emoji:'🌑',
         ability:{name:'Entropy',desc:'Enemy loses 2% max HP each turn (unavoidable)',
           trigger:'turn',effect:'entropy',rate:0.02}},
     }
@@ -2610,7 +2619,7 @@ const GODLY_SETS={
       accessory:{id:'gs_light_halo',sourceKey:'guild_max_rank',sourceDesc:'Reach highest Guild rank',name:'Celestial Halo',icon:'🌟',emoji:'✨',
         ability:{name:'Light Speed',desc:'+100% SPD and always attack first',
           trigger:'passive',effect:'always_first'}},
-      relic:{id:'gs_light_prism',sourceKey:'house_harvest',sourceDesc:'0.1% chance from House harvests',name:'Prism Fragment',icon:'💎',emoji:'✨',
+      relic:{id:'gs_light_prism',sourceKey:'house_harvest',sourceDesc:'5% chance from House harvests',name:'Prism Fragment',icon:'💎',emoji:'✨',
         ability:{name:'Prismatic Judgment',desc:'Final blow always crits for 10×',
           trigger:'passive',effect:'execute_crit',mult:10}},
     }
@@ -2629,7 +2638,7 @@ const GODLY_SETS={
       accessory:{id:'gs_storm_ring',sourceKey:'nightmare_50',sourceDesc:'Defeat Nightmare Boss 50 times',name:'Tempest Ring',icon:'💍',emoji:'⚡',
         ability:{name:'Overclock',desc:'Speed doubles after using Ultimate',
           trigger:'ult',effect:'spd_double',turns:3}},
-      relic:{id:'gs_storm_orb',sourceKey:'wins_10k',sourceDesc:'Win 10,000 battles total',name:'Eye of the Storm',icon:'🌪️',emoji:'⚡',
+      relic:{id:'gs_storm_orb',sourceKey:'wins_10k',sourceDesc:'Win 5,000 battles total',name:'Eye of the Storm',icon:'🌪️',emoji:'⚡',
         ability:{name:'Perpetual Storm',desc:'Storm damage never misses and always crits',
           trigger:'passive',effect:'perfect_accuracy'}},
     }
@@ -2645,7 +2654,7 @@ const GODLY_SETS={
       armor:{id:'gs_fire_armor',sourceKey:'ascension_10',sourceDesc:'Ascension 10',name:'Dragon Scale Mail',icon:'🐉',emoji:'🔥',
         ability:{name:'Fire Immunity',desc:'Immune to burn/fire damage; absorb fire as HP',
           trigger:'passive',effect:'fire_absorb'}},
-      accessory:{id:'gs_fire_gem',sourceKey:'dungeon_week',sourceDesc:'Complete all 7 dungeon types in one week',name:'Phoenix Ember',icon:'🦅',emoji:'🔥',
+      accessory:{id:'gs_fire_gem',sourceKey:'tower_1000_capture',sourceDesc:'Tower Floor 1,000 (Capture Tower variant)',name:'Phoenix Ember',icon:'🦅',emoji:'🔥',
         ability:{name:'Rebirth Flame',desc:'Revive with 75% HP when defeated (once per battle)',
           trigger:'fatal',effect:'revive',hpPct:0.75,uses:1}},
       relic:{id:'gs_fire_rune',sourceKey:'boss_rush_perf',sourceDesc:'Complete Boss Rush without any party member fainting',name:'Pyre Rune',icon:'🌋',emoji:'🔥',
@@ -2658,7 +2667,7 @@ const GODLY_SETS={
     setBonusDesc:'OMNIPOTENT: All stats ×5. ULT costs no charge. Transcend death twice.',
     setBonus:{statMult:5.0,freeUlt:true,deathTranscend:2},
     pieces:{
-      weapon:{id:'gs_cosmic_sword',sourceKey:'tower_1000_debuff',sourceDesc:'Tower Floor 1,000 (Ironman/Debuff Tower variant)',name:'Galaxy Slicer',icon:'🌌',emoji:'🌌',
+      weapon:{id:'gs_cosmic_sword',sourceKey:'tower_1000_debuff',sourceDesc:'Tower Floor 1,000 (Debuff Tower variant)',name:'Galaxy Slicer',icon:'🌌',emoji:'🌌',
         ability:{name:'Big Bang',desc:'ULT deals 2000% DMG to all enemies',trigger:'ult',effect:'mass_destruction',mult:20.0}},
       armor:{id:'gs_cosmic_armor',sourceKey:'summon_1m',sourceDesc:'1,000,000 total summons',name:'Nebula Shroud',icon:'🌠',emoji:'🌌',
         ability:{name:'Dark Matter',desc:'Reduce all damage taken by 75%',trigger:'passive',effect:'damage_reduction',rate:0.75}},
@@ -2772,13 +2781,19 @@ function rollSpecificPieceGodly(pieceId){
     godlySetName:chosenPiece.setName,godlySetEmoji:chosenPiece.setEmoji,
     godlySetColor:chosenPiece.setColor,persistent:true,gearXp:0,gearLevel:0,lockedStats:[],
   };
-  (typeData.stats||['atk']).forEach(stat=>{
-    // Tight ±5% range — godly stats are consistently elite, not lottery
-    const val=Math.floor(baseVal*mult*(0.95+Math.random()*0.10));
-    if(stat==='allStats'){item.stats.atk=val;item.stats.def=val;item.stats.spd=val;item.stats.hp=val*2;}
-    else if(stat==='critRate')item.stats.critRate=Math.floor(val*0.8);
-    else if(stat==='critDmg')item.stats.critDmg=Math.floor(val*4);
-    else item.stats[stat]=val;
+  // Godly pieces use their own stat table — focused on offensive diversity, not critDmg stacking
+  // Godly stat tables — 7-8 stats per slot, endgame broken (critDmg/bossDmg/elemDmg all capped in combat)
+  const GODLY_STAT_TABLES={
+    weapon:    {atk:1.0, critRate:0.6, critDmg:3.0, elementDmg:1.0, bossDmg:0.8, spd:0.5, hp:1.0},
+    armor:     {def:1.0, hp:2.5, dodge:0.5, spd:0.4, atk:0.5, critRate:0.3, ultCharge:0.5},
+    accessory: {spd:1.5, ultCharge:0.8, goldFind:1.0, bossDmg:1.0, critRate:0.5, critDmg:2.0, elementDmg:0.8, hp:0.8},
+    relic:     {allStats:1.0, elementDmg:1.2, bossDmg:1.0, critDmg:2.5, critRate:0.4, goldFind:0.8, dodge:0.4, ultCharge:0.6},
+  };
+  const godlyStatTable=GODLY_STAT_TABLES[slot]||{atk:1.0};
+  Object.entries(godlyStatTable).forEach(([stat,ratio])=>{
+    const val=Math.floor(baseVal*mult*ratio*(0.95+Math.random()*0.10));
+    if(stat==='allStats'){item.stats.atk=val;item.stats.def=val;item.stats.spd=val;item.stats.hp=Math.floor(val*2);}
+    else item.stats[stat]=(item.stats[stat]||0)+val;
   });
   if(!G.equipment)G.equipment=[];
   G.equipment.push(item);
@@ -2818,7 +2833,7 @@ function checkGodlyPieceUnlock(sourceKey){
     wins_10k:          'gs_storm_orb',
     prestige_10:       'gs_fire_sword',
     ascension_10:      'gs_fire_armor',
-    dungeon_week:      'gs_fire_gem',
+    tower_1000_capture:'gs_fire_gem',
     boss_rush_perf:    'gs_fire_rune',
     tower_1000_debuff: 'gs_cosmic_sword',
     summon_1m:         'gs_cosmic_armor',
@@ -2853,6 +2868,24 @@ function checkEqSummonGodly(){
   // Storm Shield now from Ironman Tower floor 1000 — no longer drops from eq summon
 }
 
+function tryAutoResetQuest(type,idx){
+  if(!SET.autoResetQuests)return;
+  const costs={daily:500,weekly:5000,monthly:20000};
+  const cost=costs[type]||500;
+  if((G.stars||0)<cost)return;// silently skip if can't afford
+  let pool,quests;
+  if(type==='daily'){pool=DAILY_QUEST_POOL;quests=G.dailyQuests;}
+  else if(type==='weekly'){pool=WEEKLY_QUEST_POOL;quests=G.weeklyQuests;}
+  else{pool=MONTHLY_QUEST_POOL;quests=G.monthlyQuests;}
+  if(!quests||!quests[idx])return;
+  const activeIds=quests.map(q=>q.id);
+  const available=pool.filter(q=>!activeIds.includes(q.id));
+  if(!available.length)return;
+  const newQ={...available[Math.floor(Math.random()*available.length)],completed:false,progress:0};
+  if(newQ.requirements)newQ.reqProgress=newQ.requirements.map(()=>0);
+  G.stars-=cost;quests[idx]=newQ;
+  addLog('rewards',`🔄 Auto-reset ${type} quest (-${cost}⭐): ${newQ.desc}`,'#94a3b8');
+}
 function resetQuest(type, idx){
   const costs={daily:500,weekly:5000,monthly:20000};
   const cost=costs[type]||500;
@@ -2990,12 +3023,7 @@ function onTrialWaveWin(){
     setTimeout(()=>spawnTrialEnemy(),1000);
   }
 }
-function rollGodlyDrop(){
-  // Godly pieces only come from specific unlock conditions.
-  // This function intentionally returns null to prevent accidental drops.
-  console.warn('rollGodlyDrop called — godly pieces are unlock-gated, not random drops');
-  return null;
-}
+// Godly pieces only come from specific unlock conditions (see checkGodlyPieceUnlock).
 
 // Mythic Convergence: special event when you have 10+ mythical stacks total
 function checkMythicConvergence(){
@@ -3055,16 +3083,19 @@ function changeArea(areaId){
   if(G.wins<(area.unlockWins||0)){toast(`🔒 Need ${area.unlockWins} wins!`,'er');return;}
   const prog=getAreaProgress(areaId);
   if(!prog.unlocked&&areaId!=='meadow'){toast('🔒 Complete previous area first!','er');return;}
+  // Stop any ongoing fight cleanly
+  G.alive=false;clearInterval(autoIv);autoIv=null;clearCT();clearTimeout(_msgClearTimer);
+  closeM('mLose');closeM('mWin');
   G.currentArea=areaId;
   // Exit any special modes when changing area
-  if(G.towerActive){G.towerActive=false;_towerBuffs=[];_towerDebuffs=[];}
+  if(G.towerActive){G.towerActive=false;_towerBuffs=[];_towerDebuffs=[];G._towerVariant=undefined;}
   if(G.bossRushActive)G.bossRushActive=false;
   if(G.inDungeon){G.inDungeon=false;G.dungeonData=null;}
   if(G.mirrorFightActive){G.mirrorFightActive=false;G.mirrorSnapshot=null;G.mirrorFightQueue=[];_mirrorCallback=null;}
   if(prog.bossDefeated)setAreaProgress(areaId,{enemiesDefeated:0,totalEnemies:3,miniBossDefeated:false,bossDefeated:false,unlocked:true});
   // Full heal on area entry
   G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});
-  G.playerStatus={};
+  G.playerStatus={};G.enemyStatus={};G.playerBuffs={};G.combo=0;
   save();toast(`🗺️ Entered ${area.emoji} ${area.name}! Squad fully healed!`,'ok');
   updateModeBadge();renderSquad();spawnEnemy();
 }
@@ -3163,7 +3194,7 @@ function _doPrestigeApply(name, silent=false){
   const r=G.roster[name];
   if(!G.prestigeStars)G.prestigeStars={};
   G.prestigeStars[name]=(G.prestigeStars[name]||0)+1;
-  const savedTowerFloor=(G.towerActive&&_towerVariant==='prestige')?G.towerFloor:null;
+  const savedTowerFloor=(G.towerActive&&(G._towerVariant||_towerVariant)==='prestige')?G.towerFloor:null;
   r.level=1;r.xp=0;r.xpNext=100;
   const z=getZodiac(name);const st=calcStats(z,r.rarity,1);
   r.maxHp=st.maxHp;r.atk=st.atk;r.def=st.def;r.spd=st.spd;
@@ -3180,7 +3211,7 @@ function _doPrestigeApply(name, silent=false){
 // ══ SHINY HUNT (uses stars) ══
 function shinyHunt(name){
   const r=G.roster[name];if(!r)return;
-  if((G.stars||0)<2){toast('Need 2⭐ Stars! Earn from bosses/perfect wins.','er');return;}
+  if((G.stars||0)<10){toast('Need 10⭐ Stars! Earn from bosses/perfect wins.','er');return;}
   confirm2('🌟 Shiny Hunt',`Spend 2⭐ to reroll ${name}? Current: ${r.rarity}. Better rates!`,function(){
     G.stars-=10;
     const RARWEIGHTS=[[0,.05,'Mythical'],[.05,.20,'Omega'],[.20,.55,'Shiny'],[.55,1,'Normal']];
@@ -3405,18 +3436,18 @@ function initMonthlyQuests(){
   if(!G.nextMonthlyReset||now>=G.nextMonthlyReset){
     G.nextMonthlyReset=getNextMonthlyReset();
     G.monthlyQuests=[...MONTHLY_QUEST_POOL].sort(()=>Math.random()-.5).slice(0,1).map(q=>({...q,completed:false,progress:0}));
-    G.monthlyProgress={};G.bossMonth=0;G.goldMonth=0;save();
+    G.monthlyProgress={};G.bossMonth=0;G.goldMonth=0;G.ultMonth=0;G.summonMonth=0;save();
   }
 }
 function initQuests(){initDailyQuests();initWeeklyQuests();initMonthlyQuests();}
 function updateQuestProgress(key,delta=1){
   if(!G.dailyQuests)return;
-  G.dailyQuests.forEach(q=>{
+  G.dailyQuests.forEach((q,qi)=>{
     if(q.completed||q.key!==key)return;
     q.progress=Math.min(q.target,q.progress+delta);
-    if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;G.totalDailyDone=(G.totalDailyDone||0)+1;if(getTotalQuestPoints()>=1000)checkGodlyPieceUnlock('quests_1000');updateHdr();save();toast(`📋 ${q.desc}! +${st}⭐`,'ok');}
+    if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;G.totalDailyDone=(G.totalDailyDone||0)+1;if(getTotalQuestPoints()>=200)checkGodlyPieceUnlock('quests_1000');updateHdr();save();toast(`📋 ${q.desc}! +${st}⭐`,'ok');tryAutoResetQuest('daily',qi);}
   });
-  if(G.weeklyQuests)G.weeklyQuests.forEach(q=>{
+  if(G.weeklyQuests)G.weeklyQuests.forEach((q,wi)=>{
     if(q.completed)return;
     const reqs=q.requirements||[];
     if(reqs.length){
@@ -3425,20 +3456,20 @@ function updateQuestProgress(key,delta=1){
       if(reqs.every((r,i)=>(q.reqProgress[i]||0)>=r.target)){
         q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;
         G.totalWeeklyDone=(G.totalWeeklyDone||0)+1;
-        if(getTotalQuestPoints()>=1000)checkGodlyPieceUnlock('quests_1000');
+        if(getTotalQuestPoints()>=200)checkGodlyPieceUnlock('quests_1000');
         updateHdr();save();
-        toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');addBpXp(100);
+        toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');addBpXp(100);tryAutoResetQuest('weekly',wi);
       }
     }else{
       if(q.key!==key)return;
       q.progress=Math.min(q.target,(q.progress||0)+delta);
-      if(q.progress>=q.target){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;G.totalWeeklyDone=(G.totalWeeklyDone||0)+1;if(getTotalQuestPoints()>=1000)checkGodlyPieceUnlock('quests_1000');updateHdr();save();toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');}
+      if(q.progress>=q.target){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;G.totalWeeklyDone=(G.totalWeeklyDone||0)+1;if(getTotalQuestPoints()>=200)checkGodlyPieceUnlock('quests_1000');updateHdr();save();toast(`📆 Weekly: ${q.desc}! +${st}⭐`,'ok');tryAutoResetQuest('weekly',wi);}
     }
   });
-  if(G.monthlyQuests)G.monthlyQuests.forEach(q=>{
+  if(G.monthlyQuests)G.monthlyQuests.forEach((q,mi)=>{
     if(q.completed||q.key!==key)return;
     q.progress=Math.min(q.target,q.progress+delta);
-    if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;G.totalMonthlyDone=(G.totalMonthlyDone||0)+1;if(getTotalQuestPoints()>=1000)checkGodlyPieceUnlock('quests_1000');updateHdr();save();toast(`🗓️ Monthly: ${q.desc}! +${st}⭐`,'ok');}
+    if(q.progress>=q.target&&!q.completed){q.completed=true;q.claimed=true;const st=q.stars||0;G.stars=(G.stars||0)+st;G.totalMonthlyDone=(G.totalMonthlyDone||0)+1;if(getTotalQuestPoints()>=200)checkGodlyPieceUnlock('quests_1000');updateHdr();save();toast(`🗓️ Monthly: ${q.desc}! +${st}⭐`,'ok');tryAutoResetQuest('monthly',mi);}
   });
   updateQuestNotif();
 }
@@ -3700,24 +3731,24 @@ function doUltimate(){
   const _ul=document.getElementById('bcardPlayerUltPct');if(_ul)_ul.textContent='0%';
   updateUltUI();
   G.totalUlts=(G.totalUlts||0)+1;G.ultToday=(G.ultToday||0)+1;
-  updateQuestProgress('ultToday',1);updateQuestProgress('ultWeek',1);
+  updateQuestProgress('ultToday',1);updateQuestProgress('ultWeek',1);updateQuestProgress('ultMonth',1);
   skill.ult(G.enemy,f);checkAchievs();
 }
 
 // ══ ULTIMATE IMPLEMENTATIONS ══
 function stealGold(f){const s=5+Math.floor(Math.random()*11);G.gold+=s;G.totalGold+=s;updateHdr();setMsg(`${f.emoji} Coin Snatch! Stole ${s}g!`,'','crit');spawnDmg('+'+s+'g','hl',document.getElementById('activeFighter'));advTurn();}
 function oxTaunt(f){if(!G.playerBuffs)G.playerBuffs={};if(!G.playerBuffs[f.zodiac])G.playerBuffs[f.zodiac]={};G.playerBuffs[f.zodiac].defUp=2;setMsg(`${f.emoji} Iron Wall! DEF+50% 2 turns!`,'','heal');advTurn();}
-function tigerClaw(e,f){const dmg=Math.floor(f.atk*2.5);e.hp=Math.max(0,e.hp-dmg);applyEnemyStatus('bleed',3);spawnDmg(dmg,'mc',document.getElementById('eCube'));setMsg(`${f.emoji} Rending Claw! ${dmg} + Bleed!`,'','crit');checkKillWithUlt(dmg,f);}
-function rabbitLuck(e,f){const mult=1+Math.floor(Math.random()*5);const dmg=Math.floor(f.atk*mult);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Lucky Strike! ${mult}× damage! ${dmg}!`,'','crit');spawnDmg(dmg,mult>=4?'mc':mult>=3?'sc':'cr',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
-function dragonBreath(e,f){const dmg=Math.floor(f.atk*2.0);e.hp=Math.max(0,e.hp-dmg);applyEnemyStatus('burn',3);spawnDmg(dmg,'mc',document.getElementById('eCube'));setMsg(`${f.emoji} Dragon Breath! 🔥 Burn! ${dmg}!`,'','crit');checkKillWithUlt(dmg,f);}
+function tigerClaw(e,f){const dmg=Math.floor(f.atk*2.5);e.hp=Math.max(0,e.hp-dmg);applyEnemyStatus('bleed',3);spawnDmg(dmg,'mc',document.getElementById('eCube'));setMsg(`${f.emoji} Rending Claw! ${fmt(dmg)} + Bleed!`,'','crit');checkKillWithUlt(dmg,f);}
+function rabbitLuck(e,f){const mult=1+Math.floor(Math.random()*5);const dmg=Math.floor(f.atk*mult);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Lucky Strike! ${mult}× damage! ${fmt(dmg)}!`,'','crit');spawnDmg(dmg,mult>=4?'mc':mult>=3?'sc':'cr',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
+function dragonBreath(e,f){const dmg=Math.floor(f.atk*2.0);e.hp=Math.max(0,e.hp-dmg);applyEnemyStatus('burn',3);spawnDmg(dmg,'mc',document.getElementById('eCube'));setMsg(`${f.emoji} Dragon Breath! 🔥 Burn! ${fmt(dmg)}!`,'','crit');checkKillWithUlt(dmg,f);}
 function snakeVenom(e,f){applyEnemyStatus('poison',5);const dmg=Math.floor(f.atk*1.3);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Venom Bite! ☠️ Heavy poison!`,'','crit');spawnDmg(dmg,'cr',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
-function horseCharge(e,f){const dmg=Math.floor(f.atk*3.0);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Swift Charge! ${dmg}!`,'','crit');spawnDmg(dmg,'mc',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
-function goatRage(e,f){doArmorBreak();doArmorBreak();const dmg=Math.floor(f.atk*2.0);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Mountain Rage! Armor shattered! ${dmg}!`,'','crit');spawnDmg(dmg,'cr',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
-function monkeyTrick(e,f){applyEnemyStatus('stun',1);const dmg=Math.floor(f.atk*1.5);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Confusion! Stunned! ${dmg}!`,'','crit');spawnDmg(dmg,'cr',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
+function horseCharge(e,f){const dmg=Math.floor(f.atk*3.0);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Swift Charge! ${fmt(dmg)}!`,'','crit');spawnDmg(dmg,'mc',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
+function goatRage(e,f){doArmorBreak();doArmorBreak();const dmg=Math.floor(f.atk*2.0);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Mountain Rage! Armor shattered! ${fmt(dmg)}!`,'','crit');spawnDmg(dmg,'cr',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
+function monkeyTrick(e,f){applyEnemyStatus('stun',1);const dmg=Math.floor(f.atk*1.5);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Confusion! Stunned! ${fmt(dmg)}!`,'','crit');spawnDmg(dmg,'cr',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
 function roosterCry(f){if(!G.playerBuffs)G.playerBuffs={};G.party.forEach(n=>{if(!G.playerBuffs[n])G.playerBuffs[n]={};G.playerBuffs[n].atkUp=2;});setMsg(`${f.emoji} War Cry! All allies ATK+20%!`,'','heal');advTurn();}
 function dogGuard(f){if(!G.playerBuffs)G.playerBuffs={};G.party.forEach(n=>{if(!G.playerBuffs[n])G.playerBuffs[n]={};G.playerBuffs[n].shield=true;});setMsg(`${f.emoji} Loyal Guard! All allies shielded!`,'','heal');advTurn();}
 function pigFeast(f){G.party.forEach(n=>{const r=G.roster[n];if(r&&r.hp>0){const mx=getMaxHp(n);const h=Math.floor(mx*.4);r.hp=Math.min(mx,r.hp+h);}});setMsg(`${f.emoji} Fortune Feast! All allies healed 40%!`,'','heal');renderSquad();advTurn();}
-function checkKillWithUlt(dmg,f){updEHp();applyStatusVisuals();recordFightDmg(f.zodiac,dmg);if(G.enemy&&G.enemy.hp<=0)onWin(1+G.streak*B.STREAK_BONUS);else advTurn();}
+function checkKillWithUlt(dmg,f){updEHp();applyStatusVisuals();recordFightDmg(f.zodiac,dmg);if(G.enemy&&G.enemy.hp<=0)onWin(1+Math.min(G.streak,100)*B.STREAK_BONUS);else advTurn();}
 
 // ══ ENEMY SKILLS ══
 function tryQueueEnemySkill(){if(!G.enemy||!G.enemy.boss)return;const skills=ENEMY_SKILLS[G.enemy.name];if(!skills||!skills.length||G.enemySkillQueue)return;if(Math.random()<0.25){const skill=skills[Math.floor(Math.random()*skills.length)];G.enemySkillQueue={skill,turns:skill.telegraph};showEnemySkillWarning();}}
@@ -4400,15 +4431,47 @@ function init(){
   // Reset transient battle flags — but preserve active run state (ironman/reborn)
   const _wasIronman=G._ironmanMode;const _wasReborn=G._rebornMode;const _wasCapture=G._captureMode;
   const _wasTowerActive=G.towerActive&&(_wasIronman||_wasReborn||_wasCapture);
+  // Defensive cleanup: stale run-mode flags from saves predating the endTowerRun fix
+  // (mode flag true but tower no longer active = run already ended improperly)
+  if(_wasReborn&&!G.towerActive){
+    if(G._rebornRealRoster)G.roster=G._rebornRealRoster;
+    if(G._rebornRealParty)G.party=G._rebornRealParty;
+    if(G._rebornRealActive)G.active=G._rebornRealActive;
+    if(G._rebornRealEquip)G.equipment=G._rebornRealEquip;
+    if(G._rebornRealGold!==undefined)G.gold=G._rebornRealGold;
+    if(G._rebornRealStars!==undefined)G.stars=G._rebornRealStars;
+    delete G._rebornMode;delete G._rebornRealRoster;delete G._rebornRealParty;delete G._rebornRealActive;
+    delete G._rebornRealEquip;delete G._rebornRealGold;delete G._rebornRealStars;
+    delete G._rebornRunRoster;delete G._rebornParty;delete G._savedParty;
+  }
+  if(_wasIronman&&!G.towerActive){
+    if(G._ironmanRealRoster)G.roster=G._ironmanRealRoster;
+    if(G._ironmanRealParty)G.party=G._ironmanRealParty;
+    if(G._ironmanRealActive)G.active=G._ironmanRealActive;
+    if(G._ironmanRealEquip)G.equipment=G._ironmanRealEquip;
+    delete G._ironmanMode;delete G._ironmanRunRoster;delete G._ironmanParty;
+    delete G._ironmanRealRoster;delete G._ironmanRealParty;delete G._ironmanRealActive;
+    delete G._ironmanRealEquip;delete G._ironmanStacks;delete G._ironmanPity;
+  }
+  if(_wasCapture&&!G.towerActive){
+    if(G._captureRealRoster)G.roster=G._captureRealRoster;
+    if(G._captureRealParty)G.party=G._captureRealParty;
+    if(G._captureRealActive)G.active=G._captureRealActive;
+    if(G._captureRealEquip)G.equipment=G._captureRealEquip;
+    delete G._captureMode;delete G._captureRunRoster;delete G._captureParty;
+    delete G._captureRealRoster;delete G._captureRealParty;delete G._captureRealActive;
+    delete G._captureRealEquip;delete G._captureTemplates;delete G._capturePending;
+    delete G._captureBossOnly;delete G._captureAutoUpgrade;
+  }
   G.bossRushActive=false;G.inDungeon=false;G.dungeonData=null;
   G.mirrorFightActive=false;G.mirrorSnapshot=null;G.mirrorFightQueue=[];
   G.alive=false;G.enemy=null;G.enemySkillQueue=null;
   // Only reset towerActive if not in an active ironman/reborn run
   if(!_wasTowerActive)G.towerActive=false;
-  // Re-apply run rosters on reload
-  if(_wasIronman&&G._ironmanRunRoster){G.roster=G._ironmanRunRoster;G.party=(G._ironmanParty||[]).slice(0,6).filter(n=>G._ironmanRunRoster[n]);if(G.party.length)G.active=G.party[0];}
-  if(_wasReborn&&G._rebornRunRoster){G.roster=G._rebornRunRoster;G.party=(G._rebornParty||[]).slice(0,6).filter(n=>G._rebornRunRoster[n]);if(G.party.length)G.active=G.party[0];}
-  if(_wasCapture&&G._captureRunRoster){G.roster=G._captureRunRoster;G.party=(G._captureParty||[]).slice(0,6).filter(n=>G._captureRunRoster[n]);if(G.party.length)G.active=G.party[0];}
+  // Re-apply run rosters on reload (only if still in an active run after cleanup)
+  if(G._ironmanMode&&G._ironmanRunRoster){G.roster=G._ironmanRunRoster;G.party=(G._ironmanParty||[]).slice(0,6).filter(n=>G._ironmanRunRoster[n]);if(G.party.length)G.active=G.party[0];}
+  if(G._rebornMode&&G._rebornRunRoster){G.roster=G._rebornRunRoster;G.party=(G._rebornParty||[]).slice(0,6).filter(n=>G._rebornRunRoster[n]);if(G.party.length)G.active=G.party[0];}
+  if(G._captureMode&&G._captureRunRoster){G.roster=G._captureRunRoster;G.party=(G._captureParty||[]).slice(0,6).filter(n=>G._captureRunRoster[n]);if(G.party.length)G.active=G.party[0];}
   // Purge any corrupt/stale entries from saved enemyQ
   G.enemyQ=(G.enemyQ||[]).filter(e=>e&&e.emoji&&e.name&&e.hpM);
   shuffleQ();
@@ -4423,6 +4486,8 @@ function init(){
   if(G.speed)setSpd(G.speed);else setSpd(1);
   setInterval(()=>{checkExpeditionReturns();updateExpeditionUI();},30000);checkExpeditionReturns();
   // Apply mode badge/nav greying if resuming an active run after page reload
+  // Restore tower variant from saved state (persists across reload)
+  if(G._towerVariant)_towerVariant=G._towerVariant;
   try{updateModeBadge();}catch(e){}
   let p=0;const bar=document.getElementById('lprog');
   const iv=setInterval(()=>{p+=Math.random()*30;if(p>100)p=100;bar.style.width=p+'%';if(p>=100)clearInterval(iv);},180);
@@ -4435,6 +4500,7 @@ function init(){
   },1700);
   document.getElementById('setSound').checked=SET.sound;document.getElementById('setVib').checked=SET.vibrate;document.getElementById('setMotion').checked=SET.reduceMotion;document.getElementById('setSmartAuto').checked=SET.smartAuto;const _apc=document.getElementById('autoPotChk');if(_apc)_apc.checked=SET.autoPot||false;const _apt=document.getElementById('autoPotToggle');if(_apt)_apt.checked=SET.autoPot||false;document.getElementById('setAutoDelay').value=String(SET.autoDelay);
   const _toastChk=document.getElementById('setToasts');if(_toastChk)_toastChk.checked=SET.toasts!==false;
+  const _arqChk=document.getElementById('setAutoResetQuests');if(_arqChk)_arqChk.checked=SET.autoResetQuests===true;
   const _orientSel=document.getElementById('setOrientation');if(_orientSel)_orientSel.value=SET.orientation||'auto';
   applyOrientationLock();
   const aeChk=document.getElementById('setAutoEquip');if(aeChk)aeChk.checked=G.autoEquip!==false;
@@ -4609,7 +4675,7 @@ function doFinisher(){
   const cube=document.getElementById('eCube');if(cube){cube.classList.add('finisherAnim');setTimeout(()=>cube.classList.remove('finisherAnim'),700);}
   vib([100,50,200,50,300]);snd('crit');
   spawnDmg('FINISH!!','mc',cube);
-  setTimeout(()=>{G.enemy.hp=0;onWin(1+G.streak*B.STREAK_BONUS);},500);
+  setTimeout(()=>{G.enemy.hp=0;onWin(1+Math.min(G.streak,100)*B.STREAK_BONUS);},500);
 }
 function resetTel(){const t=document.getElementById('tel');if(!t)return;t.style.transition='none';t.style.transform='scaleX(0)';}
 function updateDmgPreview(){
@@ -4617,7 +4683,7 @@ function updateDmgPreview(){
   const dp=document.getElementById('dmgPreview');if(!dp)return;
   if(!f||!e){dp.classList.remove('show');return;}
   const _fEl=getZodiacElement(f.zodiac);const isWeak=_fEl===e.weak;const lo=Math.max(1,Math.floor(f.atk-e.atk*.2));const hi=Math.floor((f.atk-e.atk*.2+15)*(isWeak?1.5:1));
-  const dpt=document.getElementById('dmgPrevTxt');if(dpt)dpt.textContent=`${lo}–${hi}${isWeak?' ⚡SE':''}  crit: ${Math.floor(hi*2)}`;
+  const dpt=document.getElementById('dmgPrevTxt');if(dpt)dpt.textContent=`${fmt(lo)}–${fmt(hi)}${isWeak?' ⚡SE':''}  crit: ${fmt(Math.floor(hi*2))}`;
   dp.classList.add('show');
 }
 function unlockCodexEntry(name){if(!G.codexUnlocked)G.codexUnlocked={};if(!G.codexUnlocked[name]){G.codexUnlocked[name]=true;save();}}
@@ -4645,7 +4711,7 @@ function renderSquad(){
     const nick=G.nicknames&&G.nicknames[f.zodiac];
     const _an=document.getElementById('afName');if(_an)_an.textContent=nick||f.zodiac;
     const _ai=document.getElementById('afInfo');if(_ai)_ai.textContent=`Lv.${f.level} · ${EI[f.element]||''}${f.element}`;
-    const _ahn=document.getElementById('afHpNum');if(_ahn)_ahn.textContent=`${f.hp}/${f.maxHp}`;
+    const _ahn=document.getElementById('afHpNum');if(_ahn)_ahn.textContent=`${fmt(f.hp)}/${fmt(f.maxHp)}`;
     const hpEl=document.getElementById('afHp');if(!hpEl)return;hpEl.style.width=hp+'%';hpEl.className='af-hpfill'+(hp<30?' lo':'');
     const curT=G.turns[G.curTurn];const isMyTurn=curT&&curT.t==='p'&&curT.name===G.active;
     const _afTurn=document.getElementById('afTurn');if(_afTurn)_afTurn.className='af-turn'+(isMyTurn?' show':'');
@@ -4759,7 +4825,8 @@ function clearCT(){clearTimeout(ctIv);const bar=document.getElementById('ctimer'
 // ══ ATTACK ══
 let atkCD=false;
 function doAttack(){
-  if(!document.getElementById('tutorial').classList.contains('gone'))return;
+  if(!G._tutorialGone&&!document.getElementById('tutorial')?.classList.contains('gone'))return;
+  G._tutorialGone=true;// cache after first check
   if(!G.alive||atkCD)return;
   _safetyCheck();
   if(!G.alive)return;
@@ -4774,9 +4841,9 @@ function doAttack(){
   if(G.roster[G.active]&&G.roster[G.active].hp<=0){
     const a=getAlive();
     if(!a){onLose();return;}  // all dead
-    G.active=a.name;renderSquad();buildTurns();return;
+    G.active=a.name;renderBattleCards();buildTurns();return;
   }
-  if(skip){setMsg(`${f.emoji} is stunned/frozen! Turn skipped.`,'','dmg');renderSquad();advTurn();return;}
+  if(skip){setMsg(`${f.emoji} is stunned/frozen! Turn skipped.`,'','dmg');renderBattleCards();advTurn();return;}
   atkCD=true;setTimeout(()=>{atkCD=false;},Math.max(80,Math.floor(400/G.speed)));
   f=getActiveM();
   if(!f){
@@ -4808,10 +4875,10 @@ function doAttack(){
   const masteryB=_isCapture?{atk:1,def:1,spd:1,hp:1,crit:0,goldFind:0}:getMasteryBonus(G.active);
   const luckB=_isCapture?{critChance:0}:getLuckBonuses(G.active);
   const eqCritRateBonus=_isCapture?0:(eqStats.critRate||0)/100+(G.prestigeShop?.critBonus||0)+(setBonus.critRate||0)+(awkCrit.critical_eye?0.15:0)+masteryB.crit+luckB.critChance+getPetBonus('crit')+getHouseBonus('crit');
-  const eqCritDmgBonus=Math.min(5, 1+(eqStats.critDmg||0)/100);// cap at 5x (400% crit dmg bonus)
-  const eqBossDmg=(!_isCapture&&(e.boss||e.isAreaBoss))?1+(eqStats.bossDmg||0)/100+(setBonus.bossDmg||0):1;
+  const eqCritDmgBonus=Math.min(10, 1+(eqStats.critDmg||0)/100);// cap at 10x — godly endgame
+  const eqBossDmg=(!_isCapture&&(e.boss||e.isAreaBoss))?Math.min(8, 1+(eqStats.bossDmg||0)/100+(setBonus.bossDmg||0)):1;// cap at 8x
   const eqUltChargeBonus=1+(eqStats.ultCharge||0)/100+(G.prestigeShop?.ultChargeBonus||0);
-  const eqElemDmg=1+(eqStats.elementDmg||0)/100;
+  const eqElemDmg=Math.min(8, 1+(eqStats.elementDmg||0)/100);// cap at 8x
 
   // #1 Crit Chain: consecutive crits build multiplier (disabled in Capture Tower)
   const critChainMult=_isCapture?1.0:(G.critChain>=3?2.0:G.critChain>=2?1.5:G.critChain>=1?1.2:1.0);
@@ -4821,7 +4888,7 @@ function doAttack(){
   const isCrit=!isMegaCrit&&!isSuperCrit&&critRoll<(0.15+(f.trait==='lucky'&&!_isCapture?.1:0));
   const _fEl2=getZodiacElement(f.zodiac);const isWeak=_fEl2===e.weak;
   const xpGain=Math.floor((B.XP_HIT+Math.floor(e.level*.25))*(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(1+getHouseBonus('xpBonus'))*(getWorldEventMult?getWorldEventMult('xp'):1));
-  const sMult=_isCapture?1:(1+G.streak*B.STREAK_BONUS)*(1+getHouseBonus('comboDmg'));
+  const sMult=_isCapture?1:(1+Math.min(G.streak,100)*B.STREAK_BONUS)*(1+getHouseBonus('comboDmg'));
   const atkBuff=_isCapture?1:getAtkBuff(f.zodiac)*skillBoost.atk;
   const weatherMult=_isCapture?1:getWeatherMult(getZodiacElement(f.zodiac));
   const rageMult=_isCapture?1:checkRage(f.zodiac);
@@ -4873,7 +4940,7 @@ function doAttack(){
   if(G.critChain>=2)sub+=`🔥×${G.critChain} CHAIN! `;
   if(isMegaCrit)sub+='✨ MEGA CRIT ×5! ';else if(isSuperCrit)sub+='💥 SUPER CRIT ×3! ';else if(isCrit)sub+='💥 CRIT! ';
   if(isWeak)sub+=`${EI[e.weak]||''}Super Effective! `;if(reaction)sub+=`${reaction.emoji} ${reaction.name}! `;if(G.combo>=3)sub+=`🔥 COMBO ×${G.combo}!`;
-  setMsg(`${(()=>{const _s=getPixelSprite(G.active,getEvoStage(G.active),16);return _s?'<span style="display:inline-block;vertical-align:middle;">'+_s+'</span>':f.emoji;})()}attacks for ${dmg}!`,sub||`vs ${e.emoji} ${e.name}`,isMegaCrit?'crit':isWeak?'':'dmg');
+  setMsg(`${(()=>{const _s=getPixelSprite(G.active,getEvoStage(G.active),16);return _s?'<span style="display:inline-block;vertical-align:middle;">'+_s+'</span>':f.emoji;})()}attacks for ${fmt(dmg)}!`,sub||`vs ${e.emoji} ${e.name}`,isMegaCrit?'crit':isWeak?'':'dmg');
   if(G.combo>=3){showCB(G.combo);}
   if(G.combo===5){G.comboToday=(G.comboToday||0)+1;updateQuestProgress('comboToday',1);}
   startCT();updEHp();applyStatusVisuals();renderStatusBadges();
@@ -4915,11 +4982,11 @@ function enemyAtk(){
   // Feature 12: Guardian awakening passive
   const tAwk=getAwakeningBonuses(t.name);
   const mnG=mn||{emoji:'🛡️'};const mnE=mn?mn.emoji:(getZodiac(t.name)?.emoji||'🐾');
-  if(tAwk.guardian&&Math.random()<0.20){setMsg(`✨ ${mnG.emoji} Guardian! Attack blocked!`,'','heal');spawnDmg('GUARDIAN!','miss',document.getElementById('activeFighter'));renderSquad();advTurn();return;}
-  if(hasShield(t.name)){consumeShield(t.name);setMsg(`🛡️ ${t.name}'s shield blocked!`,'','heal');spawnDmg('BLOCKED','miss',document.getElementById('activeFighter'));renderSquad();advTurn();return;}
+  if(tAwk.guardian&&Math.random()<0.20){setMsg(`✨ ${mnG.emoji} Guardian! Attack blocked!`,'','heal');spawnDmg('GUARDIAN!','miss',document.getElementById('activeFighter'));renderBattleCards();advTurn();return;}
+  if(hasShield(t.name)){consumeShield(t.name);setMsg(`🛡️ ${t.name}'s shield blocked!`,'','heal');spawnDmg('BLOCKED','miss',document.getElementById('activeFighter'));renderBattleCards();advTurn();return;}
   // Dodge with equipment
   const luckDodge=getLuckBonuses(t.name).dodge+getPetBonus('dodge');const dodgeChance=calcDodgeChance(rSlot.spd,e.atk*.6+40,(eqDef.dodge||0)+luckDodge*100);
-  if(Math.random()<dodgeChance){setMsg(`${mnE} ${t.name} dodged!`,'','heal');spawnDmg('DODGE!','miss',document.getElementById('activeFighter'));renderSquad();advTurn();return;}
+  if(Math.random()<dodgeChance){setMsg(`${mnE} ${t.name} dodged!`,'','heal');spawnDmg('DODGE!','miss',document.getElementById('activeFighter'));renderBattleCards();advTurn();return;}
   rSlot.hp=Math.max(0,rSlot.hp-dmg);G.damageTakenFight=(G.damageTakenFight||0)+dmg;G.totalDmgTaken=(G.totalDmgTaken||0)+dmg;
   // Set bonus: reflect
   const defSetBonus=getActiveSetBonuses(t.name);
@@ -4931,8 +4998,8 @@ function enemyAtk(){
   let atkMsg=useSkill?`${e.emoji} ${queuedSkill.name}! ${fmt(dmg)} dmg!`:`${e.emoji} attacks ${mnE} for ${fmt(dmg)}!`;
   if(useSkill&&queuedSkill.status)atkMsg+=` ${STATUS_DATA[queuedSkill.status].emoji}`;
   setMsg(atkMsg,rSlot.hp<=0?`${mnE} fainted!`:`HP:${fmt(rSlot.hp)}/${fmt(getMaxHp(t.name))}`,'dmg');
-  renderSquad();checkVig();
-  if(rSlot.hp>0&&tryCounter(t.name)){const cDmg=Math.floor(rSlot.atk*.5);e.hp=Math.max(0,e.hp-cDmg);spawnDmg(cDmg,'cnt',cube);setMsg(`⚡ ${mnE} COUNTER! ${cDmg}!`,'','crit');updEHp();if(e.hp<=0){onWin(1+G.streak*B.STREAK_BONUS);return;}}
+  renderBattleCards();checkVig();
+  if(rSlot.hp>0&&tryCounter(t.name)){const cDmg=Math.floor(rSlot.atk*.5);e.hp=Math.max(0,e.hp-cDmg);spawnDmg(cDmg,'cnt',cube);setMsg(`⚡ ${mnE} COUNTER! ${cDmg}!`,'','crit');updEHp();if(e.hp<=0){onWin(1+Math.min(G.streak,100)*B.STREAK_BONUS);return;}}
   if(rSlot.hp<=0){
     // Pet phoenix: revive once per battle
     if(G.activePet==='phoenix'&&G.pets.phoenix&&!G._phoenixUsedThisBattle){
@@ -5012,7 +5079,14 @@ function onWin(sMult=1){
   const _overkillBonus=G._lastOverkillDmg>0?(Math.min(1,G._lastOverkillDmg/e.maxHp)):0;
   if(_overkillBonus>0){const ok=Math.floor(e.gold*_overkillBonus);gold+=ok;if(ok>0)addLog('rewards','OVERKILL +'+ok+'g','Excess damage bonus');}
   G._lastOverkillDmg=0;
-  G.wins++;G.streak++;G.gold+=gold;G.totalGold+=gold;G.goldToday=(G.goldToday||0)+gold;G.goldWeek=(G.goldWeek||0)+gold;G.goldMonth=(G.goldMonth||0)+gold;
+  G.wins++;G.streak++;
+  if(G.wins>=5000)checkGodlyPieceUnlock('wins_10k');
+  // Sanity guard: never let a single reward push gold to NaN/Infinity
+  if(!isFinite(gold)||isNaN(gold))gold=0;
+  G.gold+=gold;G.totalGold+=gold;
+  if(!isFinite(G.gold)||isNaN(G.gold))G.gold=Number.MAX_SAFE_INTEGER;
+  if(!isFinite(G.totalGold)||isNaN(G.totalGold))G.totalGold=Number.MAX_SAFE_INTEGER;
+  G.goldToday=(G.goldToday||0)+gold;G.goldWeek=(G.goldWeek||0)+gold;G.goldMonth=(G.goldMonth||0)+gold;
   let starsEarned=0;
   if(e.isGuildBoss){
     G.guildBossKills=(G.guildBossKills||0)+1;
@@ -5044,7 +5118,7 @@ function onWin(sMult=1){
   if(e.isConvergence){
     toast('🌟 MYTHIC CONVERGENCE DEFEATED! Godly gear incoming!','ok');
     checkGodlyPieceUnlock('convergence');
-    rollGodlyDrop();G._convergenceNotified=false;// allow re-triggering
+    G._convergenceNotified=false;// allow re-triggering
   }
   if(G._trialActive){onTrialWaveWin();return;}
   if(e.boss||e.isAreaBoss||e.isMiniBoss){G.bossKills++;
@@ -5084,7 +5158,7 @@ function onWin(sMult=1){
           const rw=seed.reward;const dbl=G._gardenDouble?2:1;
           G.totalHarvests=(G.totalHarvests||0)+1;
           if(rw.godlyChance){
-            if(Math.random()<0.001){checkGodlyPieceUnlock('house_harvest');addLog('rewards','🌑 VOID SEED: GODLY DROP! ✨','#ffd700');}
+            if(Math.random()<0.05){checkGodlyPieceUnlock('house_harvest');addLog('rewards','🌑 VOID SEED: GODLY DROP! ✨','#ffd700');}
             else{const s=rw.stars*dbl;G.stars=(G.stars||0)+s;addLog('rewards',seed.emoji+' Auto-harvest: +'+s+'⭐','#a78bfa');}
           }
           if(rw.potion){const amt=rw.amount*dbl;G.pot=G.pot||{};G.pot[rw.potion]=(G.pot[rw.potion]||0)+amt;addLog('rewards',seed.emoji+' Auto-harvest: +'+amt+' '+rw.potion+' potion','#34d399');}
@@ -5117,7 +5191,18 @@ function onWin(sMult=1){
   G.battlesSinceInterest=(G.battlesSinceInterest||0)+1;
   if(G.battlesSinceInterest>=5){
     G.battlesSinceInterest=0;
-    // Interest system removed — was creating too much passive gold income
+    // Gold interest: fires every 5 battles
+    // 0.2% per level per fight = 1.0% per level per tick (5 fights)
+    // Level 5 = 5% per tick = 1%/fight effective, doubles in ~70 fights
+    const treasuryLv=getRoomLevel('treasury');
+    if(treasuryLv>0&&G.gold>0){
+      const interestRate=treasuryLv*0.01;// 1% per level per 5-battle tick
+      const interest=Math.floor(G.gold*interestRate);
+      if(interest>0){
+        G.gold+=interest;G.totalGold+=interest;
+        addLog('rewards','🏦 Treasury interest: +'+fmt(interest)+'g ('+((interestRate*100).toFixed(0))+'% every 5 battles)','#fbbf24');
+      }
+    }
   }
   addBpXp(e.boss||e.isAreaBoss?50:20);
   // Feature 11: gear leveling XP from battle
@@ -5237,8 +5322,20 @@ function nextEnemy(){
   }
   if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}
 }
-function reviveAll(){closeM('mLose');G.streak=0;G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=Math.floor(getMaxHp(n)*.5);});G.playerStatus={};G.enemyStatus={};G.playerBuffs={};G.fightDmg={};G.damageTakenFight=0;renderSquad();spawnEnemy();}
-function resetBattle(){closeM('mLose');G.streak=0;G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});G.playerStatus={};G.enemyStatus={};G.playerBuffs={};G.fightDmg={};G.damageTakenFight=0;renderSquad();spawnEnemy();}
+function reviveAll(){
+  closeM('mLose');G.streak=0;
+  G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=Math.floor(getMaxHp(n)*.5);});
+  G.playerStatus={};G.enemyStatus={};G.playerBuffs={};G.fightDmg={};G.damageTakenFight=0;
+  G.alive=false;clearInterval(autoIv);autoIv=null;
+  renderSquad();spawnEnemy();
+}
+function resetBattle(){
+  closeM('mLose');G.streak=0;
+  G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});
+  G.playerStatus={};G.enemyStatus={};G.playerBuffs={};G.fightDmg={};G.damageTakenFight=0;
+  G.alive=false;clearInterval(autoIv);autoIv=null;
+  renderSquad();spawnEnemy();
+}
 
 // ══ ESCAPE ══
 function doEscape(){
@@ -5278,9 +5375,9 @@ function potion(type){
     G._luckCharmBattles=(G._luckCharmBattles||0)+10;
     setMsg('🍀 Lucky Charm! +15% drops for 10 battles!','','heal');
   }
-  // Update potion display
-  const potMap={heal:'cH'};
-  Object.entries(potMap).forEach(([k,id])=>{const el=document.getElementById(id);if(el)el.textContent=G.pot[k]||0;});
+  // Update all potion display counters
+  const _ch=document.getElementById('cH');if(_ch)_ch.textContent=G.pot.heal||0;
+  updateHdr();// refresh header potion counts
   save();
 }
 
@@ -5321,9 +5418,9 @@ function summonEquipment(count,goldCost,starCost=0){
     }
   }
   updateHdr();save();
-  const _sg=document.getElementById('sumG');if(_sg)_sg.textContent=G.gold;
+  const _sg=document.getElementById('sumG');if(_sg)_sg.textContent=fmt(G.gold);
   if(!results.length){toast('No items dropped!','er');return;}
-  const html=results.map(item=>{const rd=EQUIPMENT_RARITIES[item.rarity];return`<div style="display:flex;align-items:center;gap:7px;margin:4px 0;padding:6px 8px;border-radius:8px;background:${rd.color}11;border:1px solid ${rd.color}44;"><span style="font-size:20px;">${item.icon}</span><div><div style="font-weight:700;font-size:11px;color:${rd.color};">${item.rarity} ${item.name}</div><div style="font-size:9px;color:var(--txt2);">${Object.entries(item.stats).slice(0,2).map(([k,v])=>k+':'+v).join(' · ')}</div></div></div>`;}).join('');
+  const html=results.map(item=>{const rd=EQUIPMENT_RARITIES[item.rarity];return`<div style="display:flex;align-items:center;gap:7px;margin:4px 0;padding:6px 8px;border-radius:8px;background:${rd.color}11;border:1px solid ${rd.color}44;"><span style="font-size:20px;">${item.icon}</span><div><div style="font-weight:700;font-size:11px;color:${rd.color};">${item.rarity} ${item.name}</div><div style="font-size:9px;color:var(--txt2);">${Object.entries(item.stats||{}).slice(0,3).map(([k,v])=>{const _n={atk:'ATK',def:'DEF',hp:'HP',spd:'SPD',critRate:'CritR',critDmg:'CritD',dodge:'Dodge',ultCharge:'UltChg',goldFind:'Gold+',elementDmg:'ElemD',bossDmg:'Boss+'};return(_n[k]||k)+':'+fmt(v);}).join(' · ')}</div></div></div>`;}).join('');
   document.getElementById('sumRes').innerHTML=`<div style="margin-top:8px;border-top:1px solid var(--bg3);padding-top:8px;max-height:200px;overflow-y:auto;"><div class="sec-t mb2">⚔️ Equipment Dropped!</div>${html}</div>`;
   toast(`⚔️ Got ${results.length} equipment piece${results.length>1?'s':''}!`,'ok');
 }
@@ -5335,7 +5432,7 @@ function summon(count,free=false){
   G.totalSummons=(G.totalSummons||0)+count;
   if((G.totalSummons||0)>=100000)checkGodlyPieceUnlock('summon_100k');
   if((G.totalSummons||0)>=1000000)checkGodlyPieceUnlock('summon_1m');G.summonToday=(G.summonToday||0)+count;
-  updateQuestProgress('summonToday',count);updateQuestProgress('summonWeek',count);addBpXp(count*10);
+  updateQuestProgress('summonToday',count);updateQuestProgress('summonWeek',count);updateQuestProgress('summonMonth',count);addBpXp(count*10);
   if(!G.pityCount)G.pityCount=0;
   const pickRar=()=>{
     if(G.guaranteedMythic>0){G.guaranteedMythic--;G.pityCount=0;return'Mythical';}
@@ -5366,7 +5463,7 @@ function summon(count,free=false){
     const _srSpr=getPixelSprite(r.zodiacName||r.zodiac.name,0,28);return`<div style="display:flex;align-items:center;gap:7px;margin:5px 0;padding:6px 8px;border-radius:8px;background:${rc2}22;border:1px solid ${rc2}44;"><div style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;">${_srSpr?_srSpr:`<span style='font-size:22px;'>${r.zodiac.emoji}</span>`}</div><div style="flex:1;"><div style="font-weight:700;font-size:11px;">${r.zodiacName}</div><div style="color:${rf2};font-size:10px;font-weight:700;">${RSYM[r.rarity]||'◆'} ${r.rarity}${isNew?' 🆕':isUpgrade?' ⬆️ UPGRADED!':isStack?' 💫 STACK!':''}</div></div></div>`;
   }).join('');
   document.getElementById('sumRes').innerHTML=`<div style="max-height:220px;overflow-y:auto;border-top:1px solid var(--bg3);padding-top:8px;margin-top:8px;">${resHtml}</div>`;
-  document.getElementById('sumG').textContent=G.gold;document.getElementById('sumC').textContent=Object.values(G.roster).filter(z=>z.rarity).length;
+  document.getElementById('sumG').textContent=fmt(G.gold);document.getElementById('sumC').textContent=Object.values(G.roster).filter(z=>z.rarity).length;
   if(results.some(r=>r.rarity==='Mythical'))vib([100,50,200,50,100,50,200]);else if(results.some(r=>r.rarity==='Omega'))vib([100,50,100]);
 }
 
@@ -5409,7 +5506,11 @@ function _safetyCheck(){
 }
 function _autoTick(){
   if(!G.auto){clearInterval(autoIv);autoIv=null;return;}
-  if(!G.alive||!G.enemy)return;
+  if(!G.alive||!G.enemy){
+    // Don't interfere — onLose() shows mLose after 600ms delay
+    // The autoIv is cleared by onLose so this tick shouldn't fire again
+    return;
+  }
   _safetyCheck();
   if(!G.alive)return;// safety check may have called onLose
   // Guard: if all party members are dead but G.alive is still true, force loss
@@ -5471,7 +5572,7 @@ function lvCheck(name){
   if(r.level%5===0)addSkillPoint(name);// 1 point every 5 levels for ALL zodiacs
   if(r.level>G.level)G.level=r.level;
   }
-  updateHdr();renderSquad();
+  updateHdr();if(G.alive)renderBattleCards();else renderSquad();
   // Auto-evolve: no dialog, no modal open
   if(G.autoEvo){try{const _cev=canEvolve(name);if(_cev&&_cev.can&&!_cev.reason?.includes('Max'))doEvolve(name,true);}catch(e){}}
   // Auto-prestige: fires when level 50 reached
@@ -5737,7 +5838,7 @@ function updateHdr(){
   const ascIcon=document.getElementById('ascIcon');
   if(ascIcon){
     const{ok,count,needed}=canAscend();
-    ascIcon.textContent=G.ascension>0?`Lv${G.ascension} ×${G.ascensionMult}`:ok?'Ready!':count+'/'+needed;
+    ascIcon.textContent=G.ascension>0?`Lv${G.ascension} ×${G.ascensionMult||1}`:ok?'Ready!':count+'/'+needed;
     ascIcon.style.color=ok?'#22c55e':'var(--txt2)';
   }
   // Show endgame buttons
@@ -6072,6 +6173,11 @@ function togglePartyRoster(name){
     G.party.push(name);
     toast(`${name} added to party!`,'ok');
   }
+  // Reborn Tower: keep _rebornParty's first 6 in sync so floor transitions don't revert manual swaps
+  if(G._rebornMode&&G._rebornParty){
+    const benched=G._rebornParty.filter(n=>!G.party.includes(n));
+    G._rebornParty=[...G.party,...benched];
+  }
   save();renderSquad();renderRoster();buildTurns();
 }
 function toggleAutoEvo(){
@@ -6091,6 +6197,11 @@ function toggleParty(name){
   const inParty=G.party.includes(name);
   if(inParty){if(G.party.length<=1){toast('Need at least 1 member!','er');return;}G.party=G.party.filter(n=>n!==name);if(G.active===name){const a=G.party[0];G.active=a||G.party[0];}toast(`${name} removed from party`);}
   else{if(G.party.length>=6){toast('Max 6 members!','er');return;}G.party.push(name);toast(`${name} added to party!`,'ok');}
+  // Reborn Tower: keep _rebornParty's first 6 in sync so floor transitions don't revert manual swaps
+  if(G._rebornMode&&G._rebornParty){
+    const benched=G._rebornParty.filter(n=>!G.party.includes(n));
+    G._rebornParty=[...G.party,...benched];
+  }
   save();renderSquad();renderRoster();buildTurns();openZDetail(name);
 }
 
@@ -6174,7 +6285,7 @@ function addBpXp(amount){
   G.bpXp=(G.bpXp||0)+amount;
   while((G.bpTier||1)<100){
     const tier=BP_TIERS[(G.bpTier||1)-1];if(!tier)break;
-    if(G.bpXp>=tier.xpReq){G.bpXp-=tier.xpReq;G.bpTier=(G.bpTier||1)+1;toast(`🎫 Battle Pass Tier ${G.bpTier}!`,'ok');checkAchievs();}
+    if(G.bpXp>=tier.xpReq){G.bpXp-=tier.xpReq;G.bpTier=(G.bpTier||1)+1;toast(`🎫 Battle Pass Tier ${G.bpTier}!`,'ok');checkAchievs();if(G.bpTier>=100)checkGodlyPieceUnlock('bp_100');}
     else break;
   }
   if((G.bpTier||1)>=100)G.bpXp=0;
@@ -6436,29 +6547,45 @@ function getGodlyProgressVal(sourceKey){
     case 'reborn_1000':     {const f=G['towerBest_reborn']||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Reborn Tower)`];}
     case 'summon_100k':     {const s=G.totalSummons||0;return[s,100000,Math.min(1,s/100000),`${fmt(s)}/100K summons`];}
     case 'summon_1m':       {const s=G.totalSummons||0;return[s,1000000,Math.min(1,s/1000000),`${fmt(s)}/1M summons`];}
-    case 'bp_100':          {const b=G.bpLevel||0;return[b,100,Math.min(1,b/100),`BP Level ${b}/100`];}
+    case 'bp_100':          {const b=G.bpTier||1;return[b,100,Math.min(1,b/100),`BP Tier ${b}/100`];}
     case 'ascension_5':     {const a=G.ascension||0;return[a,5,Math.min(1,a/5),`Ascension ${a}/5`];}
     case 'ascension_10':    {const a=G.ascension||0;return[a,10,Math.min(1,a/10),`Ascension ${a}/10`];}
     case 'timed_90s':       {const d=G._timedTowerBest||0;const ok=d>0&&d<=90;return[ok?1:0,1,ok?1:0,d?`Best: ${d}s (need ≤90s)`:'Not yet attempted'];}
     case 'vault_100':       {const v=G.voidVaults||0;return[v,100,Math.min(1,v/100),`${v}/100 Void Vaults`];}
-    case 'quests_1000':     {const q=getTotalQuestPoints();return[q,1000,Math.min(1,q/1000),`${q}/1000 quest points`];}
+    case 'quests_1000':     {const q=getTotalQuestPoints();return[q,200,Math.min(1,q/200),`${q}/200 quest points`];}
     case 'enchant_100':     {const best=Math.max(0,...(G.equipment||[]).map(e=>e.enchantLevel||0));return[best,100,Math.min(1,best/100),`Best enchant: +${best}/100`];}
     case 'worldboss_5x':    {const defs=G.worldBossDefeats||{};const wbKeys=Object.keys(defs);const min=wbKeys.length?Math.min(...wbKeys.map(k=>defs[k]||0)):0;return[min,5,Math.min(1,min/5),`${min}/5 kills on each World Boss`];}
-    case 'guild_max_rank':  {const r=G.guildRank||0;const mx=(GUILD_RANKS||[]).length-1;return[r,mx,mx?Math.min(1,r/mx):0,`Rank ${r}/${mx}`];}
-    case 'house_harvest':   {const h=G.totalHarvests||0;return[h,0,0,`${h} total harvests (0.1% chance each)`];}
+    case 'guild_max_rank':  {const r=GUILD_RANKS.findIndex(x=>x.id===getGuildRank().id);const mx=GUILD_RANKS.length-1;return[r,mx,mx?Math.min(1,r/mx):0,`Rank: ${getGuildRank().name} (${r}/${mx})`];}
+    case 'house_harvest':   {const h=G.totalHarvests||0;return[h,0,0,`${h} total harvests (5% chance each)`];}
     case 'smith_100':       {const best=Math.max(0,...(G.equipment||[]).map(e=>e.smithLevel||0));return[best,100,Math.min(1,best/100),`Best upgrade: Lv.${best}/100`];}
     case 'eq_summon_rare':  {return[0,0,0,'~0.01% from equipment summons'];}
     case 'nightmare_50':    {const n=G.nightmareBossKills||0;return[n,50,Math.min(1,n/50),`${n}/50 Nightmare kills`];}
-    case 'wins_10k':        {const w=G.wins||0;return[w,10000,Math.min(1,w/10000),`${fmt(w)}/10,000 wins`];}
+    case 'wins_10k':        {const w=G.wins||0;return[w,5000,Math.min(1,w/5000),`${fmt(w)}/5,000 wins`];}
     case 'prestige_10':     {const p=G.prestigeCount||0;return[p,120,Math.min(1,p/120),`${p}/120 total prestiges (all 12 zodiacs ×10)`];}
-    case 'dungeon_week':    {const d=Object.keys(G.weeklyDungeonsDone||{}).length;const tot=(DAILY_DUNGEONS||[]).length;return[d,tot,tot?Math.min(1,d/tot):0,`${d}/${tot} dungeons this week`];}
+    case 'tower_1000_capture':{const f=G['towerBest_capture']||0;return[f,1000,Math.min(1,f/1000),`Best floor: ${f}/1000 (Capture Tower)`];}
     case 'boss_rush_perf':  {return[0,0,0,'Clear Boss Rush without any faint'];}
     case 'mirror_10':       {const m=G.mirrorWins||0;return[m,10,Math.min(1,m/10),`${m}/10 Mirror Battle wins`];}
     default: return[0,0,0,'Unknown condition'];
   }
 }
 
+// Retroactively check ALL godly unlock conditions — catches conditions met
+// before the unlock-trigger code existed/fired (e.g. already at Divine rank)
+function sweepGodlyUnlocks(){
+  const sourceKeys=['convergence','house_harvest','tower_1000_buff','summon_100k','bp_100',
+    'ascension_5','timed_90s','vault_100','quests_1000','enchant_100','worldboss_5x',
+    'guild_max_rank','smith_100','tower_1000_ironman','nightmare_50','wins_10k','prestige_10',
+    'ascension_10','tower_1000_capture','boss_rush_perf','tower_1000_debuff','summon_1m',
+    'mirror_10','reborn_1000'];
+  sourceKeys.forEach(key=>{
+    try{
+      const[cur,need,pct]=getGodlyProgressVal(key);
+      if(pct>=1)checkGodlyPieceUnlock(key);
+    }catch(e){}
+  });
+}
 function renderGodlyIntel(){
+  sweepGodlyUnlocks();
   const body=document.getElementById('godlyIntelBody');
   const sub=document.getElementById('godlyIntelSubtitle');
   if(!body)return;
@@ -6760,14 +6887,14 @@ function claimSeasonReward(day,isPremium){
 function getSkillStatBoost(name){
   const unlocked=G.skillTree&&G.skillTree[name]?Object.keys(G.skillTree[name]).filter(k=>G.skillTree[name][k]):{};
   let atk=1,def=1,spd=1,dodgeBonus=0;
-  const allNodes=[...SKILL_TREES.offense,...SKILL_TREES.defense,...SKILL_TREES.utility];
+  const allNodes=[...SKILL_TREES.offense,...SKILL_TREES.defense,...SKILL_TREES.utility,...(SKILL_TREES.mastery||[])];
   allNodes.forEach(node=>{if(G.skillTree&&G.skillTree[name]&&G.skillTree[name][node.id]){if(node.effect.atk)atk+=node.effect.atk;if(node.effect.def)def+=node.effect.def;if(node.effect.spd)spd+=node.effect.spd;if(node.effect.dodgeBonus)dodgeBonus+=node.effect.dodgeBonus;}});
   return{atk,def,spd,dodgeBonus};
 }
 function hasSkillNode(zodiacName,nodeId){return G.skillTree&&G.skillTree[zodiacName]&&G.skillTree[zodiacName][nodeId];}
 function unlockSkillNode(zodiacName,nodeId){
   const pts=(G.skillPoints&&G.skillPoints[zodiacName])||0;if(pts<=0){toast('No skill points!','er');return;}
-  const allNodes=[...SKILL_TREES.offense,...SKILL_TREES.defense,...SKILL_TREES.utility];
+  const allNodes=[...SKILL_TREES.offense,...SKILL_TREES.defense,...SKILL_TREES.utility,...(SKILL_TREES.mastery||[])];
   const node=allNodes.find(n=>n.id===nodeId);if(!node){toast('Invalid node!','er');return;}
   if(node.req&&!hasSkillNode(zodiacName,node.req)){toast(`Unlock ${node.req} first!`,'er');return;}
   if(hasSkillNode(zodiacName,nodeId)){toast('Already unlocked!','er');return;}
@@ -6822,12 +6949,14 @@ function startTowerBattle(){
   G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
   G.towerFloor=(G.towerFloor||0)+1;if(G.towerFloor>G.towerBest)G.towerBest=G.towerFloor;if(G.towerFloor>(G.towerBestFloor||0))G.towerBestFloor=G.towerFloor;
   // Track variant best
-  const _vk='towerBest_'+(_towerVariant||'buff');if(G.towerFloor>(G[_vk]||0)){G[_vk]=G.towerFloor;
+  const _curVariant=G._towerVariant||_towerVariant||'buff';
+  const _vk='towerBest_'+_curVariant;if(G.towerFloor>(G[_vk]||0)){G[_vk]=G.towerFloor;
     if(G.towerFloor>=1000){
-      if(_towerVariant==='buff')checkGodlyPieceUnlock('tower_1000_buff');
-      else if(_towerVariant==='ironman')checkGodlyPieceUnlock('tower_1000_ironman');
-      else if(_towerVariant==='debuff')checkGodlyPieceUnlock('tower_1000_debuff');
-      else if(_towerVariant==='reborn')checkGodlyPieceUnlock('reborn_1000');
+      if(_curVariant==='buff')checkGodlyPieceUnlock('tower_1000_buff');
+      else if(_curVariant==='ironman')checkGodlyPieceUnlock('tower_1000_ironman');
+      else if(_curVariant==='debuff')checkGodlyPieceUnlock('tower_1000_debuff');
+      else if(_curVariant==='reborn')checkGodlyPieceUnlock('reborn_1000');
+      else if(_curVariant==='capture')checkGodlyPieceUnlock('tower_1000_capture');
     }
   }
   applyTowerFloorRewards(G.towerFloor);
@@ -6937,8 +7066,8 @@ let _timedTowerEnd=0;
 let _timedTowerTimer=null;
 let _towerCoins=0;
 
-function getTowerVariant(){return TOWER_VARIANTS[_towerVariant||'buff']||TOWER_VARIANTS.buff;}
-function isTowerVariant(id){return G.towerActive&&_towerVariant===id;}
+function getTowerVariant(){return TOWER_VARIANTS[G._towerVariant||_towerVariant||'buff']||TOWER_VARIANTS.buff;}
+function isTowerVariant(id){return G.towerActive&&(G._towerVariant||_towerVariant)===id;}
 function getTowerBuffMult(stat){
   if(isTowerVariant('ironman'))return 1;
   let mult=1;
@@ -6968,6 +7097,7 @@ function applyTowerFloorRewards(floor){
 
 function startTowerVariant(variantId){
   _towerVariant=variantId||'buff';
+  G._towerVariant=_towerVariant;// persist across page reload
   _towerBuffs=[];_towerDebuffs=[];
   if(variantId!=='prestige')G.towerFloor=0;
   if(variantId==='single'){
@@ -7060,6 +7190,8 @@ function startTowerVariant(variantId){
     G._rebornRealParty=JSON.parse(JSON.stringify(G.party));
     G._rebornRealActive=G.active;
     G._rebornRealEquip=JSON.parse(JSON.stringify(G.equipment||[]));
+    G._rebornRealGold=G.gold;G._rebornRealStars=G.stars;
+    G.gold=0;G.stars=0;
     const runRoster={};
     runRoster[z.name]={level:1,xp:0,xpNext:100,hp:st.maxHp,maxHp:st.maxHp,atk:st.atk,def:st.def,spd:st.spd,rarity:'Common',stars:0,evoStage:0};
     G._rebornRunRoster=runRoster;
@@ -7099,6 +7231,8 @@ function endTowerRun(){
     G.party=G._rebornRealParty||G._savedParty||G.party;
     G.active=G._rebornRealActive||G.party[0];
     G.equipment=G._rebornRealEquip||G.equipment;
+    if(G._rebornRealGold!==undefined)G.gold=G._rebornRealGold;
+    if(G._rebornRealStars!==undefined)G.stars=G._rebornRealStars;
     toast('↩️ Reborn run ended — your real squad is restored!','ok');
     updateHdr();renderSquad();
   }else if(G._savedParty){
@@ -7130,9 +7264,10 @@ function endTowerRun(){
   delete G._ironmanMode;delete G._ironmanRunRoster;delete G._ironmanParty;
   delete G._ironmanRealRoster;delete G._ironmanRealParty;delete G._ironmanRealActive;
   delete G._ironmanRealEquip;delete G._ironmanStacks;delete G._ironmanPity;
-  delete G._rebornRealRoster;delete G._rebornRealParty;delete G._rebornRealActive;
-  delete G._rebornRunRoster;delete G._savedParty;
-  _towerBuffs=[];_towerDebuffs=[];G.towerActive=false;updateModeBadge();save();
+  delete G._rebornMode;delete G._rebornRealRoster;delete G._rebornRealParty;delete G._rebornRealActive;
+  delete G._rebornRealEquip;delete G._rebornRealGold;delete G._rebornRealStars;
+  delete G._rebornRunRoster;delete G._rebornParty;delete G._savedParty;
+  _towerBuffs=[];_towerDebuffs=[];G.towerActive=false;G._towerVariant=undefined;updateModeBadge();save();
 }
 function endTimedTower(success){
   clearInterval(_timedTowerTimer);_timedTowerTimer=null;
@@ -7561,7 +7696,7 @@ function renderInventory(){
   all.forEach(item=>{
     const rd=EQUIPMENT_RARITIES[item.rarity]||{color:'#9ca3af'};
     const isGodly=item.isGodly;
-    const statStr=Object.entries(item.stats||{}).slice(0,2).map(([k,v])=>k+':'+v).join(' ');
+    const statStr=Object.entries(item.stats||{}).slice(0,3).map(([k,v])=>{const _SN2={atk:'ATK',def:'DEF',hp:'HP',spd:'SPD',critRate:'CritR',critDmg:'CritD',dodge:'Dodge',ultCharge:'UltChg',goldFind:'Gold+',elementDmg:'ElemD',bossDmg:'Boss+'};return(_SN2[k]||k)+':'+fmt(v);}).join(' · ');
     const d=document.createElement('div');
     d.style.cssText='background:rgba(28,38,56,.7);border:1px solid '+(isGodly?'#ffd700':rd.color+'55')+';border-radius:7px;padding:7px;position:relative;'+(isGodly?'box-shadow:0 0 8px #ffd70055;':'');
     d.innerHTML=(item.equippedOn?'<div style="position:absolute;top:3px;right:4px;font-size:8px;color:var(--ok);">📎'+item.equippedOn.slice(0,4)+'</div>':'')+
@@ -7701,7 +7836,7 @@ const HOUSE_ROOMS=[
   {id:'garden',     name:'Garden',       emoji:'🌿', desc:'Grow herbs, unlock Herbalist bonuses',  cost:5000,  level:0,maxLevel:5},
   {id:'forge',      name:'Smithy',       emoji:'⚒️', desc:'-10% reroll cost, +craft quality',     cost:8000,  level:0,maxLevel:5},
   {id:'library',    name:'Library',      emoji:'📚', desc:'+10% all XP gains per level',          cost:10000, level:0,maxLevel:5},
-  {id:'treasury',   name:'Treasury',     emoji:'💰', desc:'+5% gold interest per level',          cost:15000, level:0,maxLevel:5},
+  {id:'treasury',   name:'Treasury',     emoji:'💰', desc:'+3% gold find, +2% gold/battle & 0.2% compound interest per level',          cost:15000, level:0,maxLevel:5},
   {id:'dojo',       name:'Dojo',         emoji:'🥋', desc:'+5% ATK/DEF per level',               cost:12000, level:0,maxLevel:5},
   {id:'shrine',     name:'Shrine',       emoji:'🛕', desc:'+1 star per boss kill per level',      cost:20000, level:0,maxLevel:5},
   {id:'dungeon_room',name:'Vault',       emoji:'🗝️', desc:'Stores rare items, +gear drop rate',  cost:30000, level:0,maxLevel:5},
@@ -7789,13 +7924,22 @@ function getHouseBonus(bonusKey){
     atk:        ['dojo',       0.03],
     crit:       ['observatory',0.02],
     starDrop:   ['shrine',     0.01],
+    starBattle: ['shrine',     0.01],// starBattle alias for starDrop
     potionPower:['kitchen',    0.05],
+    potionDrop: ['kitchen',    0.01],// kitchen also drops extra potions per level
     craftXp:    ['workshop',   0.04],
+    skillXp:    ['workshop',   0.03],// workshop also boosts skill XP
     goldAll:    ['treasury',   0.02],
+    goldWin:    ['treasury',   0.01],// treasury goldWin alias
     enchantPower:['forge',     0.02],
-    upgradeCost:['forge',     -0.02],// negative = discount
+    upgradeCost:['forge',     -0.02],
     bossDmg:    ['arena',      0.03],
     expedBonus: ['dungeon_room',0.05],
+    comboDmg:   ['dojo',       0.02],// dojo also boosts combo damage
+    autoHeal:   ['kitchen',    0.01],// kitchen provides passive healing
+    extraPotion:['kitchen',    0.25],// kitchen gives 0.25 free potions/floor (per level)
+    battleReward:['treasury',  0.02],// treasury boosts battle rewards
+    petBonus:   ['garden_room',0.05],// garden room boosts pet effectiveness
   };
   if(roomBonuses[bonusKey]){
     const [roomId,perLevel]=roomBonuses[bonusKey];
@@ -7833,7 +7977,7 @@ function harvestGarden(seedId){
   G.totalHarvests=(G.totalHarvests||0)+1;
   // Void Seed: 0.1% godly, otherwise +50 stars
   if(rw.godlyChance){
-    if(Math.random()<0.001){checkGodlyPieceUnlock('house_harvest');toast('🌑 VOID SEED: GODLY DROP! ✨','ok');}
+    if(Math.random()<0.05){checkGodlyPieceUnlock('house_harvest');toast('🌑 VOID SEED: GODLY DROP! ✨','ok');}
     else{const s=rw.stars*mult;G.stars=(G.stars||0)+s;toast('🌑 Void Seed: +'+s+'⭐','ok');}
   }
   if(rw.potion){const amt=rw.amount*mult;G.pot=G.pot||{};G.pot[rw.potion]=(G.pot[rw.potion]||0)+amt;toast(seed.emoji+' Harvested! +'+amt+' '+rw.potion+' potion'+(amt>1?'s':''),'ok');}
@@ -8539,6 +8683,8 @@ function buyGuildShopItem(id){
   const item=GUILD_SHOP_ITEMS.find(i=>i.id===id);if(!item)return;
   if((G.guildCoins||0)<item.cost){toast('Not enough Guild Coins!','er');return;}
   G.guildCoins-=item.cost;
+  if(!G.guildShopPurchases)G.guildShopPurchases={};
+  G.guildShopPurchases[id]=(G.guildShopPurchases[id]||0)+1;
   if(item.type==='consumable'){
     if(id==='gs_potion'){G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});toast('🧪 Full party healed!','ok');}
     else if(id==='gs_xpscroll'){const r=G.roster[G.active];if(r){r.xp+=500;lvCheck(G.active);}toast('📜 +500 XP!','ok');}
@@ -8572,13 +8718,22 @@ function getGuildShopBonus(stat){
 }
 function renderGuildShop(){
   const body=document.getElementById('guildShopBody');if(!body)return;
+  if(!G.guildShopPurchases)G.guildShopPurchases={};
   body.innerHTML='<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div class="t2 ts">🪙 Guild Coins: <span class="ta tb">'+(G.guildCoins||0)+'</span></div><div class="t2 ts">Fragments: '+(G.skinFragments||0)+'/3</div></div>';
   const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:5px;';
   GUILD_SHOP_ITEMS.forEach(item=>{
     const canBuy=(G.guildCoins||0)>=item.cost;
+    const owned=G.guildShopPurchases[item.id]||0;
     const d=document.createElement('div');
     d.style.cssText='background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.3);border-radius:9px;padding:8px;';
-    d.innerHTML='<div style="font-size:20px;margin-bottom:2px;">'+item.emoji+'</div><div style="font-size:10px;font-weight:700;">'+item.name+'</div><div class="t2 ts" style="font-size:8px;">'+item.desc+'</div>';
+    let ownedTag='';
+    if(item.type==='permanent'){
+      const totalPct=(owned*item.val*100).toFixed(0);
+      ownedTag='<div class="t2 ts" style="font-size:8px;color:var(--acc);margin-top:2px;">Owned: '+owned+'× (total +'+totalPct+'% '+item.stat+')</div>';
+    }else if(item.type==='gear'){
+      ownedTag='<div class="t2 ts" style="font-size:8px;color:var(--acc);margin-top:2px;">Purchased: '+owned+'×</div>';
+    }
+    d.innerHTML='<div style="font-size:20px;margin-bottom:2px;">'+item.emoji+'</div><div style="font-size:10px;font-weight:700;">'+item.name+'</div><div class="t2 ts" style="font-size:8px;">'+item.desc+'</div>'+ownedTag;
     const b=document.createElement('button');b.className='btn '+(canBuy?'bp':'bs');b.style.cssText='font-size:9px;margin-top:5px;width:100%;';b.textContent='🪙'+item.cost;
     if(canBuy)b.onclick=(()=>{const iid=item.id;return()=>buyGuildShopItem(iid);})();
     else b.disabled=true;
