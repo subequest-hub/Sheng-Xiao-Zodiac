@@ -4808,7 +4808,7 @@ function doAttack(){
   const masteryB=_isCapture?{atk:1,def:1,spd:1,hp:1,crit:0,goldFind:0}:getMasteryBonus(G.active);
   const luckB=_isCapture?{critChance:0}:getLuckBonuses(G.active);
   const eqCritRateBonus=_isCapture?0:(eqStats.critRate||0)/100+(G.prestigeShop?.critBonus||0)+(setBonus.critRate||0)+(awkCrit.critical_eye?0.15:0)+masteryB.crit+luckB.critChance+getPetBonus('crit')+getHouseBonus('crit');
-  const eqCritDmgBonus=1+(eqStats.critDmg||0)/100;
+  const eqCritDmgBonus=Math.min(5, 1+(eqStats.critDmg||0)/100);// cap at 5x (400% crit dmg bonus)
   const eqBossDmg=(!_isCapture&&(e.boss||e.isAreaBoss))?1+(eqStats.bossDmg||0)/100+(setBonus.bossDmg||0):1;
   const eqUltChargeBonus=1+(eqStats.ultCharge||0)/100+(G.prestigeShop?.ultChargeBonus||0);
   const eqElemDmg=1+(eqStats.elementDmg||0)/100;
