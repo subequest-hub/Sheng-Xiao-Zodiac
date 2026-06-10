@@ -414,7 +414,7 @@ onAuthStateChanged(auth, user => {
       <span style="font-size:12px;">⭐</span>
       <div><div style="font-size:9px;font-weight:700;color:var(--txt);" id="hStarVal">0</div><div style="font-size:6px;color:var(--txt2);">Stars</div></div>
     </div>
-    <div onclick="if(G._ironmanMode){toast('💀 Ironman Tower: Shop is locked!','er');return;}renderShop();openM('mShop')" style="display:flex;align-items:center;gap:2px;background:rgba(30,41,59,.7);border:1px solid rgba(71,85,105,.3);border-radius:8px;padding:3px 4px;cursor:pointer;">
+    <div onclick="if(G._ironmanMode||G._captureMode){toast((G._captureMode?'🎯 Capture':'💀 Ironman')+' Tower: Shop is locked!','er');return;}renderShop();openM('mShop')" style="display:flex;align-items:center;gap:2px;background:rgba(30,41,59,.7);border:1px solid rgba(71,85,105,.3);border-radius:8px;padding:3px 4px;cursor:pointer;">
       <span style="font-size:12px;">💰</span>
       <div style="min-width:0;overflow:hidden;"><div style="font-size:9px;font-weight:700;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="hG">0</div><div style="font-size:6px;color:var(--txt2);">Gold</div></div>
     </div>
@@ -1142,6 +1142,11 @@ function showTab(tab){
   // During Ironman Tower: only Fight and Squad allowed (no summon, no shop — it happens automatically)
   if(G._ironmanMode&&!['battle','squad'].includes(tab)){
     toast('💀 Ironman Tower: only Fight & Squad available!','er');
+    return;
+  }
+  // During Capture Tower: only Fight and Squad allowed (no summons — capture instead)
+  if(G._captureMode&&!['battle','squad'].includes(tab)){
+    toast('🎯 Capture Tower: only Fight & Squad available. Defeat enemies to capture them!','er');
     return;
   }
   const tabs=['battle','squad','summon','quests','shop','more'];
@@ -2183,7 +2188,7 @@ function showElementPicker(name){
   openM('mElementPicker');
 }
 
-function getZodiac(name){return ZODIACS.find(z=>z.name===name);}
+function getZodiac(name){return ZODIACS.find(z=>z.name===name)||(G._captureMode&&G._captureTemplates&&G._captureTemplates[name])||undefined;}
 function calcStats(z,rarity,level){
   if(!z||!z.base)return{maxHp:100,atk:20,def:15,spd:30};// fallback for unknown zodiac
   const m=RARITY_MULT[rarity]||1;const lv=Math.pow(1.08,level-1);
@@ -2521,7 +2526,11 @@ function renderEquipmentManager(zodiacName){
 }
 
 // ══ MYTHICAL STACKS ══
-function getMythicalStacks(name){return((G.mythicalStacks&&G.mythicalStacks[name])||0)+((G._ironmanStacks&&G._ironmanStacks[name])||0);}
+function getMythicalStacks(name){
+  // Captured-tower fighters aren't real zodiacs — never apply mythical stack bonuses to them
+  if(G._captureMode&&G._captureTemplates&&G._captureTemplates[name])return 0;
+  return((G.mythicalStacks&&G.mythicalStacks[name])||0)+((G._ironmanStacks&&G._ironmanStacks[name])||0);
+}
 function addMythicalStack(name){
   if(!G.mythicalStacks)G.mythicalStacks={};
   const _stackCap=Math.max(10,(G.ascension||0)*10);
@@ -2729,7 +2738,10 @@ function getGodlyDmgMult(){
     if(bonus.fireDmg)mult*=bonus.fireDmg;
     if(bonus.statMult)mult*=bonus.statMult;
   });
-  if(G._godlyAtkStacks)mult*=(1+G._godlyAtkStacks);
+  // Volcanic Rage stacking ATK: only applies if the Pyre Rune is owned, capped to prevent runaway numbers
+  if(G._godlyAtkStacks&&(G.equipment||[]).some(e=>e.godlyId==='gs_fire_rune')){
+    mult*=(1+Math.min(G._godlyAtkStacks,10));// cap at +1000%
+  }
   return mult;
 }
 
@@ -3190,6 +3202,20 @@ function liveM(name){
   const z=getZodiac(name);
   if(!z)return null;// zodiac not found - corrupted roster entry
   const evoEmoji=getEvoEmoji(name);
+  // Capture Tower: captured fighters are pure raw stats — no global player buffs apply
+  if(G._captureMode&&G._captureTemplates&&G._captureTemplates[name]){
+    if(r.hp>r.maxHp)r.hp=r.maxHp;
+    return{
+      zodiac:name,emoji:evoEmoji,color:z?.color||'#94a3b8',trait:z?.trait||'fierce',affinityBonus:0,
+      element:ZEL[name]||z?.type||'fire',rarity:r.rarity,
+      level:r.level,xp:r.xp,xpNext:r.xpNext,stars:r.stars,
+      maxHp:r.maxHp,hp:r.hp,atk:r.atk,def:r.def,spd:r.spd,
+      prestigeStars:0,
+      eqCritRate:0,eqCritDmg:0,eqDodge:0,
+      eqUltCharge:0,eqGoldFind:0,eqElementDmg:0,eqBossDmg:0,
+      formationBonus:'def',
+    };
+  }
   const pStars=(G.prestigeStars&&G.prestigeStars[name])||0;
   const pBoost=1+pStars*0.05;
   const affBoost=getAffinityMult(name);
@@ -3662,7 +3688,11 @@ function shouldAutoUlt(){
 function doUltimate(){
   if(!G.alive||getUltCharge(G.active)<100)return;
   const f=getActiveM();if(!f)return;
-  const skill=ZODIAC_SKILLS[f.zodiac];if(!skill){toast('No ultimate!','er');return;}
+  const skill=ZODIAC_SKILLS[f.zodiac];
+  if(!skill){
+    // Captured enemies have no ultimate skill — perform a normal attack instead
+    doAttack();return;
+  }
   atkCD=true;setTimeout(()=>{atkCD=false;},Math.max(120,Math.floor(500/G.speed)));
   _autoLastAttack=Date.now();
   G.ultCharge[f.zodiac]=0;
@@ -4368,8 +4398,8 @@ function init(){
   initQuests();checkDailyLogin();checkDungeonReset();
   {const _nbd=getToday();if(G.nightmareBossDate!==_nbd){G.nightmareBossDefeatedToday=false;G.nightmareBossDate=_nbd;}}
   // Reset transient battle flags — but preserve active run state (ironman/reborn)
-  const _wasIronman=G._ironmanMode;const _wasReborn=G._rebornMode;
-  const _wasTowerActive=G.towerActive&&(_wasIronman||_wasReborn);
+  const _wasIronman=G._ironmanMode;const _wasReborn=G._rebornMode;const _wasCapture=G._captureMode;
+  const _wasTowerActive=G.towerActive&&(_wasIronman||_wasReborn||_wasCapture);
   G.bossRushActive=false;G.inDungeon=false;G.dungeonData=null;
   G.mirrorFightActive=false;G.mirrorSnapshot=null;G.mirrorFightQueue=[];
   G.alive=false;G.enemy=null;G.enemySkillQueue=null;
@@ -4378,6 +4408,7 @@ function init(){
   // Re-apply run rosters on reload
   if(_wasIronman&&G._ironmanRunRoster){G.roster=G._ironmanRunRoster;G.party=(G._ironmanParty||[]).slice(0,6).filter(n=>G._ironmanRunRoster[n]);if(G.party.length)G.active=G.party[0];}
   if(_wasReborn&&G._rebornRunRoster){G.roster=G._rebornRunRoster;G.party=(G._rebornParty||[]).slice(0,6).filter(n=>G._rebornRunRoster[n]);if(G.party.length)G.active=G.party[0];}
+  if(_wasCapture&&G._captureRunRoster){G.roster=G._captureRunRoster;G.party=(G._captureParty||[]).slice(0,6).filter(n=>G._captureRunRoster[n]);if(G.party.length)G.active=G.party[0];}
   // Purge any corrupt/stale entries from saved enemyQ
   G.enemyQ=(G.enemyQ||[]).filter(e=>e&&e.emoji&&e.name&&e.hpM);
   shuffleQ();
@@ -4442,8 +4473,12 @@ function spawnEnemy(){
     if(!G.enemyQ||!G.enemyQ.length)shuffleQ();
     let t=G.enemyQ.shift();
     if(!t||!t.emoji){shuffleQ();t=G.enemyQ.shift()||ENEMIES[0];}// guard stale/corrupt queue
-    const sc=getWinScale();
+    const floor=G.towerFloor||0;
+    const _isCaptureRun=!!(G._captureMode||(G._captureTemplates&&G.party&&G.party.some(n=>G._captureTemplates[n])));
+    const _isRunMode=G._ironmanMode||G._rebornMode||_isCaptureRun;
+    const sc=_isRunMode?(1+floor*.05):getWinScale();
     G.enemy={...t,maxHp:Math.floor(B.BASE_HP*(t.hpM||1)*sc),hp:Math.floor(B.BASE_HP*(t.hpM||1)*sc),atk:Math.floor(B.BASE_ATK*(t.atkM||1)*sc)};
+    if(_isCaptureRun)rescaleCaptureRoster();
     G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;
     G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;G.lastAttacker='';G.speedBreakUsed=false;
     unlockCodexEntry(t.name);clearCT();resetTel();hideEnemySkillWarning();
@@ -4760,41 +4795,43 @@ function doAttack(){
     const b=(MASTERY_BONUSES[G.active]||[]).find(x=>x.at===G.mastery[G.active]);
     if(b){addLog('events',`⚔️ ${G.active} Mastery: ${b.name}!`,b.desc);}
   }
-  const formAtkMult=getFormationMult(G.active,true);
+  // Capture Tower: pure 1v1, no outside buffs/bonuses apply — only raw stats matter
+  const _isCapture=!!G._captureMode;
+  const formAtkMult=_isCapture?1:getFormationMult(G.active,true);
   // Skill tree stat boost
-  const skillBoost=getSkillStatBoost(G.active);
+  const skillBoost=_isCapture?{atk:1,def:1,spd:1,dodgeBonus:0}:getSkillStatBoost(G.active);
   // Equipment boosts
-  const eqStats=getEquipmentStats(G.active);
+  const eqStats=_isCapture?{}:getEquipmentStats(G.active);
   const eqAtkBoost=1+(eqStats.atk||0)/100;
-  const setBonus=getActiveSetBonuses(G.active);
-  const awkCrit=getAwakeningBonuses(G.active);
-  const masteryB=getMasteryBonus(G.active);
-  const luckB=getLuckBonuses(G.active);
-  const eqCritRateBonus=(eqStats.critRate||0)/100+(G.prestigeShop?.critBonus||0)+(setBonus.critRate||0)+(awkCrit.critical_eye?0.15:0)+masteryB.crit+luckB.critChance+getPetBonus('crit')+getHouseBonus('crit');
+  const setBonus=_isCapture?{}:getActiveSetBonuses(G.active);
+  const awkCrit=_isCapture?{}:getAwakeningBonuses(G.active);
+  const masteryB=_isCapture?{atk:1,def:1,spd:1,hp:1,crit:0,goldFind:0}:getMasteryBonus(G.active);
+  const luckB=_isCapture?{critChance:0}:getLuckBonuses(G.active);
+  const eqCritRateBonus=_isCapture?0:(eqStats.critRate||0)/100+(G.prestigeShop?.critBonus||0)+(setBonus.critRate||0)+(awkCrit.critical_eye?0.15:0)+masteryB.crit+luckB.critChance+getPetBonus('crit')+getHouseBonus('crit');
   const eqCritDmgBonus=1+(eqStats.critDmg||0)/100;
-  const eqBossDmg=e.boss||e.isAreaBoss?1+(eqStats.bossDmg||0)/100+(setBonus.bossDmg||0):1;
+  const eqBossDmg=(!_isCapture&&(e.boss||e.isAreaBoss))?1+(eqStats.bossDmg||0)/100+(setBonus.bossDmg||0):1;
   const eqUltChargeBonus=1+(eqStats.ultCharge||0)/100+(G.prestigeShop?.ultChargeBonus||0);
   const eqElemDmg=1+(eqStats.elementDmg||0)/100;
 
-  // #1 Crit Chain: consecutive crits build multiplier
-  const critChainMult=G.critChain>=3?2.0:G.critChain>=2?1.5:G.critChain>=1?1.2:1.0;
+  // #1 Crit Chain: consecutive crits build multiplier (disabled in Capture Tower)
+  const critChainMult=_isCapture?1.0:(G.critChain>=3?2.0:G.critChain>=2?1.5:G.critChain>=1?1.2:1.0);
   const critRoll=Math.random()-eqCritRateBonus;
-  const isMegaCrit=critRoll<0.01+(f.trait==='lucky'?.02:0);
-  const isSuperCrit=!isMegaCrit&&critRoll<0.04+(f.trait==='lucky'?.03:0);
-  const isCrit=!isMegaCrit&&!isSuperCrit&&critRoll<(0.15+(f.trait==='lucky'?.1:0));
+  const isMegaCrit=critRoll<0.01+(f.trait==='lucky'&&!_isCapture?.02:0);
+  const isSuperCrit=!isMegaCrit&&critRoll<0.04+(f.trait==='lucky'&&!_isCapture?.03:0);
+  const isCrit=!isMegaCrit&&!isSuperCrit&&critRoll<(0.15+(f.trait==='lucky'&&!_isCapture?.1:0));
   const _fEl2=getZodiacElement(f.zodiac);const isWeak=_fEl2===e.weak;
   const xpGain=Math.floor((B.XP_HIT+Math.floor(e.level*.25))*(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(1+getHouseBonus('xpBonus'))*(getWorldEventMult?getWorldEventMult('xp'):1));
-  const sMult=(1+G.streak*B.STREAK_BONUS)*(1+getHouseBonus('comboDmg'));
-  const atkBuff=getAtkBuff(f.zodiac)*skillBoost.atk;
-  const weatherMult=getWeatherMult(getZodiacElement(f.zodiac));
-  const rageMult=checkRage(f.zodiac);
+  const sMult=_isCapture?1:(1+G.streak*B.STREAK_BONUS)*(1+getHouseBonus('comboDmg'));
+  const atkBuff=_isCapture?1:getAtkBuff(f.zodiac)*skillBoost.atk;
+  const weatherMult=_isCapture?1:getWeatherMult(getZodiacElement(f.zodiac));
+  const rageMult=_isCapture?1:checkRage(f.zodiac);
   const armorMult=getArmorBreakMult();
   const reaction=checkReaction(getZodiacElement(f.zodiac),e.type);
 
   let dmg=Math.max(1,(f.atk*atkBuff*formAtkMult*eqAtkBoost)-e.atk*.2*(1/armorMult)+Math.random()*15);
-  dmg*=weatherMult*rageMult*(1+getPetBonus('dmg'));
-  // Apply Godly set bonuses
-  dmg*=getGodlyDmgMult();
+  dmg*=weatherMult*rageMult*(1+(_isCapture?0:getPetBonus('dmg')));
+  // Apply Godly set bonuses (disabled in Capture Tower)
+  dmg*=_isCapture?1:getGodlyDmgMult();
   if(isMegaCrit)dmg*=5*eqCritDmgBonus*critChainMult;else if(isSuperCrit)dmg*=3*eqCritDmgBonus*critChainMult;else if(isCrit)dmg*=2*eqCritDmgBonus*critChainMult;
   if(isWeak)dmg*=1.5*eqElemDmg;
   // Feature 1: Elemental resistance — enemy resists own element 30%
@@ -4802,7 +4839,11 @@ function doAttack(){
   if(G.enemyImmune&&getZodiacElement(f.zodiac)===G.enemyImmune){dmg=0;spawnDmg('IMMUNE!','miss',document.getElementById('activeFighter'));setMsg(`${EI[G.enemyImmune]} IMMUNE! Switch element!`,'','dmg');advTurn();return;}
   if(reaction)dmg*=reaction.mult;
   G.combo++;if(G.combo>G.maxCombo)G.maxCombo=G.combo;
-  if(G.combo>=3)dmg*=1+(G.combo-2)*(0.1+(G.prestigeShop?.comboBonus||0));
+  // Combo bonus disabled in Capture Tower; capped elsewhere at combo 22 (3x max)
+  if(!_isCapture){
+    const comboCount=Math.min(G.combo,22);
+    if(comboCount>=3)dmg*=1+(comboCount-2)*(0.1+(G.prestigeShop?.comboBonus||0));
+  }
   dmg*=eqBossDmg;
   dmg=Math.floor(dmg);
   if(Math.random()<0.2)doArmorBreak();
@@ -5080,7 +5121,7 @@ function onWin(sMult=1){
   }
   addBpXp(e.boss||e.isAreaBoss?50:20);
   // Feature 11: gear leveling XP from battle
-  G.party.forEach(n=>{if(G.roster[n]&&G.roster[n].hp>0)addGearXp(n,e.xp+e.level);});
+  if(!G._captureMode)G.party.forEach(n=>{if(G.roster[n]&&G.roster[n].hp>0)addGearXp(n,e.xp+e.level);});
   // Equipment drop
   const dropped=rollEquipmentDrop();
   if(dropped){addLog('rewards',`${dropped.icon} ${dropped.rarity} ${dropped.name} dropped!`,`${dropped.slot} · Lv.${dropped.level}`);}
@@ -5127,6 +5168,8 @@ function nextEnemy(){
     if(G._rebornMode&&G.enemy)rebornPickupZodiac(G.enemy.name);
     // Ironman tower: automatic free ×1 summon after each win
     if(G._ironmanMode)ironmanAutoSummon();
+    // Capture tower: 10% chance to capture the defeated enemy
+    if(G._captureMode&&G.enemy)captureEnemyAttempt(G.enemy);
     startTowerBattle();return;
   }
   if(G.inDungeon&&G.dungeonData){if(G.dungeonProgress&&G.dungeonProgress.bossDefeated)onDungeonComplete();else nextDungeonEnemy();return;}
@@ -5439,6 +5482,11 @@ function repairSave(){
   let fixed=0;
   const validNames=ZODIACS.map(z=>z.name);
 
+  // -1. Clean up stale _godlyAtkStacks from old builds if Pyre Rune isn't owned
+  if(G._godlyAtkStacks&&!(G.equipment||[]).some(e=>e.godlyId==='gs_fire_rune')){
+    delete G._godlyAtkStacks;fixed++;
+  }
+
   // 0. Reset evoStage to valid range for all zodiacs
   Object.keys(G.evoStage||{}).forEach(name=>{
     const evos=EVOLUTIONS[name];
@@ -5525,7 +5573,7 @@ function updateModeBadge(){
   if(ban)ban.textContent=areaText;
   if(bmn)bmn.textContent=modeText;
   if(!mb)return;
-  if(G.towerActive){mb.textContent=(G._rebornMode?'♻️ Reborn Tower — Floor '+(G.towerFloor||0)+' (Quests/Shop/Hub locked)':G._ironmanMode?'💀 Ironman Tower — Floor '+(G.towerFloor||0)+' (Auto-summon after each win)':'🗼 Tower — Floor '+(G.towerFloor||0));mb.style.display='block';}
+  if(G.towerActive){mb.textContent=(G._rebornMode?'♻️ Reborn Tower — Floor '+(G.towerFloor||0)+' (Quests/Shop/Hub locked)':G._ironmanMode?'💀 Ironman Tower — Floor '+(G.towerFloor||0)+' (Auto-summon after each win)':G._captureMode?'🎯 Capture Tower — Floor '+(G.towerFloor||0)+' ('+(G._captureParty||[]).length+'/6 captured)':'🗼 Tower — Floor '+(G.towerFloor||0));mb.style.display='block';}
   else if(G.bossRushActive){mb.textContent='👑 Boss Rush — '+(G.bossRushFloor+1);mb.style.display='block';}
   else if(G.inDungeon&&G.dungeonData){mb.textContent='💎 '+G.dungeonData.name;mb.style.display='block';}
   else if(G.nightmareMode){mb.textContent='⚠️ Nightmare ×'+(G.ascensionMult||1);mb.style.display='block';}
@@ -5534,17 +5582,18 @@ function updateModeBadge(){
   else if(_guildRankTestActive){mb.textContent=`⚔️ Guild Rank Trial — ${GUILD_RANK_TESTS[_guildRankTestId||'']?.name||'Rank Test'}`;mb.style.display='block';mb.style.background='linear-gradient(135deg,#b45309,#92400e)';mb.style.color='#fde68a';}
   else if(G.mirrorFightActive){mb.textContent='⚔️ Mirror Battle — Defeat your past self!';mb.style.display='block';mb.style.background='linear-gradient(135deg,#7c3aed,#1e3a8a)';mb.style.color='#e9d5ff';}
   else{mb.style.display='none';}
-  // Show abandon button only for reborn/ironman tower variants
+  // Show abandon button for reborn/ironman/capture tower variants
   const abandonBtn=document.getElementById('abandonRunBtn');
-  if(abandonBtn)abandonBtn.style.display=(G.towerActive&&(G._rebornMode||G._ironmanMode))?'block':'none';
-  const anyRunLocked=!!(G._rebornMode||G._ironmanMode);
+  if(abandonBtn)abandonBtn.style.display=(G.towerActive&&(G._rebornMode||G._ironmanMode||G._captureMode))?'block':'none';
+  const anyRunLocked=!!(G._rebornMode||G._ironmanMode||G._captureMode);
   ['nb-quests','nb-shop','nb-more'].forEach(id=>{
     const btn=document.getElementById(id);
     if(btn){btn.style.opacity=anyRunLocked?'0.3':'';btn.style.pointerEvents=anyRunLocked?'none':'';}
   });
-  // Ironman also locks summon — it happens automatically
+  // Ironman/Capture also lock summon
   const summonBtn=document.getElementById('nb-summon');
-  if(summonBtn){summonBtn.style.opacity=G._ironmanMode?'0.3':'';summonBtn.style.pointerEvents=G._ironmanMode?'none':'';}
+  const summonLocked=G._ironmanMode||G._captureMode;
+  if(summonBtn){summonBtn.style.opacity=summonLocked?'0.3':'';summonBtn.style.pointerEvents=summonLocked?'none':'';}
 }
 
 // ══ SESSION TIMER ══
@@ -5783,6 +5832,12 @@ function rosterAutoEquipAll(){
   const pb2=document.getElementById('autoPrsBtn');if(pb2)pb2.className='btn '+(G.autoPrs?'bp':'bs');
 }
 function renderRoster(){
+  if(G._captureMode){renderCaptureRoster();return;}
+  // Restore normal Auto-Evo/Auto-Prs buttons (in case capture mode swapped them)
+  const evoBtn=document.getElementById('autoEvoBtn');
+  const prsBtn=document.getElementById('autoPrsBtn');
+  if(evoBtn){evoBtn.innerHTML='🧬 Auto-Evo: <span id="autoEvoState">'+(G.autoEvo?'ON':'OFF')+'</span>';evoBtn.className='btn '+(G.autoEvo?'bp':'bs');evoBtn.onclick=toggleAutoEvo;}
+  if(prsBtn){prsBtn.innerHTML='⭐ Auto-Prs: <span id="autoPrsState">'+(G.autoPrs?'ON':'OFF')+'</span>';prsBtn.className='btn '+(G.autoPrs?'bp':'bs');prsBtn.onclick=toggleAutoPrs;}
   let html='';
   ZODIACS.forEach(z=>{
     const r=G.roster[z.name];const inParty=G.party.includes(z.name);
@@ -5820,6 +5875,69 @@ function renderRoster(){
     html+='</div>';
   });
   document.getElementById('rosterGrid').innerHTML=html;
+}
+function toggleCaptureBossOnly(){
+  G._captureBossOnly=!G._captureBossOnly;
+  toast('👑 Boss-Only Capture: '+(G._captureBossOnly?'ON — only bosses can be captured':'OFF'),G._captureBossOnly?'ok':'');
+  renderRoster();
+}
+function toggleCaptureAutoUpgrade(){
+  G._captureAutoUpgrade=!G._captureAutoUpgrade;
+  toast('🔄 Auto-Upgrade: '+(G._captureAutoUpgrade?'ON — abandons weakest to capture stronger monsters':'OFF'),G._captureAutoUpgrade?'ok':'');
+  renderRoster();
+}
+function renderCaptureRoster(){
+  // Swap the Auto-Evo / Auto-Prs buttons for capture-specific automation toggles
+  const evoBtn=document.getElementById('autoEvoBtn');
+  const prsBtn=document.getElementById('autoPrsBtn');
+  if(evoBtn){
+    evoBtn.innerHTML='👑 Boss-Only: <span id="captureBossOnlyState">'+(G._captureBossOnly?'ON':'OFF')+'</span>';
+    evoBtn.className='btn '+(G._captureBossOnly?'bp':'bs');
+    evoBtn.onclick=toggleCaptureBossOnly;
+  }
+  if(prsBtn){
+    prsBtn.innerHTML='🔄 Auto-Upgrade: <span id="captureAutoUpgradeState">'+(G._captureAutoUpgrade?'ON':'OFF')+'</span>';
+    prsBtn.className='btn '+(G._captureAutoUpgrade?'bp':'bs');
+    prsBtn.onclick=toggleCaptureAutoUpgrade;
+  }
+  let html='';
+  const captured=G._captureParty||[];
+  captured.forEach(name=>{
+    const r=G._captureRunRoster[name];if(!r)return;
+    const t=G._captureTemplates[name]||{emoji:'👾',color:'#94a3b8'};
+    const inParty=G.party.includes(name);
+    const m=liveM(name);
+    const hp=m&&m.maxHp>0?Math.floor((r.hp/m.maxHp)*100):0;
+    html+=`<div class="zcard in-party" onclick="togglePartyRoster('${name}')" style="cursor:pointer;border-color:${t.color}55;">`;
+    html+=`<div style="position:absolute;top:3px;right:3px;font-size:7px;color:#34d399;font-weight:700;">CAPTURED</div>`;
+    html+=`<div class="ze" style="display:flex;align-items:center;justify-content:center;"><span style="font-size:28px;">${t.emoji}</span></div>`;
+    html+=`<div class="zn" style="color:${t.color}">${name}</div>`;
+    html+=`<div class="zlv">Lv.${r.level}</div>`;
+    html+=`<div class="zhp"><div class="zhpf" style="width:${hp}%"></div></div>`;
+    html+=`<div style="font-size:8px;color:var(--txt2);">⚔️${m?m.atk:r.atk} 🛡️${m?m.def:r.def}</div>`;
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;gap:2px;">`;
+    html+=`<div style="font-size:8px;font-weight:700;color:${inParty?'var(--ok)':'var(--txt2)'};">${inParty?'✅ Active':'Bench'}</div>`;
+    html+=`<button class="btn bs" style="font-size:7px;padding:1px 5px;background:rgba(239,68,68,.3);" onclick="event.stopPropagation();confirmAbandonOwnedCapture('${name}')">Abandon</button>`;
+    html+=`</div></div>`;
+  });
+  // Empty slots
+  for(let i=captured.length;i<6;i++){
+    html+=`<div class="zcard locked"><div class="ze" style="display:flex;align-items:center;justify-content:center;"><span style="font-size:28px;">🎯</span></div><div class="zn" style="color:var(--txt2)">Empty Slot</div><div style="font-size:9px;color:var(--txt2);">Defeat enemies for 10% capture chance</div></div>`;
+  }
+  document.getElementById('rosterGrid').innerHTML=html;
+}
+function confirmAbandonOwnedCapture(name){
+  confirm2('🎯 Abandon '+name+'?','This captured enemy will be removed from your squad permanently to make room.',function(){
+    const idx=(G._captureParty||[]).indexOf(name);
+    if(idx>=0)G._captureParty.splice(idx,1);
+    delete G._captureRunRoster[name];
+    delete G._captureTemplates[name];
+    G.party=[...(G._captureParty||[]).slice(0,6)];
+    if(G.active&&!G.party.includes(G.active))G.active=G.party[0]||G.active;
+    G.roster=G._captureRunRoster;
+    renderSquad();save();
+    toast('🎯 '+name+' released. Slot freed!','ok');
+  });
 }
 function openZDetail(name){
   const r=G.roster[name];if(!r){toast('Unlock first!','er');return;}
@@ -6691,9 +6809,15 @@ function startTowerBattle(){
   let t=G.enemyQ.shift();if(!t||!t.emoji){shuffleQ();t=G.enemyQ.shift()||ENEMIES[0];}
   // Exponential scaling tracks player's multiplicative power curve
   // ~7.6x at 100 wins, ~94x at 1000, ~2953x at 5000
-  const sc=(G._ironmanMode||G._rebornMode)
-    ? 1+floor*.05
-    : getWinScale()*(1+floor*.05);
+  // floor here = the floor we're about to enter (current+1), used for scaling
+  const floor=(G.towerFloor||0)+1;
+  // Robust capture-mode detection: check mode flag OR active fighter is a captured template
+  // (mode flags can desync from G.roster after reload; this catches that case)
+  const _isCaptureRun=!!(G._captureMode||(G._captureTemplates&&G.party&&G.party.some(n=>G._captureTemplates[n])));
+  const _isRunMode=G._ironmanMode||G._rebornMode||_isCaptureRun;
+  const sc=_isRunMode
+    ? 1+(floor-1)*.05
+    : getWinScale()*(1+(floor-1)*.05);
   G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc),hp:Math.floor(B.BASE_HP*t.hpM*sc),atk:Math.floor(B.BASE_ATK*t.atkM*sc),level:Math.max(t.level,Math.floor(floor*.2)+1)};
   G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
   G.towerFloor=(G.towerFloor||0)+1;if(G.towerFloor>G.towerBest)G.towerBest=G.towerFloor;if(G.towerFloor>(G.towerBestFloor||0))G.towerBestFloor=G.towerFloor;
@@ -6715,6 +6839,13 @@ function startTowerBattle(){
   if(G._rebornMode&&G._rebornRunRoster){G.roster=G._rebornRunRoster;G.party=(G._rebornParty||[]).slice(0,6).filter(n=>G.roster[n]);if(G.party.length)G.active=G.active&&G.roster[G.active]?G.active:G.party[0];}
   // Ironman tower: same — keep run roster active
   if(G._ironmanMode&&G._ironmanRunRoster){G.roster=G._ironmanRunRoster;G.party=(G._ironmanParty||[]).slice(0,6).filter(n=>G.roster[n]);if(G.party.length)G.active=G.active&&G.roster[G.active]?G.active:G.party[0];}
+  // Capture tower: keep run roster (captured enemies) active
+  if(_isCaptureRun&&G._captureRunRoster){
+    if(!G._captureMode)G._captureMode=true;// re-sync flag if it desynced
+    G.roster=G._captureRunRoster;G.party=(G._captureParty||[]).slice(0,6).filter(n=>G.roster[n]);if(G.party.length)G.active=G.active&&G.roster[G.active]?G.active:G.party[0];
+    // Rescale all captured fighters to track the SAME linear scale as enemies this floor
+    rescaleCaptureRoster();
+  }
   renderEnemy();renderBattleCards();buildTurns();
   setMsg(`🗼 Tower Floor ${G.towerFloor}!`,`${G.enemy.emoji} ${G.enemy.name} (Lv.${G.enemy.level})`,'');
   document.getElementById('moreTowerFloor').textContent=G.towerBest||0;
@@ -6771,6 +6902,7 @@ const TOWER_VARIANTS={
   timed:   {id:'timed',   name:'Timed Tower',   emoji:'⏱️', desc:'100 floors in 10 minutes',       color:'#f97316'},
   reborn:  {id:'reborn',  name:'Reborn Tower',  emoji:'♻️', desc:'Start fresh, collect zodiacs',   color:'#6366f1'},
   ironman: {id:'ironman', name:'Ironman Tower',  emoji:'💀', desc:'Hardcore: no items, no buffs',  color:'#7f1d1d'},
+  capture: {id:'capture', name:'Capture Tower', emoji:'🎯', desc:'Capture defeated enemies (10%)',  color:'#059669'},
 };
 const TOWER_BUFFS=[
   {id:'atk10',name:'War Cry',desc:'+10% ATK',stat:'atk',val:0.10,emoji:'⚔️'},
@@ -6817,7 +6949,7 @@ function getTowerBuffMult(stat){
 function isTowerHealDisabled(){return isTowerVariant('ironman')||_towerDebuffs.some(d=>d.id==='noHeal');}
 
 function applyTowerFloorRewards(floor){
-  if(!G.towerActive||floor===0||floor%10!==0)return;
+  if(!G.towerActive||floor===0||floor%10!==0||G._captureMode)return;
   if(isTowerVariant('buff')){
     const b=TOWER_BUFFS[Math.floor(Math.random()*TOWER_BUFFS.length)];
     _towerBuffs.push(b);
@@ -6886,6 +7018,40 @@ function startTowerVariant(variantId){
     save();// save with run state so reload restores correctly
     toast('💀 Ironman Tower! Starting as '+z.emoji+' '+z.name+' (Common Lv.1). Auto-summon after each win!','ok');
   }
+  if(variantId==='capture'){
+    G._savedParty=[...G.party];
+    // Pick a random non-boss enemy as starting captured fighter
+    const startTemplate=ENEMIES.filter(e=>!e.boss)[Math.floor(Math.random()*ENEMIES.filter(e=>!e.boss).length)];
+    G._captureRealRoster=JSON.parse(JSON.stringify(G.roster));
+    G._captureRealParty=JSON.parse(JSON.stringify(G.party));
+    G._captureRealActive=G.active;
+    G._captureRealEquip=JSON.parse(JSON.stringify(G.equipment||[]));
+    // Build capture template registry & run roster
+    G._captureTemplates={};
+    G._captureRunRoster={};
+    const addCaptured=(template,level)=>{
+      // Match enemy's linear scaling exactly: sc = 1+(floor-1)*.05
+      // Captured fighters get the SAME multiplier as enemies at this floor, plus a small player bonus
+      const sc=1; // floor 1 => sc=1
+      const maxHp=Math.floor(B.BASE_HP*(template.hpM||1)*sc*1.3);
+      const atk=Math.floor(B.BASE_ATK*(template.atkM||1)*sc*1.3);
+      const def=Math.floor(B.BASE_ATK*0.6*sc*1.2);
+      const spd=30;
+      // level=1 always; calcStats(base,Common,1) = base unchanged (1.08^0=1), so no compounding
+      G._captureTemplates[template.name]={name:template.name,emoji:template.emoji,color:'#94a3b8',trait:'fierce',type:template.type,
+        base:{hp:maxHp,atk,def,spd}};
+      G._captureRunRoster[template.name]={level:1,xp:0,xpNext:999999999,hp:maxHp,maxHp,atk,def,spd,rarity:'Common',stars:0,evoStage:0};
+    };
+    addCaptured(startTemplate,1);
+    G._captureParty=[startTemplate.name];
+    G._captureMode=true;
+    G.roster=G._captureRunRoster;
+    G.party=[startTemplate.name];
+    G.active=startTemplate.name;
+    G.equipment=[];
+    save();
+    toast('🎯 Capture Tower! You start with '+startTemplate.emoji+' '+startTemplate.name+'. Defeat enemies for a 10% chance to capture them!','ok');
+  }
   if(variantId==='reborn'){
     G._savedParty=[...G.party];
     const z=ZODIACS[Math.floor(Math.random()*ZODIACS.length)];
@@ -6909,7 +7075,7 @@ function startTowerVariant(variantId){
   updateModeBadge();// update nav greying immediately
 }
 function confirmAbandonRun(){
-  const mode=G._rebornMode?'Reborn':G._ironmanMode?'Ironman':'Tower';
+  const mode=G._rebornMode?'Reborn':G._ironmanMode?'Ironman':G._captureMode?'Capture':'Tower';
   confirm2(`✕ Abandon ${mode} Tower?`,`Floor ${G.towerFloor||0} progress will be lost. Your real squad will be fully restored.`,function(){
     G.alive=false;clearInterval(autoIv);autoIv=null;
     endTowerRun();
@@ -6948,6 +7114,19 @@ function endTowerRun(){
     toast('↩️ Ironman run ended — your real squad is restored!','ok');
     updateHdr();renderSquad();
   }
+  // Capture: restore the clean real roster backup
+  if(G._captureMode&&G._captureRealRoster){
+    G.roster=G._captureRealRoster;
+    G.party=G._captureRealParty||G._savedParty||G.party;
+    G.active=G._captureRealActive||G.party[0];
+    G.equipment=G._captureRealEquip||G.equipment;
+    toast('↩️ Capture run ended — your real squad is restored!','ok');
+    updateHdr();renderSquad();
+  }
+  delete G._captureMode;delete G._captureRunRoster;delete G._captureParty;
+  delete G._captureRealRoster;delete G._captureRealParty;delete G._captureRealActive;
+  delete G._captureRealEquip;delete G._captureTemplates;delete G._capturePending;
+  delete G._captureBossOnly;delete G._captureAutoUpgrade;
   delete G._ironmanMode;delete G._ironmanRunRoster;delete G._ironmanParty;
   delete G._ironmanRealRoster;delete G._ironmanRealParty;delete G._ironmanRealActive;
   delete G._ironmanRealEquip;delete G._ironmanStacks;delete G._ironmanPity;
@@ -6965,6 +7144,118 @@ function endTimedTower(success){
     toast('⏱️ Timed! Floor '+G.towerFloor+'! +'+b+'g +'+G.towerFloor+'⭐ (Time: '+elapsed+'s)','ok');
   }else toast('⏱️ Times up! Floor '+G.towerFloor,'er');
   endTowerRun();
+}
+function captureEnemyAttempt(enemy){
+  if(!G._captureMode)return;
+  // Boss-Only mode: ignore non-boss enemies entirely
+  if(G._captureBossOnly&&!enemy.boss){
+    addLog('events','👑 Boss-Only Capture: ignored '+enemy.emoji+' '+enemy.name+' (not a boss)','#94a3b8');
+    return;
+  }
+  if(Math.random()>=0.10)return;// 10% capture rate
+  const name=enemy.name;
+  if((G._captureParty||[]).includes(name)){
+    toast('🎯 '+enemy.emoji+' '+name+' captured again — but already in your squad!','ok');
+    return;
+  }
+  if((G._captureParty||[]).length>=6){
+    if(G._captureAutoUpgrade){
+      // Auto-Stronger: abandon weakest party member, capture this one
+      const weakest=getWeakestCaptured();
+      if(weakest){
+        const idx=G._captureParty.indexOf(weakest);
+        if(idx>=0)G._captureParty.splice(idx,1);
+        delete G._captureRunRoster[weakest];
+        delete G._captureTemplates[weakest];
+        addLog('events','🔄 Auto-Upgrade: released '+weakest+' to capture '+enemy.emoji+' '+enemy.name,'#34d399');
+        addCapturedToSquad(enemy);
+        return;
+      }
+    }
+    // Squad full - prompt to abandon one to make room
+    G._capturePending={name,emoji:enemy.emoji,type:enemy.type};
+    openCaptureFullModal();
+    return;
+  }
+  addCapturedToSquad(enemy);
+}
+function getWeakestCaptured(){
+  let weakest=null,weakestPower=Infinity;
+  (G._captureParty||[]).forEach(name=>{
+    const r=G._captureRunRoster[name];if(!r)return;
+    const power=(r.atk||0)+(r.def||0)+(r.maxHp||0)*0.1;
+    if(power<weakestPower){weakestPower=power;weakest=name;}
+  });
+  return weakest;
+}
+function rescaleCaptureRoster(){
+  if(!G._captureRunRoster||!G._captureTemplates)return;
+  const floor=(G.towerFloor||0)+1;// the floor about to be entered
+  const sc=1+(floor-1)*.05;// SAME formula as enemy scaling
+  Object.keys(G._captureRunRoster).forEach(name=>{
+    const r=G._captureRunRoster[name];const t=G._captureTemplates[name];if(!t)return;
+    const enemyDef=ENEMIES.find(e=>e.name===name)||{hpM:1,atkM:1};
+    const newMaxHp=Math.floor(B.BASE_HP*(enemyDef.hpM||1)*sc*1.3);
+    const newAtk=Math.floor(B.BASE_ATK*(enemyDef.atkM||1)*sc*1.3);
+    const newDef=Math.floor(B.BASE_ATK*0.6*sc*1.2);
+    // Preserve HP ratio when maxHp changes
+    const hpRatio=r.maxHp>0?r.hp/r.maxHp:1;
+    r.maxHp=newMaxHp;r.atk=newAtk;r.def=newDef;
+    r.hp=Math.max(1,Math.floor(newMaxHp*hpRatio));
+    if(t.base){t.base.hp=newMaxHp;t.base.atk=newAtk;t.base.def=newDef;}
+  });
+}
+function addCapturedToSquad(enemy){
+  const name=enemy.name;
+  const floor=(G.towerFloor||0)+1;
+  const sc=1+(floor-1)*.05;
+  const maxHp=Math.floor(B.BASE_HP*(enemy.hpM||1)*sc*1.3);
+  const atk=Math.floor(B.BASE_ATK*(enemy.atkM||1)*sc*1.3);
+  const def=Math.floor(B.BASE_ATK*0.6*sc*1.2);
+  const spd=30;
+  if(!G._captureTemplates)G._captureTemplates={};
+  if(!G._captureRunRoster)G._captureRunRoster=G.roster;
+  G._captureTemplates[name]={name,emoji:enemy.emoji,color:'#94a3b8',trait:'fierce',type:enemy.type,
+    base:{hp:maxHp,atk,def,spd}};
+  G._captureRunRoster[name]={level:1,xp:0,xpNext:999999999,hp:maxHp,maxHp,atk,def,spd,rarity:'Common',stars:0,evoStage:0};
+  if(!G._captureParty)G._captureParty=[];
+  G._captureParty.push(name);
+  G.roster=G._captureRunRoster;
+  G.party=[...G._captureParty.slice(0,6)];
+  toast('🎯 CAPTURED! '+enemy.emoji+' '+name+' (Lv.1) joined your squad! ('+G._captureParty.length+'/6)','ok');
+  renderSquad();
+}
+function openCaptureFullModal(){
+  const p=G._capturePending;if(!p)return;
+  const body=document.getElementById('captureFullBody');if(!body)return;
+  let html=`<div style="text-align:center;margin-bottom:10px;">
+    <div style="font-size:32px;">${p.emoji}</div>
+    <div style="font-weight:700;color:var(--acc);">${p.name} captured!</div>
+    <div class="t2 ts">Your squad is full (6/6). Abandon one to make room:</div>
+  </div>`;
+  (G._captureParty||[]).forEach(name=>{
+    const r=G._captureRunRoster[name];const t=G._captureTemplates[name];
+    html+=`<div class="row sb" style="background:rgba(28,38,56,.6);border-radius:8px;padding:7px 10px;margin-bottom:5px;">
+      <span>${t.emoji} ${name} <span class="ts t2">Lv.${r.level}</span></span>
+      <button class="btn bs" style="font-size:9px;padding:3px 8px;" onclick="confirmAbandonCapturedEnemy('${name}')">Abandon</button>
+    </div>`;
+  });
+  html+=`<button class="btn bs" style="width:100%;margin-top:6px;" onclick="closeM('mCaptureFull');delete G._capturePending;">Skip (don't capture)</button>`;
+  body.innerHTML=html;
+  openM('mCaptureFull');
+}
+function confirmAbandonCapturedEnemy(name){
+  const idx=(G._captureParty||[]).indexOf(name);
+  if(idx>=0)G._captureParty.splice(idx,1);
+  delete G._captureRunRoster[name];
+  delete G._captureTemplates[name];
+  closeM('mCaptureFull');
+  const p=G._capturePending;
+  if(p){addCapturedToSquad({name:p.name,emoji:p.emoji,type:p.type,atkM:1,hpM:1});delete G._capturePending;}
+  G.party=[...(G._captureParty||[]).slice(0,6)];
+  if(G.active&&!G.party.includes(G.active))G.active=G.party[0];
+  G.roster=G._captureRunRoster;
+  renderSquad();save();
 }
 function ironmanAutoSummon(){
   if(!G._ironmanMode)return;
@@ -11814,6 +12105,7 @@ function triggerPWAInstall(){
 
 <!-- ═══ OFFLINE REWARDS ═══ -->
 <div class="modal" id="mOfflineRewards"><div class="panel" style="max-width:340px;"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">💤 Offline Rewards</span></div><div class="pb" id="offlineRewardsBody"></div></div></div>
+<div class="modal" id="mCaptureFull"><div class="panel" style="max-width:340px;"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🎯 Squad Full!</span></div><div class="pb" id="captureFullBody"></div></div></div>
 
 <!-- ═══ GAME GUIDE ═══ -->
 <div class="modal" id="mGameGuide" style="padding:0;">
