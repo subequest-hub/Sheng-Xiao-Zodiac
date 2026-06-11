@@ -1641,11 +1641,11 @@ const MASTERY_BONUSES={
   Dragon:[{at:10,name:'Dragon Scale',desc:'+10% DEF',stat:'def',val:0.10},{at:25,name:'Dragon Fire',desc:'+15% ATK',stat:'atk',val:0.15},{at:50,name:'Ancient Power',desc:'+25% all stats',stat:'all',val:0.25},{at:100,name:'Dragon God',desc:'All stats +30%',stat:'all',val:0.30},{emoji:'💫🐉',name:'Ancient Cosmic Dragon'}],
   Snake: [{at:10,name:'Venom',desc:'+10% status duration',stat:'dot',val:0.10},{at:25,name:'Cunning',desc:'+10% ATK',stat:'atk',val:0.10},{at:50,name:'Serpent Power',desc:'+20% ATK + poison on attack',stat:'atk',val:0.20},{at:100,name:'Serpent God',desc:'All stats +20%',stat:'all',val:0.20}],
   Horse: [{at:10,name:'Swift Hooves',desc:'+10% SPD',stat:'spd',val:0.10},{at:25,name:'Charge',desc:'+10% ATK',stat:'atk',val:0.10},{at:50,name:'War Gallop',desc:'+20% SPD + ATK',stat:'all',val:0.20},{at:100,name:'Celestial Horse',desc:'All stats +20%',stat:'all',val:0.20}],
-  Goat:  [{at:10,name:'Mountain Wall',desc:'+10% DEF',stat:'def',val:0.10},{at:25,name:'Stone Skin',desc:'+15% HP',stat:'hp',val:0.15},{at:50,name:'Goat Fortress',desc:'+25% DEF + HP',stat:'def',val:0.25},{at:100,name:'Goat Emperor',desc:'All stats +20%',stat:'all',val:0.20}],
+  Goat:  [{at:10,name:'Mountain Wall',desc:'+10% DEF',stat:'def',val:0.10},{at:25,name:'Stone Skin',desc:'+15% HP',stat:'hp',val:0.15},{at:50,name:'Goat Fortress',desc:'+25% DEF + HP',stat:'def',stat2:'hp',val:0.25},{at:100,name:'Goat Emperor',desc:'All stats +20%',stat:'all',val:0.20}],
   Monkey:[{at:10,name:'Clever Tricks',desc:'+5% crit rate',stat:'crit',val:0.05},{at:25,name:'Agility',desc:'+10% SPD',stat:'spd',val:0.10},{at:50,name:'Master Trickster',desc:'+20% all stats',stat:'all',val:0.20},{at:100,name:'Monkey King',desc:'All stats +25%',stat:'all',val:0.25},{emoji:'🎭🐒',name:'Trickster Deity'}],
   Rooster:[{at:10,name:'War Cry',desc:'+10% team ATK buff',stat:'atk',val:0.10},{at:25,name:'Battle Cry',desc:'+10% ATK',stat:'atk',val:0.10},{at:50,name:'Phoenix Cry',desc:'+25% ATK',stat:'atk',val:0.25},{at:100,name:'Rooster Emperor',desc:'All stats +20%',stat:'all',val:0.20},{emoji:'🔥🐓',name:'Phoenix Emperor'}],
   Dog:   [{at:10,name:'Loyal',desc:'+10% DEF',stat:'def',val:0.10},{at:25,name:'Guardian',desc:'+15% HP',stat:'hp',val:0.15},{at:50,name:'War Hound',desc:'+20% ATK + DEF',stat:'all',val:0.20},{at:100,name:'Dog King',desc:'All stats +20%',stat:'all',val:0.20}],
-  Pig:   [{at:10,name:'Lucky',desc:'+10% gold find',stat:'goldFind',val:0.10},{at:25,name:'Fortune',desc:'+15% HP',stat:'hp',val:0.15},{at:50,name:'Prosperity',desc:'+25% gold + HP',stat:'hp',val:0.25},{at:100,name:'Pig Emperor',desc:'All stats +20%',stat:'all',val:0.20}],
+  Pig:   [{at:10,name:'Lucky',desc:'+10% gold find',stat:'goldFind',val:0.10},{at:25,name:'Fortune',desc:'+15% HP',stat:'hp',val:0.15},{at:50,name:'Prosperity',desc:'+25% gold + HP',stat:'hp',stat2:'goldFind',val:0.25},{at:100,name:'Pig Emperor',desc:'All stats +20%',stat:'all',val:0.20}],
 };
 function getLuck(zodiacName){
   const r=G.roster[zodiacName];if(!r)return 0;
@@ -1662,7 +1662,7 @@ function getLuckBonuses(zodiacName){
 function getMasteryBonus(zodiacName){
   const wins=(G.mastery&&G.mastery[zodiacName])||0;
   const bonuses=MASTERY_BONUSES[zodiacName]||[];
-  let atk=1,def=1,spd=1,hp=1,crit=0,goldFind=0;
+  let atk=1,def=1,spd=1,hp=1,crit=0,goldFind=0,dot=0;
   bonuses.filter(b=>wins>=b.at).forEach(b=>{
     if(b.stat==='atk')atk+=b.val;
     else if(b.stat==='def')def+=b.val;
@@ -1670,9 +1670,17 @@ function getMasteryBonus(zodiacName){
     else if(b.stat==='hp')hp+=b.val;
     else if(b.stat==='crit')crit+=b.val;
     else if(b.stat==='goldFind')goldFind+=b.val;
+    else if(b.stat==='dot')dot+=b.val;
     else if(b.stat==='all'){atk+=b.val;def+=b.val;spd+=b.val;hp+=b.val;}
+    // Secondary stat for dual-effect bonuses (e.g. Goat Fortress: DEF+HP, Pig Prosperity: HP+gold)
+    if(b.stat2==='atk')atk+=b.val;
+    else if(b.stat2==='def')def+=b.val;
+    else if(b.stat2==='spd')spd+=b.val;
+    else if(b.stat2==='hp')hp+=b.val;
+    else if(b.stat2==='crit')crit+=b.val;
+    else if(b.stat2==='goldFind')goldFind+=b.val;
   });
-  return{atk,def,spd,hp,crit,goldFind};
+  return{atk,def,spd,hp,crit,goldFind,dot};
 }
 const EQUIPMENT_SETS={
   'Dragon Slayer':{items:['Sword','Shield','Ring','Scroll'],emoji:'🐉',
@@ -4641,7 +4649,12 @@ function checkDailyLogin(){
 // ══ STATUS EFFECTS ══
 function applyEnemyStatus(status,turns){
   if(!G.enemyStatus)G.enemyStatus={};
+  // Mastery bonus: +X% status duration (e.g. Snake's Venom mastery)
   const dotStatuses=['burn','poison','bleed'];
+  if(dotStatuses.includes(status)&&G.active){
+    const dotBonus=getMasteryBonus(G.active).dot||0;
+    if(dotBonus>0)turns=Math.round(turns*(1+dotBonus));
+  }
   if(dotStatuses.includes(status)){
     // Feature 2: stack DoTs up to 3, each stack = independent duration
     if(!Array.isArray(G.enemyStatus[status]))G.enemyStatus[status]=G.enemyStatus[status]?[G.enemyStatus[status]]:[]; 
@@ -5375,7 +5388,7 @@ function fmt(n){
     if(n>=v){
       const d=n/v;
       const str=d>=100?Math.round(d).toString():d>=10?d.toFixed(1):d.toFixed(2);
-      return str.replace(/\.?0+$/,'')+s;
+      return (str.includes('.')?str.replace(/\.?0+$/,''):str)+s;
     }
   }
   // Numbers beyond Vg (10^63): use compact scientific notation
@@ -5817,7 +5830,7 @@ function checkVig(){const low=G.party.some(n=>{const r=G.roster[n];const _m=live
 
 // ══ TURNS ══
 function buildTurns(){
-  const f=[];G.party.forEach(name=>{const r=G.roster[name];if(r&&r.hp>0)f.push({t:'p',name,spd:r.spd,em:getEvoEmoji(name)||(getZodiac(name)||{emoji:'🐾'}).emoji});});
+  const f=[];G.party.forEach(name=>{const r=G.roster[name];if(r&&r.hp>0){const _spdB=getActiveSetBonuses(name);f.push({t:'p',name,spd:r.spd*(1+(_spdB.spd||0)),em:getEvoEmoji(name)||(getZodiac(name)||{emoji:'🐾'}).emoji});}});
   if(G.enemy)f.push({t:'e',spd:(G.enemy.atk||0)*.6+40,em:G.enemy.emoji||'👾'});f.sort((a,b)=>b.spd-a.spd);
   G.turns=f;G.curTurn=0;renderTurns();renderBattleCards();
   // If first turn is enemy, only auto-fire if auto-battle is on
@@ -5924,11 +5937,14 @@ function doAttack(){
   const eqStats=_isCapture?{}:getEquipmentStats(G.active);
   const eqAtkBoost=1+(eqStats.atk||0)/100;
   const setBonus=_isCapture?{}:getActiveSetBonuses(G.active);
+  // Set bonus: Shadow Walker +25% ATK from shadows (back row, i.e. not position 0 in party)
+  const isBackRow=!_isCapture&&G.party&&G.party.indexOf(G.active)>0;
+  const setAtkMult=(isBackRow&&setBonus.shadowAtk)?(1+setBonus.shadowAtk):1;
   const awkCrit=_isCapture?{}:getAwakeningBonuses(G.active);
   const masteryB=_isCapture?{atk:1,def:1,spd:1,hp:1,crit:0,goldFind:0}:getMasteryBonus(G.active);
   const luckB=_isCapture?{critChance:0}:getLuckBonuses(G.active);
   const eqCritRateBonus=_isCapture?0:(eqStats.critRate||0)/100+(G.prestigeShop?.critBonus||0)+(setBonus.critRate||0)+(awkCrit.critical_eye?0.15:0)+masteryB.crit+luckB.critChance+getPetBonus('crit')+getHouseBonus('crit');
-  const eqCritDmgBonus=Math.min(10, 1+(eqStats.critDmg||0)/100);// cap at 10x — godly endgame
+  const eqCritDmgBonus=Math.min(10, 1+(eqStats.critDmg||0)/100+(G.prestigeShop?.critDmgBonus||0));// cap at 10x — godly endgame
   const eqBossDmg=(!_isCapture&&(e.boss||e.isAreaBoss))?Math.min(8, 1+(eqStats.bossDmg||0)/100+(setBonus.bossDmg||0)):1;// cap at 8x
   const eqUltChargeBonus=1+(eqStats.ultCharge||0)/100+(G.prestigeShop?.ultChargeBonus||0);
   const eqElemDmg=Math.min(8, 1+(eqStats.elementDmg||0)/100);// cap at 8x
@@ -5940,7 +5956,7 @@ function doAttack(){
   const isSuperCrit=!isMegaCrit&&critRoll<0.04+(f.trait==='lucky'&&!_isCapture?.03:0);
   const isCrit=!isMegaCrit&&!isSuperCrit&&critRoll<(0.15+(f.trait==='lucky'&&!_isCapture?.1:0));
   const _fEl2=getZodiacElement(f.zodiac);const isWeak=_fEl2===e.weak;
-  const xpGain=Math.floor((B.XP_HIT+Math.floor(e.level*.25))*(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(1+getHouseBonus('xpBonus'))*(getWorldEventMult?getWorldEventMult('xp'):1));
+  const xpGain=Math.floor((B.XP_HIT+Math.floor(e.level*.25))*(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(1+getHouseBonus('xpBonus'))*(getWorldEventMult?getWorldEventMult('xp'):1)*(1+(getGuildRank().bonus?.xp||0)));
   const sMult=_isCapture?1:(1+Math.min(G.streak,100)*B.STREAK_BONUS)*(1+getHouseBonus('comboDmg'));
   const atkBuff=_isCapture?1:getAtkBuff(f.zodiac)*skillBoost.atk;
   const weatherMult=_isCapture?1:getWeatherMult(getZodiacElement(f.zodiac));
@@ -5948,7 +5964,7 @@ function doAttack(){
   const armorMult=getArmorBreakMult();
   const reaction=checkReaction(getZodiacElement(f.zodiac),e.type);
 
-  let dmg=Math.max(1,(f.atk*atkBuff*formAtkMult*eqAtkBoost)-e.atk*.2*(1/armorMult)+Math.random()*15);
+  let dmg=Math.max(1,(f.atk*atkBuff*formAtkMult*eqAtkBoost*setAtkMult)-e.atk*.2*(1/armorMult)+Math.random()*15);
   dmg*=weatherMult*rageMult*(1+(_isCapture?0:getPetBonus('dmg')));
   // Apply Godly set bonuses (disabled in Capture Tower)
   dmg*=_isCapture?1:getGodlyDmgMult();
@@ -5978,6 +5994,15 @@ function doAttack(){
   if(cube){cube.classList.add('shake');setTimeout(()=>cube.classList.remove('shake'),550);}
   // Update crit chain
   if(isMegaCrit||isSuperCrit||isCrit){G.critChain=(G.critChain||0)+1;}else{G.critChain=0;}
+  // Mastery passive: Coin Master (Rat, 50 wins) - steal gold on crit
+  if((isMegaCrit||isSuperCrit||isCrit)&&!_isCapture&&f.zodiac==='Rat'&&(G.mastery&&G.mastery['Rat']||0)>=50){
+    const stolen=5+Math.floor(Math.random()*11);G.gold+=stolen;G.totalGold+=stolen;
+    addLog('combat',`🪙 Coin Master! Stole ${stolen}g on crit!`,'#fbbf24');
+  }
+  // Mastery passive: Serpent Power (Snake, 50 wins) - poison on attack
+  if(!_isCapture&&f.zodiac==='Snake'&&(G.mastery&&G.mastery['Snake']||0)>=50){
+    applyEnemyStatus('poison',2);
+  }
   const critCls=isMegaCrit?'mc':isSuperCrit?'sc':isCrit?'cr':'nm';
   if(cube&&(isMegaCrit||isSuperCrit||isCrit)){cube.classList.add('critFlash');setTimeout(()=>cube.classList.remove('critFlash'),300);vib([50,20,100]);}
   if(cube){cube.style.animationPlayState='paused';setTimeout(()=>cube.style.animationPlayState='running',B.HIT_STOP);}
@@ -6024,7 +6049,7 @@ function enemyAtk(){
   const rSlot=G.roster[t.name];
   const defBuff=getDefBuff(t.name);const formDefMult=getFormationMult(t.name,false);
   // Use BOOSTED def from liveM — this includes prestige/evo/mythical/equipment multipliers
-  const mn=liveM(t.name);const boostedDef=mn?mn.def:rSlot.def;
+  const mn=liveM(t.name);const _defSetB=getActiveSetBonuses(t.name);const boostedDef=(mn?mn.def:rSlot.def)*(1+(_defSetB.def||0));
   const eqDef=getEquipmentStats(t.name);
   // Damage reduction: DEF reduces damage using a diminishing returns formula
   // dmgReduction = boostedDef / (boostedDef + enemyAtk * 5)  → caps at ~90%
@@ -6038,12 +6063,11 @@ function enemyAtk(){
   if(tAwk.guardian&&Math.random()<0.20){setMsg(`✨ ${mnG.emoji} Guardian! Attack blocked!`,'','heal');spawnDmg('GUARDIAN!','miss',document.getElementById('activeFighter'));renderBattleCards();advTurn();return;}
   if(hasShield(t.name)){consumeShield(t.name);setMsg(`🛡️ ${t.name}'s shield blocked!`,'','heal');spawnDmg('BLOCKED','miss',document.getElementById('activeFighter'));renderBattleCards();advTurn();return;}
   // Dodge with equipment
-  const luckDodge=getLuckBonuses(t.name).dodge+getPetBonus('dodge');const dodgeChance=calcDodgeChance(rSlot.spd,e.atk*.6+40,(eqDef.dodge||0)+luckDodge*100);
+  const luckDodge=getLuckBonuses(t.name).dodge+getPetBonus('dodge');const _defSpd=rSlot.spd*(1+(_defSetB.spd||0));const dodgeChance=calcDodgeChance(_defSpd,e.atk*.6+40,(eqDef.dodge||0)+luckDodge*100+(_defSetB.dodge||0)*100);
   if(Math.random()<dodgeChance){setMsg(`${mnE} ${t.name} dodged!`,'','heal');spawnDmg('DODGE!','miss',document.getElementById('activeFighter'));renderBattleCards();advTurn();return;}
   rSlot.hp=Math.max(0,rSlot.hp-dmg);G.damageTakenFight=(G.damageTakenFight||0)+dmg;G.totalDmgTaken=(G.totalDmgTaken||0)+dmg;
   // Set bonus: reflect
-  const defSetBonus=getActiveSetBonuses(t.name);
-  if(defSetBonus.reflect>0&&dmg>0){const reflectDmg=Math.floor(dmg*defSetBonus.reflect);e.hp=Math.max(0,e.hp-reflectDmg);spawnDmg('↩'+reflectDmg,'cnt',document.getElementById('eCube'));updEHp();}
+  if(_defSetB.reflect>0&&dmg>0){const reflectDmg=Math.floor(dmg*_defSetB.reflect);e.hp=Math.max(0,e.hp-reflectDmg);spawnDmg('↩'+reflectDmg,'cnt',document.getElementById('eCube'));updEHp();}
   G.combo=0;clearCT();
   const sq=document.getElementById('squadSec');sq.classList.add('sqShake');setTimeout(()=>sq.classList.remove('sqShake'),450);
   const cube=document.getElementById('eCube');if(cube){cube.classList.add('lunge');setTimeout(()=>cube.classList.remove('lunge'),500);}
@@ -6123,7 +6147,9 @@ function onWin(sMult=1){
   // Feature 8: goldFind stat multiplier
   const eqStatsW=getEquipmentStats(G.active);
   const goldTouchBonus=getAwakeningBonuses(G.active).gold_touch?0.50:0;
-  const goldFindMult=1+(eqStatsW.goldFind||0)/100+(G.prestigeShop?.goldFindBonus||0)+goldTouchBonus+getPetBonus('gold')+getHouseBonus('goldFind')+getHouseBonus('goldAll')+getHouseBonus('goldWin')+getHouseBonus('battleReward');
+  const _winSetB=getActiveSetBonuses(G.active);
+  const _guildBonus=getGuildRank().bonus||{};
+  const goldFindMult=1+(eqStatsW.goldFind||0)/100+(G.prestigeShop?.goldFindBonus||0)+goldTouchBonus+getPetBonus('gold')+getHouseBonus('goldFind')+getHouseBonus('goldAll')+getHouseBonus('goldWin')+getHouseBonus('battleReward')+(_winSetB.goldFind||0)+(_guildBonus.gold||0);
   let gold=Math.floor(e.gold*sMult*goldFindMult*(getWorldEventMult?getWorldEventMult('gold'):1));
   // Feature 3: finisher bonus gold
   if(G.finisherBonus){gold=Math.floor(gold*1.5);G.finisherBonus=false;toast('💀 FINISHER! +50% gold!','ok');}
@@ -6176,7 +6202,7 @@ function onWin(sMult=1){
   if(G._trialActive){onTrialWaveWin();return;}
   if(e.boss||e.isAreaBoss||e.isMiniBoss){G.bossKills++;
   if(typeof _updateServerStats==='function')_updateServerStats('totalBossKills',1);
-  if(typeof updateDailyChallengeProgress==='function')updateDailyChallengeProgress('boss',1);G.bossToday=(G.bossToday||0)+1;G.bossWeek=(G.bossWeek||0)+1;G.bossMonth=(G.bossMonth||0)+1;updateQuestProgress('bossToday',1);updateQuestProgress('bossWeek',1);updateQuestProgress('bossMonth',1);if(e.boss||e.isAreaBoss)starsEarned+=STAR_REWARDS.bossKill+(G.prestigeShop?.starBonus||0);}
+  if(typeof updateDailyChallengeProgress==='function')updateDailyChallengeProgress('boss',1);G.bossToday=(G.bossToday||0)+1;G.bossWeek=(G.bossWeek||0)+1;G.bossMonth=(G.bossMonth||0)+1;updateQuestProgress('bossToday',1);updateQuestProgress('bossWeek',1);updateQuestProgress('bossMonth',1);if(e.boss||e.isAreaBoss)starsEarned+=STAR_REWARDS.bossKill+(G.prestigeShop?.starBonus||0)+(_guildBonus.starBonus||0);}
   // Area progression
   // Dungeon progression
   if(G.inDungeon&&G.dungeonData){
@@ -6233,7 +6259,8 @@ function onWin(sMult=1){
   });}
   if(getPetBonus('stars')>0)starsEarned=Math.floor(starsEarned*(1+getPetBonus('stars')));
   if(starsEarned>0){G.stars=(G.stars||0)+starsEarned;addLog('rewards',`⭐ +${starsEarned} stars earned!`,e.boss||e.isAreaBoss?'Boss kill bonus':'');}
-  G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=e.xp+e.level*5;lvCheck(n);}});
+  const _winXpMult=(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(1+getHouseBonus('xpBonus'))*(getWorldEventMult?getWorldEventMult('xp'):1)*(1+(_winSetB.xp||0))*(1+(_guildBonus.xp||0));
+  G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=Math.floor((e.xp+e.level*5)*_winXpMult);lvCheck(n);}});
   G.party.forEach(n=>{const r=G.roster[n];if(r){const mx=getMaxHp(n);r.hp=Math.min(mx,r.hp+Math.floor(mx*B.HEAL_BETWEEN));
     // Moonwell: auto-heal extra 2% HP per battle
     const moonHeal=getHouseBonus('autoHeal');if(moonHeal>0)r.hp=Math.min(mx,r.hp+Math.floor(mx*moonHeal));}});
@@ -6416,7 +6443,7 @@ function potion(type){
   }else if(type==='boost'){
     // +50% ATK/DEF, stacked turns
     if(!G.playerBuffs)G.playerBuffs={};
-    const turns=G.pot.boost||10;G.pot.boost=0;
+    const turns=Math.round((G.pot.boost||10)*(1+(G.prestigeShop?.healBonus||0)));G.pot.boost=0;
     G.party.forEach(n=>{if(!G.playerBuffs[n])G.playerBuffs[n]={};G.playerBuffs[n].atkUp=(G.playerBuffs[n].atkUp||0)+turns;G.playerBuffs[n].defUp=(G.playerBuffs[n].defUp||0)+turns;});
     setMsg(`⚡ Power Boost! +50% ATK/DEF for ${turns} turns!`,'','heal');
   }else if(type==='shield'){
@@ -7265,7 +7292,7 @@ const SHOP_ITEMS=[
   {id:'shield',   name:'Iron Shield',    emoji:'🛡️', desc:'All party: blocks next hit',    cost:350,  bulk:true},
   {id:'luckCharm',name:'Lucky Charm',    emoji:'🍀', desc:'+40% drop rate — stacks battles',cost:500, bulk:true, turns:true},
   {id:'expKey',   name:'Expedition Key', emoji:'🗺️', desc:'Send 1 zodiac on expedition',   cost:250,  bulk:true},
-  {id:'starDust', name:'Star Dust',      emoji:'✨', desc:'+5 stars instantly',             cost:2500, bulk:true},
+  {id:'starDust', name:'Star Dust',      emoji:'✨', desc:'+1 star instantly (5,000g each)',cost:5000, bulk:true},
   {id:'starVault',name:'Star Mine',     emoji:'🌟', desc:'+5⭐/battle forever',       cost:0, starCost:5000, bulk:true,  dynamic:true, getDesc:()=>`+5⭐/battle forever (${G.starMines||0}/50 owned)`},
   {id:'starMegaVault',name:'Void Vault',emoji:'🌌', desc:'+30⭐/battle forever (unlimited)', cost:0, starCost:50000, bulk:false, dynamic:true, getDesc:()=>`+30⭐/battle forever (${G.voidVaults||0} owned)`},
   {id:'mineShaft',name:'Mine Shaft',     emoji:'⛏️', desc:'+1⭐/battle forever',           cost:0,    starCost:500,  bulk:true,  dynamic:true,getDesc:()=>`+1⭐/battle forever (${G.mineShafts||0}/100 owned)`},
@@ -7285,7 +7312,7 @@ function renderShop(){
     const potOwned=isPot?(G.pot[it.id]||0):0;
     const potRoom=isPot?Math.max(0,potCap-potOwned):99999;
     // Star items: cap by owned amount
-    const starCaps={starVault:50-(G.starMines||0),starMegaVault:999,mineShaft:100-(G.mineShafts||0)};
+    const starCaps={starVault:50-(G.starMines||0),starMegaVault:999,mineShaft:100-(G.mineShafts||0),starDust:Infinity};
     const itemCap=starCaps[it.id]!==undefined?Math.max(0,starCaps[it.id]):potRoom;
     const maxQty=it.bulk?(isStar?Math.min(itemCap,Math.floor((G.stars||0)/it.starCost)):Math.min(itemCap,Math.floor(G.gold/sc))):0;
     const maxCost=isStar?maxQty*it.starCost:maxQty*sc;
@@ -7312,7 +7339,7 @@ function buyItem(id,qty=1){
   const total=item.starCost?item.starCost:item.cost*qty;
   if(item.starCost){const totalStarCost=item.starCost*(item.bulk?qty:1);if((G.stars||0)<totalStarCost){toast('Not enough stars!','er');return;}G.stars-=totalStarCost;}
   else{if(G.gold<total){toast('Not enough gold!','er');return;}G.gold-=total;}
-  if(id==='starDust'){G.stars=(G.stars||0)+5*qty;updateHdr();save();renderShop();toast(`✨ +${fmt(5*qty)} Stars!`,'ok');return;}
+  if(id==='starDust'){G.stars=(G.stars||0)+qty;updateHdr();save();renderShop();toast(`✨ +${fmt(qty)} Star${qty>1?'s':''}!`,'ok');return;}
   if(id==='starVault'){const canBuyV=Math.min(qty,50-(G.starMines||0));if(canBuyV<=0){toast('Max 50 Star Mines!','er');G.stars+=item.starCost*qty;return;}if(canBuyV<qty)G.stars+=item.starCost*(qty-canBuyV);G.starMines=(G.starMines||0)+canBuyV;updateHdr();save();renderShop();toast(`🌟 +${canBuyV} Star Mine${canBuyV>1?'s':''}! Total: ${G.starMines}/50`,'ok');return;}
   if(id==='starMegaVault'){const canBuyMV=Math.min(qty,100-(G.voidVaults||0));if(canBuyMV<=0){toast('Max 100 Void Vaults!','er');G.stars+=item.starCost*qty;return;}if(canBuyMV<qty)G.stars+=item.starCost*(qty-canBuyMV);G.voidVaults=(G.voidVaults||0)+canBuyMV;if((G.voidVaults||0)>=100)checkGodlyPieceUnlock('vault_100');updateHdr();save();renderShop();toast(`🌌 +${canBuyMV} Void Vault${canBuyMV>1?'s':''}! Total: ${G.voidVaults}/100`,'ok');return;}
   if(id==='expKey'){G.expKeys=(G.expKeys||0)+qty;toast(`🗺️ +${qty} Expedition Key${qty>1?'s':''}! (${G.expKeys} total)`);}
