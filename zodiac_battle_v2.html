@@ -297,7 +297,190 @@ body[data-dmg-theme="colorblind"] .dmg.sq{color:#cc3311;}
 body[data-dmg-theme="colorblind"] .dmg.mc{color:#ee3322;}
 body[data-dmg-theme="colorblind"] .dmg.sc{color:#ee6611;}
 body[data-dmg-theme="colorblind"] .dmg.miss{color:#999999;}
+
+/* ═══ ZODIAC SVG ICON TIER SYSTEM ═══ */
+.zsvg{display:inline-block;line-height:0;}
+.zsvg svg{width:100%;height:100%;display:block;}
+.zsvg .crown,.zsvg .stars{display:none;}
+.zsvg .glow{display:none;}
+
+.zsvg.zt0 .body{fill:var(--zc,#6a994e);color:var(--zc,#6a994e);}
+.zsvg.zt0 .accent{fill:var(--za,#a7c957);}
+.zsvg.zt0 .dark{fill:var(--zd,#4a7c3a);}
+.zsvg.zt0 .darkstroke{color:var(--zd,#4a7c3a);}
+.zsvg.zt0 .eye{fill:#2d2d2d;}
+
+.zsvg.zt1 .body{fill:#8b6f47;color:#8b6f47;}
+.zsvg.zt1 .accent{fill:#c9a876;}
+.zsvg.zt1 .dark{fill:#5a4530;}
+.zsvg.zt1 .darkstroke{color:#5a4530;}
+.zsvg.zt1 .eye{fill:#fbbf24;}
+
+.zsvg.zt2 .body{fill:#b91c1c;color:#b91c1c;}
+.zsvg.zt2 .accent{fill:#f97316;}
+.zsvg.zt2 .dark{fill:#451a03;}
+.zsvg.zt2 .darkstroke{color:#451a03;}
+.zsvg.zt2 .eye{fill:#fde047;}
+.zsvg.zt2 .glow{display:block;fill:none;stroke:#f97316;stroke-width:2;opacity:.6;filter:blur(3px);animation:zPulseGlow 1.5s ease-in-out infinite;}
+.zsvg.zt2{filter:drop-shadow(0 0 6px rgba(249,115,22,.6));}
+
+.zsvg.zt3 .body{fill:#4338ca;color:#4338ca;}
+.zsvg.zt3 .accent{fill:#a5b4fc;}
+.zsvg.zt3 .dark{fill:#1e1b4b;}
+.zsvg.zt3 .darkstroke{color:#1e1b4b;}
+.zsvg.zt3 .eye{fill:#60a5fa;}
+.zsvg.zt3 .glow{display:block;fill:none;stroke:#818cf8;stroke-width:2;opacity:.7;filter:blur(3px);animation:zPulseGlow 1.2s ease-in-out infinite;}
+.zsvg.zt3{filter:drop-shadow(0 0 8px rgba(129,140,248,.7));}
+
+.zsvg.zt4 .body{fill:#0e7490;color:#0e7490;}
+.zsvg.zt4 .accent{fill:#cffafe;}
+.zsvg.zt4 .dark{fill:#fff;}
+.zsvg.zt4 .darkstroke{color:#fff;}
+.zsvg.zt4 .eye{fill:#a5f3fc;}
+.zsvg.zt4 .glow{display:block;fill:none;stroke:#67e8f9;stroke-width:2.5;opacity:.8;filter:blur(4px);animation:zPulseGlow 2s ease-in-out infinite;}
+.zsvg.zt4{filter:drop-shadow(0 0 10px rgba(103,232,249,.8));}
+
+.zsvg.zt5 .body{fill:url(#zGoldGrad);color:#f59e0b;}
+.zsvg.zt5 .accent{fill:#fffbeb;}
+.zsvg.zt5 .dark{fill:#fbbf24;}
+.zsvg.zt5 .darkstroke{color:#fbbf24;}
+.zsvg.zt5 .eye{fill:#dc2626;}
+.zsvg.zt5 .glow{display:block;fill:none;stroke:#fbbf24;stroke-width:3;opacity:.9;filter:blur(4px);animation:zPulseGlow 1.8s ease-in-out infinite;}
+.zsvg.zt5 .crown{display:block;}
+.zsvg.zt5{filter:drop-shadow(0 0 12px rgba(251,191,36,.9));}
+
+.zsvg.zt6 .body{fill:url(#zCosmicGrad);color:#a78bfa;}
+.zsvg.zt6 .accent{fill:url(#zCosmicGrad2);}
+.zsvg.zt6 .dark{fill:#e879f9;}
+.zsvg.zt6 .darkstroke{color:#e879f9;}
+.zsvg.zt6 .eye{fill:#fff;}
+.zsvg.zt6 .glow{display:block;fill:none;stroke:url(#zCosmicGrad);stroke-width:3;opacity:.9;filter:blur(5px);animation:zPulseGlow 1.5s ease-in-out infinite;}
+.zsvg.zt6 .crown{display:block;}
+.zsvg.zt6 .stars{display:block;}
+.zsvg.zt6{filter:drop-shadow(0 0 14px rgba(232,121,249,.9));animation:zHueShift 6s linear infinite;}
+
+@keyframes zPulseGlow{0%,100%{opacity:.5;}50%{opacity:1;}}
+@keyframes zHueShift{0%{filter:hue-rotate(0deg) drop-shadow(0 0 14px rgba(232,121,249,.9));}100%{filter:hue-rotate(360deg) drop-shadow(0 0 14px rgba(232,121,249,.9));}}
+
+/* Per-zodiac base color hints for tier 0 */
+.zsvg.z-rat{--zc:#9ca3af;--za:#e5e7eb;--zd:#6b7280;}
+.zsvg.z-ox{--zc:#4e6e58;--za:#86a98c;--zd:#2d3f33;}
+.zsvg.z-tiger{--zc:#d97706;--za:#fde68a;--zd:#1f2937;}
+.zsvg.z-rabbit{--zc:#f0a6ca;--za:#fce7f3;--zd:#be185d;}
+.zsvg.z-dragon{--zc:#6a994e;--za:#a7c957;--zd:#4a7c3a;}
+.zsvg.z-snake{--zc:#65a30d;--za:#bef264;--zd:#365314;}
+.zsvg.z-horse{--zc:#92400e;--za:#fed7aa;--zd:#451a03;}
+.zsvg.z-goat{--zc:#d6d3d1;--za:#fafaf9;--zd:#78716c;}
+.zsvg.z-monkey{--zc:#a16207;--za:#fef3c7;--zd:#451a03;}
+.zsvg.z-rooster{--zc:#dc2626;--za:#fde047;--zd:#1c1917;}
+.zsvg.z-dog{--zc:#92400e;--za:#fed7aa;--zd:#451a03;}
+.zsvg.z-pig{--zc:#fda4af;--za:#fecdd3;--zd:#9f1239;}
+.zsvg .star{fill:#fff;}
+
+/* ═══ ENEMY FACTION PALETTES (override tier coloring for zodiac-shaped enemies) ═══ */
+/* Each forces body/accent/dark/eye colors regardless of .zt0-zt6 tier class */
+.zsvg.ef-divine .body,.zsvg.ef-divine.zt0 .body,.zsvg.ef-divine.zt1 .body,.zsvg.ef-divine.zt2 .body,.zsvg.ef-divine.zt3 .body,.zsvg.ef-divine.zt4 .body,.zsvg.ef-divine.zt5 .body,.zsvg.ef-divine.zt6 .body{fill:url(#zGoldGrad);color:#f59e0b;}
+.zsvg.ef-divine .accent{fill:#fffbeb;}
+.zsvg.ef-divine .dark{fill:#fbbf24;}
+.zsvg.ef-divine .darkstroke{color:#fbbf24;}
+.zsvg.ef-divine .eye{fill:#fff;}
+.zsvg.ef-divine .crown{display:block;}
+.zsvg.ef-divine{filter:drop-shadow(0 0 12px rgba(251,191,36,.9));}
+
+.zsvg.ef-rival .body,.zsvg.ef-rival.zt0 .body,.zsvg.ef-rival.zt1 .body,.zsvg.ef-rival.zt2 .body,.zsvg.ef-rival.zt3 .body,.zsvg.ef-rival.zt4 .body,.zsvg.ef-rival.zt5 .body,.zsvg.ef-rival.zt6 .body{fill:#7f1d1d;color:#7f1d1d;}
+.zsvg.ef-rival .accent{fill:#fca5a5;}
+.zsvg.ef-rival .dark{fill:#1c1917;}
+.zsvg.ef-rival .darkstroke{color:#1c1917;}
+.zsvg.ef-rival .eye{fill:#ef4444;}
+.zsvg.ef-rival{filter:drop-shadow(0 0 8px rgba(239,68,68,.6));}
+
+.zsvg.ef-myth .body,.zsvg.ef-myth.zt0 .body,.zsvg.ef-myth.zt1 .body,.zsvg.ef-myth.zt2 .body,.zsvg.ef-myth.zt3 .body,.zsvg.ef-myth.zt4 .body,.zsvg.ef-myth.zt5 .body,.zsvg.ef-myth.zt6 .body{fill:url(#zCosmicGrad);color:#a78bfa;}
+.zsvg.ef-myth .accent{fill:url(#zCosmicGrad2);}
+.zsvg.ef-myth .dark{fill:#7c3aed;}
+.zsvg.ef-myth .darkstroke{color:#7c3aed;}
+.zsvg.ef-myth .eye{fill:#fff;}
+.zsvg.ef-myth .crown{display:block;}.zsvg.ef-myth .stars{display:block;}
+.zsvg.ef-myth{filter:drop-shadow(0 0 12px rgba(168,85,247,.8));animation:zHueShift 6s linear infinite;}
+
+.zsvg.ef-champion .body,.zsvg.ef-champion.zt0 .body,.zsvg.ef-champion.zt1 .body,.zsvg.ef-champion.zt2 .body,.zsvg.ef-champion.zt3 .body,.zsvg.ef-champion.zt4 .body,.zsvg.ef-champion.zt5 .body,.zsvg.ef-champion.zt6 .body{fill:#0e7490;color:#0e7490;}
+.zsvg.ef-champion .accent{fill:#a5f3fc;}
+.zsvg.ef-champion .dark{fill:#155e75;}
+.zsvg.ef-champion .darkstroke{color:#155e75;}
+.zsvg.ef-champion .eye{fill:#fde047;}
+.zsvg.ef-champion{filter:drop-shadow(0 0 8px rgba(34,211,238,.6));}
+
+.zsvg.ef-elite .body,.zsvg.ef-elite.zt0 .body,.zsvg.ef-elite.zt1 .body,.zsvg.ef-elite.zt2 .body,.zsvg.ef-elite.zt3 .body,.zsvg.ef-elite.zt4 .body,.zsvg.ef-elite.zt5 .body,.zsvg.ef-elite.zt6 .body{fill:#64748b;color:#64748b;}
+.zsvg.ef-elite .accent{fill:#e2e8f0;}
+.zsvg.ef-elite .dark{fill:#1e293b;}
+.zsvg.ef-elite .darkstroke{color:#1e293b;}
+.zsvg.ef-elite .eye{fill:#38bdf8;}
+.zsvg.ef-elite{filter:drop-shadow(0 0 8px rgba(148,163,184,.6));}
+
+.zsvg.ef-ancient .body,.zsvg.ef-ancient.zt0 .body,.zsvg.ef-ancient.zt1 .body,.zsvg.ef-ancient.zt2 .body,.zsvg.ef-ancient.zt3 .body,.zsvg.ef-ancient.zt4 .body,.zsvg.ef-ancient.zt5 .body,.zsvg.ef-ancient.zt6 .body{fill:#78350f;color:#78350f;}
+.zsvg.ef-ancient .accent{fill:#d6d3d1;}
+.zsvg.ef-ancient .dark{fill:#44403c;}
+.zsvg.ef-ancient .darkstroke{color:#44403c;}
+.zsvg.ef-ancient .eye{fill:#facc15;}
+.zsvg.ef-ancient{filter:drop-shadow(0 0 6px rgba(214,211,209,.5)) sepia(.3);}
+
+.zsvg.ef-celestial .body,.zsvg.ef-celestial.zt0 .body,.zsvg.ef-celestial.zt1 .body,.zsvg.ef-celestial.zt2 .body,.zsvg.ef-celestial.zt3 .body,.zsvg.ef-celestial.zt4 .body,.zsvg.ef-celestial.zt5 .body,.zsvg.ef-celestial.zt6 .body{fill:#0369a1;color:#0369a1;}
+.zsvg.ef-celestial .accent{fill:#e0f2fe;}
+.zsvg.ef-celestial .dark{fill:#fde047;}
+.zsvg.ef-celestial .darkstroke{color:#fde047;}
+.zsvg.ef-celestial .eye{fill:#fff;}
+.zsvg.ef-celestial .stars{display:block;}
+.zsvg.ef-celestial{filter:drop-shadow(0 0 10px rgba(125,211,252,.8));}
+
+.zsvg.ef-flame .body,.zsvg.ef-flame.zt0 .body,.zsvg.ef-flame.zt1 .body,.zsvg.ef-flame.zt2 .body,.zsvg.ef-flame.zt3 .body,.zsvg.ef-flame.zt4 .body,.zsvg.ef-flame.zt5 .body,.zsvg.ef-flame.zt6 .body{fill:#c2410c;color:#c2410c;}
+.zsvg.ef-flame .accent{fill:#fed7aa;}
+.zsvg.ef-flame .dark{fill:#7c2d12;}
+.zsvg.ef-flame .darkstroke{color:#7c2d12;}
+.zsvg.ef-flame .eye{fill:#fde047;}
+.zsvg.ef-flame .glow{display:block;fill:none;stroke:#fb923c;stroke-width:2;opacity:.6;filter:blur(3px);animation:zPulseGlow 1.4s ease-in-out infinite;}
+.zsvg.ef-flame{filter:drop-shadow(0 0 8px rgba(251,146,60,.7));}
+
+.zsvg.ef-void .body,.zsvg.ef-void.zt0 .body,.zsvg.ef-void.zt1 .body,.zsvg.ef-void.zt2 .body,.zsvg.ef-void.zt3 .body,.zsvg.ef-void.zt4 .body,.zsvg.ef-void.zt5 .body,.zsvg.ef-void.zt6 .body{fill:#1e1b2e;color:#1e1b2e;}
+.zsvg.ef-void .accent{fill:#581c87;}
+.zsvg.ef-void .dark{fill:#3b0764;}
+.zsvg.ef-void .darkstroke{color:#3b0764;}
+.zsvg.ef-void .eye{fill:#a855f7;}
+.zsvg.ef-void .glow{display:block;fill:none;stroke:#7c3aed;stroke-width:2;opacity:.6;filter:blur(3px);animation:zPulseGlow 2s ease-in-out infinite;}
+.zsvg.ef-void{filter:drop-shadow(0 0 8px rgba(124,58,237,.6));}
+
+/* ═══ ENEMY ARCHETYPE SVG ICON SYSTEM ═══ */
+.eicon{display:inline-block;line-height:0;}
+.eicon svg{width:100%;height:100%;display:block;}
+.eicon .body{fill:var(--ec,#94a3b8);color:var(--ec,#94a3b8);}
+.eicon .accent{fill:var(--ea,#cbd5e1);}
+.eicon .dark{fill:var(--ed,#475569);}
+.eicon .darkstroke{color:var(--ed,#475569);}
+.eicon .eye{fill:var(--eeye,#fde047);}
+.eicon .glow{fill:none;stroke:var(--ec,#94a3b8);stroke-width:2;opacity:.5;filter:blur(3px);animation:ePulse 1.8s ease-in-out infinite;}
+.eicon{filter:drop-shadow(0 0 6px var(--eglow,rgba(148,163,184,.5)));}
+@keyframes ePulse{0%,100%{opacity:.4;}50%{opacity:.9;}}
+.eicon.e-fire{--ec:#dc2626;--ea:#fb923c;--ed:#7c2d12;--eeye:#fde047;--eglow:rgba(249,115,22,.6);}
+.eicon.e-water{--ec:#0284c7;--ea:#7dd3fc;--ed:#0c4a6e;--eeye:#a5f3fc;--eglow:rgba(56,189,248,.6);}
+.eicon.e-earth{--ec:#78716c;--ea:#a8a29e;--ed:#44403c;--eeye:#fbbf24;--eglow:rgba(168,162,158,.5);}
+.eicon.e-air{--ec:#67e8f9;--ea:#e0f2fe;--ed:#155e75;--eeye:#fff;--eglow:rgba(103,232,249,.6);}
+.eicon.e-dark{--ec:#581c87;--ea:#a855f7;--ed:#1e1b2e;--eeye:#f87171;--eglow:rgba(168,85,247,.6);}
+.eicon.e-light{--ec:#fde047;--ea:#fffbeb;--ed:#ca8a04;--eeye:#dc2626;--eglow:rgba(253,224,71,.7);}
+.eicon.e-lightning{--ec:#4f46e5;--ea:#a5b4fc;--ed:#1e1b4b;--eeye:#fde047;--eglow:rgba(129,140,248,.7);}
 </style>
+
+<!-- Shared SVG gradient defs for zodiac icons -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="zGoldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fde047"/><stop offset="50%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="zCosmicGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa"/><stop offset="33%" stop-color="#f472b6"/><stop offset="66%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+    <linearGradient id="zCosmicGrad2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fbcfe8"/><stop offset="100%" stop-color="#ddd6fe"/>
+    </linearGradient>
+  </defs>
+</svg>
 
 <!-- ═══ FIREBASE SDK ═══ -->
 <script type="module">
@@ -2490,7 +2673,7 @@ function renderEquipmentManager(zodiacName){
   const equipped=getAllEquipped(zodiacName);
   const inventory=(G.equipment||[]).filter(e=>!e.equippedOn);
   const _eqSpr=getZodiacSprite(zodiacName,40);
-  let html=`<div style="text-align:center;margin-bottom:10px;"><div style="display:flex;justify-content:center;">${_eqSpr&&_eqSpr.startsWith('<img')?_eqSpr:`<span style='font-size:36px'>${getEvoEmoji(zodiacName)}</span>`}</div><div style="font-weight:700;">${zodiacName}'s Equipment</div></div>`;
+  let html=`<div style="text-align:center;margin-bottom:10px;"><div style="display:flex;justify-content:center;">${_eqSpr&&(_eqSpr.startsWith('<img')||_eqSpr.startsWith('<span'))?_eqSpr:`<span style='font-size:36px'>${getEvoEmoji(zodiacName)}</span>`}</div><div style="font-weight:700;">${zodiacName}'s Equipment</div></div>`;
   html+=`<div class="sec-t mb2">Equipped (${equipped.length}/4)</div>`;
   html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:12px;">`;
   EQUIPMENT_SLOTS.forEach(slot=>{
@@ -3121,13 +3304,852 @@ function renderAreaSelector(){
 function getEvoStage(name){const r=G.roster[name];const maxS=(r&&r.rarity==='Mythical'&&r.level>=50)?MAX_EVO_STAGE_MYTHICAL:MAX_EVO_STAGE;return Math.min((G.evoStage&&G.evoStage[name])||0,maxS);}
 function getEvoEmoji(name){const s=getEvoStage(name);const e=EVOLUTIONS[name];return e&&e[s]?e[s].emoji:(getZodiac(name)?.emoji||'🐾');}
 
+// ══ ZODIAC SVG ICON SHAPES (12 base silhouettes, styled per evolution tier via CSS) ══
+const ZODIAC_SVG_SHAPES={
+Rat:`<ellipse class="glow" cx="50" cy="55" rx="36" ry="30"/>
+  <path class="body" d="M50 25 C68 25 80 40 80 56 C80 74 66 85 50 85 C34 85 20 74 20 56 C20 40 32 25 50 25 Z"/>
+  <ellipse class="accent" cx="50" cy="64" rx="18" ry="14"/>
+  <circle class="dark" cx="22" cy="32" r="11"/><circle class="dark" cx="78" cy="32" r="11"/>
+  <circle class="accent" cx="22" cy="32" r="6"/><circle class="accent" cx="78" cy="32" r="6"/>
+  <circle class="eye" cx="40" cy="50" r="4"/><circle class="eye" cx="60" cy="50" r="4"/>
+  <path class="dark" d="M50 68 Q70 75 85 65" fill="none" stroke-width="3" stroke="currentColor"/>`,
+Ox:`<ellipse class="glow" cx="50" cy="55" rx="38" ry="32"/>
+  <path class="body" d="M50 28 C70 28 84 42 84 58 C84 75 68 86 50 86 C32 86 16 75 16 58 C16 42 30 28 50 28 Z"/>
+  <ellipse class="accent" cx="50" cy="66" rx="20" ry="15"/>
+  <path class="dark" d="M28 30 C20 22 14 22 12 28 C18 30 24 32 28 36 Z"/>
+  <path class="dark" d="M72 30 C80 22 86 22 88 28 C82 30 76 32 72 36 Z"/>
+  <circle class="eye" cx="38" cy="48" r="4.5"/><circle class="eye" cx="62" cy="48" r="4.5"/>
+  <ellipse class="dark" cx="50" cy="68" rx="10" ry="6"/>`,
+Tiger:`<ellipse class="glow" cx="50" cy="55" rx="38" ry="32"/>
+  <path class="body" d="M50 22 C70 22 85 36 85 56 C85 74 70 86 50 86 C30 86 15 74 15 56 C15 36 30 22 50 22 Z"/>
+  <ellipse class="accent" cx="50" cy="64" rx="20" ry="16"/>
+  <path class="dark darkstroke" d="M30 24 L36 38 M44 22 L48 38 M56 22 L60 38 M70 24 L64 38" stroke-width="4" fill="none" stroke="currentColor"/>
+  <circle class="eye" cx="38" cy="48" r="4.5"/><circle class="eye" cx="62" cy="48" r="4.5"/>
+  <path class="dark" d="M30 18 L24 6 L38 16 Z"/><path class="dark" d="M70 18 L76 6 L62 16 Z"/>`,
+Rabbit:`<ellipse class="glow" cx="50" cy="58" rx="34" ry="28"/>
+  <ellipse class="body" cx="50" cy="62" rx="32" ry="26"/>
+  <ellipse class="accent" cx="50" cy="68" rx="17" ry="13"/>
+  <path class="body" d="M36 12 C30 12 28 30 32 44 C36 50 44 48 44 38 C44 26 42 12 36 12 Z"/>
+  <path class="body" d="M64 12 C70 12 72 30 68 44 C64 50 56 48 56 38 C56 26 58 12 64 12 Z"/>
+  <ellipse class="accent" cx="36" cy="26" rx="4" ry="12"/><ellipse class="accent" cx="64" cy="26" rx="4" ry="12"/>
+  <circle class="eye" cx="40" cy="56" r="4"/><circle class="eye" cx="60" cy="56" r="4"/>`,
+Dragon:`<ellipse class="glow" cx="50" cy="58" rx="44" ry="36"/>
+  <path class="dark" d="M32 50 C 18 46 4 34 2 18 C 10 22 16 20 20 26 C 18 16 22 8 28 6 C 28 18 30 24 33 30 C 35 20 41 14 47 14 C 43 24 39 33 37 42 C 41 39 46 38 50 40 C 45 47 38 52 32 50 Z"/>
+  <path class="accent" d="M26 45 C16 40 6 30 6 18 C12 22 18 22 22 28 C20 18 24 11 30 9 C28 19 30 27 32 35 C34 27 39 21 45 19 C41 27 38 35 36 43 Z" opacity=".5"/>
+  <path class="dark" d="M68 50 C 82 46 96 34 98 18 C 90 22 84 20 80 26 C 82 16 78 8 72 6 C 72 18 70 24 67 30 C 65 20 59 14 53 14 C 57 24 61 33 63 42 C 59 39 54 38 50 40 C 55 47 62 52 68 50 Z"/>
+  <path class="accent" d="M74 45 C84 40 94 30 94 18 C88 22 82 22 78 28 C80 18 76 11 70 9 C72 19 70 27 68 35 C66 27 61 21 55 19 C59 27 62 35 64 43 Z" opacity=".5"/>
+  <path class="body" d="M50 26 C68 26 82 40 82 58 C82 75 68 87 50 87 C32 87 18 75 18 58 C18 40 32 26 50 26 Z"/>
+  <ellipse class="accent" cx="50" cy="64" rx="21" ry="17"/>
+  <path class="dark" d="M37 26 L33 12 L43 24 Z"/><path class="dark" d="M63 26 L67 12 L57 24 Z"/>
+  <circle class="eye" cx="38" cy="48" r="5"/><circle class="eye" cx="62" cy="48" r="5"/>`,
+Snake:`<ellipse class="glow" cx="50" cy="55" rx="38" ry="34"/>
+  <path class="body" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"
+    d="M50 78 C 30 78 22 64 28 52 C 34 40 50 38 56 48 C 61 56 53 64 45 60 C 39 57 40 50 46 49"/>
+  <ellipse class="dark" cx="58" cy="32" rx="13" ry="10" transform="rotate(-25 58 32)"/>
+  <path class="accent" d="M52 36 L49 42 L54 39 Z"/>
+  <path class="accent" d="M62 28 L66 33 L60 32 Z"/>
+  <path class="dark darkstroke" d="M70 30 L80 26 M70 30 L80 34 M70 30 L74 30" stroke-width="1.5" fill="none" stroke="currentColor"/>
+  <circle class="eye" cx="60" cy="28" r="2.6"/>`,
+Horse:`<ellipse class="glow" cx="50" cy="55" rx="36" ry="32"/>
+  <path class="body" d="M40 22 C30 22 24 32 26 44 L30 60 C28 75 38 86 52 86 C66 86 76 74 74 60 L78 40 C80 28 70 18 58 20 Z"/>
+  <ellipse class="accent" cx="52" cy="66" rx="16" ry="14"/>
+  <path class="dark" d="M40 22 C34 14 26 12 20 16 C28 22 34 26 38 32 Z"/>
+  <path class="dark" d="M58 20 C64 12 72 12 78 18 C70 22 64 28 60 32 Z"/>
+  <circle class="eye" cx="42" cy="46" r="4"/><circle class="eye" cx="64" cy="44" r="4"/>`,
+Goat:`<ellipse class="glow" cx="50" cy="55" rx="36" ry="32"/>
+  <path class="body" d="M50 28 C68 28 80 42 80 58 C80 75 66 86 50 86 C34 86 20 75 20 58 C20 42 32 28 50 28 Z"/>
+  <ellipse class="accent" cx="50" cy="66" rx="18" ry="14"/>
+  <path class="dark" d="M38 26 C30 14 22 14 18 22 C26 26 32 30 38 36 Z"/>
+  <path class="dark" d="M62 26 C70 14 78 14 82 22 C74 26 68 30 62 36 Z"/>
+  <circle class="eye" cx="40" cy="48" r="4"/><circle class="eye" cx="60" cy="48" r="4"/>
+  <path class="dark darkstroke" d="M44 70 Q50 78 56 70" fill="none" stroke-width="3" stroke="currentColor"/>`,
+Monkey:`<ellipse class="glow" cx="50" cy="55" rx="38" ry="32"/>
+  <path class="body" d="M50 26 C70 26 82 40 82 58 C82 75 68 86 50 86 C32 86 18 75 18 58 C18 40 30 26 50 26 Z"/>
+  <ellipse class="accent" cx="50" cy="62" rx="22" ry="18"/>
+  <circle class="dark" cx="20" cy="36" r="12"/><circle class="dark" cx="80" cy="36" r="12"/>
+  <circle class="accent" cx="20" cy="36" r="6"/><circle class="accent" cx="80" cy="36" r="6"/>
+  <circle class="eye" cx="40" cy="50" r="4.5"/><circle class="eye" cx="60" cy="50" r="4.5"/>`,
+Rooster:`<ellipse class="glow" cx="50" cy="58" rx="36" ry="30"/>
+  <path class="dark" d="M22 50 C8 42 4 28 12 18 C18 30 24 40 32 48 Z"/>
+  <path class="accent" d="M22 56 C6 52 2 40 8 30 C16 40 24 48 32 54 Z" opacity=".7"/>
+  <path class="dark" d="M26 64 C12 66 4 58 6 48 C16 54 24 60 34 64 Z"/>
+  <path class="body" d="M38 38 C56 32 76 40 80 58 C82 72 70 84 54 84 C40 84 30 74 30 60 C30 50 33 43 38 38 Z"/>
+  <ellipse class="accent" cx="56" cy="68" rx="16" ry="13"/>
+  <circle class="body" cx="74" cy="38" r="13"/>
+  <path class="dark" d="M64 28 C62 20 68 18 70 24 C72 18 78 18 78 26 C82 22 86 24 84 30 C80 32 70 32 64 28 Z"/>
+  <path class="accent" d="M86 38 L96 35 L86 44 Z"/>
+  <path class="dark" d="M80 46 C78 54 84 56 86 50 C88 56 92 52 88 46 Z"/>
+  <circle class="eye" cx="76" cy="34" r="3"/>
+  <path class="dark darkstroke" d="M50 84 L48 94 M50 84 L56 94 M44 92 L52 92 M50 94 L60 94" stroke-width="2.5" fill="none" stroke="currentColor"/>`,
+Dog:`<ellipse class="glow" cx="50" cy="55" rx="38" ry="32"/>
+  <path class="body" d="M50 26 C70 26 82 40 82 58 C82 75 68 86 50 86 C32 86 18 75 18 58 C18 40 30 26 50 26 Z"/>
+  <ellipse class="accent" cx="50" cy="64" rx="20" ry="16"/>
+  <path class="dark" d="M22 28 C12 28 8 42 14 56 C20 54 26 46 28 36 Z"/>
+  <path class="dark" d="M78 28 C88 28 92 42 86 56 C80 54 74 46 72 36 Z"/>
+  <circle class="eye" cx="40" cy="48" r="4.5"/><circle class="eye" cx="60" cy="48" r="4.5"/>
+  <ellipse class="dark" cx="50" cy="68" rx="9" ry="6"/>`,
+Pig:`<ellipse class="glow" cx="50" cy="55" rx="38" ry="32"/>
+  <path class="body" d="M50 26 C70 26 84 40 84 58 C84 75 68 86 50 86 C32 86 16 75 16 58 C16 40 30 26 50 26 Z"/>
+  <ellipse class="accent" cx="50" cy="66" rx="22" ry="17"/>
+  <ellipse class="dark" cx="22" cy="34" rx="10" ry="11"/><ellipse class="dark" cx="78" cy="34" rx="10" ry="11"/>
+  <circle class="eye" cx="38" cy="48" r="4.5"/><circle class="eye" cx="62" cy="48" r="4.5"/>
+  <ellipse class="dark" cx="50" cy="70" rx="13" ry="9"/>
+  <circle class="accent" cx="44" cy="70" r="2.5"/><circle class="accent" cx="56" cy="70" r="2.5"/>`,
+};
+const ZODIAC_SVG_DECOR=`<path class="crown" fill="#fbbf24" d="M35 8 L40 18 L50 6 L60 18 L65 8 L62 20 L38 20 Z"/>
+  <g class="stars">
+    <circle class="star" cx="12" cy="18" r="1.5"/><circle class="star" cx="88" cy="22" r="1.2"/>
+    <circle class="star" cx="84" cy="82" r="1.5"/><circle class="star" cx="16" cy="80" r="1.2"/>
+    <circle class="star" cx="50" cy="6" r="1.3"/>
+  </g>`;
+
+const ENEMY_ARCHETYPE_SHAPES={
+
+golem_stone: `
+  <ellipse class="glow" cx="50" cy="58" rx="38" ry="32"/>
+  <rect class="body" x="22" y="32" width="56" height="48" rx="4"/>
+  <rect class="accent" x="30" y="42" width="40" height="28" rx="2"/>
+  <rect class="dark" x="10" y="36" width="16" height="22" rx="2"/>
+  <rect class="dark" x="74" y="36" width="16" height="22" rx="2"/>
+  <rect class="eye" x="34" y="48" width="8" height="6"/>
+  <rect class="eye" x="58" y="48" width="8" height="6"/>
+  <!-- jagged rock cracks -->
+  <path class="dark darkstroke" d="M30 32 L36 44 L28 50 M70 32 L64 44 L72 52 M50 60 L46 80 M50 60 L56 76" stroke-width="2" fill="none" stroke="currentColor" opacity=".5"/>
+  <!-- moss patches -->
+  <ellipse class="accent" cx="26" cy="70" rx="6" ry="4" opacity=".6"/>
+  <ellipse class="accent" cx="70" cy="74" rx="5" ry="3" opacity=".6"/>
+`,
+golem_crystal: `
+  <ellipse class="glow" cx="50" cy="58" rx="38" ry="32"/>
+  <!-- faceted angular body (diamond/hexagon shapes) -->
+  <path class="body" d="M50 28 L76 42 L76 70 L50 84 L24 70 L24 42 Z"/>
+  <path class="accent" d="M50 38 L66 47 L66 65 L50 74 L34 65 L34 47 Z"/>
+  <!-- crystal shard shoulders -->
+  <path class="dark" d="M14 40 L26 36 L24 60 L10 56 Z"/>
+  <path class="dark" d="M86 40 L74 36 L76 60 L90 56 Z"/>
+  <!-- faceted glowing eyes -->
+  <path class="eye" d="M36 48 L44 48 L40 56 Z"/>
+  <path class="eye" d="M64 48 L56 48 L60 56 Z"/>
+  <!-- internal facet lines -->
+  <path class="dark darkstroke" d="M50 28 L50 84 M24 42 L76 70 M76 42 L24 70" stroke-width="1" fill="none" stroke="currentColor" opacity=".35"/>
+`,
+golem_flesh: `
+  <ellipse class="glow" cx="50" cy="58" rx="38" ry="32"/>
+  <!-- organic, asymmetric lumpy body -->
+  <path class="body" d="M50 30 C66 28 80 38 78 56 C82 70 70 84 52 82 C36 86 20 74 22 56 C18 40 34 30 50 30 Z"/>
+  <ellipse class="accent" cx="48" cy="62" rx="22" ry="18"/>
+  <!-- mismatched shoulder lumps -->
+  <ellipse class="dark" cx="14" cy="50" rx="11" ry="14"/>
+  <ellipse class="dark" cx="88" cy="46" rx="13" ry="16"/>
+  <!-- uneven eyes (one bigger - stitched together) -->
+  <circle class="eye" cx="38" cy="50" r="6"/><circle class="eye" cx="60" cy="48" r="3.5"/>
+  <!-- stitch marks -->
+  <path class="dark darkstroke" d="M30 66 L36 70 L42 66 L48 70 L54 66 M50 32 L52 44" stroke-width="2" fill="none" stroke="currentColor" opacity=".6"/>
+`,
+golem_infinity: `
+  <ellipse class="glow" cx="50" cy="58" rx="40" ry="34"/>
+  <!-- larger, more imposing block body with floating fragments -->
+  <rect class="body" x="20" y="30" width="60" height="50" rx="5"/>
+  <rect class="accent" x="28" y="40" width="44" height="30" rx="3"/>
+  <!-- floating detached shoulder fragments (cosmic) -->
+  <rect class="dark" x="4" y="38" width="14" height="20" rx="2" transform="rotate(-8 11 48)"/>
+  <rect class="dark" x="82" y="38" width="14" height="20" rx="2" transform="rotate(8 89 48)"/>
+  <!-- glowing rune eyes -->
+  <rect class="eye" x="32" y="48" width="9" height="7" rx="1"/>
+  <rect class="eye" x="59" y="48" width="9" height="7" rx="1"/>
+  <!-- orbiting rune symbols -->
+  <circle class="accent" cx="50" cy="20" r="3" opacity=".8"/>
+  <circle class="accent" cx="14" cy="74" r="2.5" opacity=".7"/>
+  <circle class="accent" cx="86" cy="74" r="2.5" opacity=".7"/>
+  <path class="dark darkstroke" d="M50 30 L50 80 M30 50 L70 50" stroke-width="2" fill="none" stroke="currentColor" opacity=".4"/>
+`,
+
+sprite_fire: `
+  <ellipse class="glow" cx="50" cy="50" rx="32" ry="32"/>
+  <!-- flame-shaped flickering body -->
+  <path class="body" d="M50 18 C40 30 28 38 30 54 C32 70 42 80 50 80 C58 80 68 70 70 54 C72 38 60 30 50 18 Z"/>
+  <path class="accent" d="M50 36 C44 44 38 50 40 60 C42 70 48 76 50 76 C54 76 60 70 60 60 C62 50 56 44 50 36 Z"/>
+  <!-- small wing-like flame licks -->
+  <path class="dark" d="M28 48 C18 44 14 34 20 30 C22 38 26 44 32 50 Z" opacity=".7"/>
+  <path class="dark" d="M72 48 C82 44 86 34 80 30 C78 38 74 44 68 50 Z" opacity=".7"/>
+  <circle class="eye" cx="50" cy="58" r="6"/>
+`,
+sprite_storm: `
+  <ellipse class="glow" cx="50" cy="50" rx="32" ry="32"/>
+  <!-- airy round body with cloud puffs -->
+  <circle class="body" cx="50" cy="54" r="22"/>
+  <circle class="body" cx="34" cy="60" r="13"/>
+  <circle class="body" cx="66" cy="60" r="13"/>
+  <circle class="accent" cx="50" cy="58" r="13"/>
+  <!-- lightning bolt wisp -->
+  <path class="dark" d="M48 28 L40 44 L48 44 L42 60 L60 38 L50 38 Z"/>
+  <!-- big single eye -->
+  <circle class="eye" cx="50" cy="54" r="7"/>
+  <circle class="dark" cx="50" cy="54" r="3.5"/>
+`,
+serpent_sea: `
+  <ellipse class="glow" cx="50" cy="55" rx="40" ry="36"/>
+  <path class="body" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round"
+    d="M15 75 C 35 85 50 70 40 55 C 30 40 50 30 65 38 C 78 45 82 30 75 18"/>
+  <ellipse class="dark" cx="78" cy="16" rx="13" ry="10" transform="rotate(20 78 16)"/>
+  <!-- fin spikes along back -->
+  <path class="accent" d="M30 60 L24 52 L34 54 Z"/><path class="accent" d="M48 38 L44 28 L54 32 Z"/>
+  <!-- fangs -->
+  <path class="accent" d="M70 22 L67 28 L73 25 Z"/>
+  <circle class="eye" cx="80" cy="12" r="2.6"/>
+`,
+serpent_eel: `
+  <ellipse class="glow" cx="50" cy="55" rx="40" ry="36"/>
+  <!-- longer, tighter wave body (eel-like) -->
+  <path class="body" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"
+    d="M10 30 C 24 50 40 20 54 40 C 68 60 80 35 92 50"/>
+  <ellipse class="dark" cx="92" cy="50" rx="11" ry="9" transform="rotate(35 92 50)"/>
+  <!-- gills -->
+  <path class="dark darkstroke" d="M82 48 L86 54 M86 46 L90 52" stroke-width="1.5" fill="none" stroke="currentColor"/>
+  <circle class="eye" cx="94" cy="46" r="2.3"/>
+`,
+serpent_cloud: `
+  <ellipse class="glow" cx="50" cy="55" rx="40" ry="36"/>
+  <!-- gentle floating S-curve with cloud puffs along body -->
+  <path class="body" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round"
+    d="M15 60 C 35 75 50 60 45 45 C 40 30 60 25 70 35 C 78 43 85 30 80 20"/>
+  <circle class="accent" cx="30" cy="62" r="6" opacity=".7"/>
+  <circle class="accent" cx="55" cy="40" r="5" opacity=".7"/>
+  <ellipse class="dark" cx="82" cy="18" rx="12" ry="9" transform="rotate(-20 82 18)"/>
+  <path class="accent" d="M76 24 L73 30 L79 27 Z"/>
+  <circle class="eye" cx="84" cy="14" r="2.6"/>
+`,
+serpent_cosmos: `
+  <ellipse class="glow" cx="50" cy="55" rx="42" ry="38"/>
+  <!-- larger coiled spiral with star particles (transcendent) -->
+  <path class="body" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"
+    d="M50 80 C 26 80 16 62 24 48 C 32 34 52 32 58 44 C 64 54 54 64 44 58 C 38 54 40 46 48 45"/>
+  <ellipse class="dark" cx="58" cy="32" rx="13" ry="10" transform="rotate(-25 58 32)"/>
+  <path class="accent" d="M52 36 L49 42 L54 39 Z"/><path class="accent" d="M62 28 L66 33 L60 32 Z"/>
+  <circle class="eye" cx="60" cy="28" r="2.6"/>
+  <circle class="accent" cx="14" cy="20" r="1.5" opacity=".8"/>
+  <circle class="accent" cx="86" cy="70" r="1.8" opacity=".8"/>
+  <circle class="accent" cx="80" cy="20" r="1.3" opacity=".8"/>
+`,
+wolf_shadow: `
+  <ellipse class="glow" cx="50" cy="58" rx="40" ry="32"/>
+  <ellipse class="dark" cx="68" cy="68" rx="16" ry="18"/>
+  <ellipse class="dark" cx="32" cy="68" rx="14" ry="16"/>
+  <ellipse class="body" cx="50" cy="58" rx="32" ry="22"/>
+  <ellipse class="accent" cx="50" cy="64" rx="18" ry="12"/>
+  <path class="dark" d="M32 36 L26 18 L42 32 Z"/>
+  <path class="dark" d="M68 36 L74 18 L58 32 Z"/>
+  <path class="body" d="M50 50 C58 50 64 56 62 64 C58 66 50 66 46 64 C44 56 44 50 50 50 Z"/>
+  <ellipse class="dark" cx="54" cy="62" rx="5" ry="3"/>
+  <ellipse class="eye" cx="40" cy="46" rx="5" ry="3"/><ellipse class="eye" cx="58" cy="46" rx="5" ry="3"/>
+  <path class="accent" d="M44 64 L43 70 L47 65 Z"/><path class="accent" d="M58 64 L62 65 L57 70 Z"/>
+  <!-- wispy shadow tendrils trailing off body -->
+  <path class="dark" d="M16 60 C8 64 4 72 8 78 C14 72 18 66 22 60 Z" opacity=".6"/>
+  <path class="dark" d="M84 60 C92 64 96 72 92 78 C86 72 82 66 78 60 Z" opacity=".6"/>
+`,
+wolf_entropy: `
+  <ellipse class="glow" cx="50" cy="58" rx="42" ry="34"/>
+  <!-- larger, more jagged/decayed silhouette -->
+  <ellipse class="dark" cx="70" cy="68" rx="17" ry="19"/>
+  <ellipse class="dark" cx="30" cy="68" rx="15" ry="17"/>
+  <path class="body" d="M18 58 C16 44 30 34 50 36 C70 34 84 44 82 58 C84 70 70 80 50 78 C30 80 16 70 18 58 Z"/>
+  <ellipse class="accent" cx="50" cy="64" rx="18" ry="12"/>
+  <!-- jagged broken ears -->
+  <path class="dark" d="M30 36 L20 14 L40 30 L34 22 Z"/>
+  <path class="dark" d="M70 36 L80 14 L60 30 L66 22 Z"/>
+  <path class="body" d="M50 50 C58 50 64 56 62 64 C58 66 50 66 46 64 C44 56 44 50 50 50 Z"/>
+  <ellipse class="dark" cx="54" cy="62" rx="5" ry="3"/>
+  <!-- glowing void eyes -->
+  <ellipse class="eye" cx="40" cy="46" rx="6" ry="4"/><ellipse class="eye" cx="58" cy="46" rx="6" ry="4"/>
+  <path class="accent" d="M44 64 L43 70 L47 65 Z"/><path class="accent" d="M58 64 L62 65 L57 70 Z"/>
+  <!-- crackling fissure lines across body -->
+  <path class="dark darkstroke" d="M30 50 L36 60 M70 50 L64 60 M50 36 L50 48" stroke-width="1.5" fill="none" stroke="currentColor" opacity=".5"/>
+`,
+wolf_magma: `
+  <ellipse class="glow" cx="50" cy="58" rx="40" ry="32"/>
+  <ellipse class="dark" cx="68" cy="68" rx="16" ry="18"/>
+  <ellipse class="dark" cx="32" cy="68" rx="14" ry="16"/>
+  <ellipse class="body" cx="50" cy="58" rx="32" ry="22"/>
+  <!-- cracked magma-glow accent patches instead of solid belly -->
+  <ellipse class="accent" cx="40" cy="64" rx="7" ry="5"/>
+  <ellipse class="accent" cx="58" cy="68" rx="6" ry="4"/>
+  <ellipse class="accent" cx="50" cy="58" rx="5" ry="4"/>
+  <path class="dark" d="M32 36 L26 18 L42 32 Z"/>
+  <path class="dark" d="M68 36 L74 18 L58 32 Z"/>
+  <path class="body" d="M50 50 C58 50 64 56 62 64 C58 66 50 66 46 64 C44 56 44 50 50 50 Z"/>
+  <ellipse class="accent" cx="54" cy="62" rx="5" ry="3"/>
+  <ellipse class="eye" cx="40" cy="46" rx="5" ry="3"/><ellipse class="eye" cx="58" cy="46" rx="5" ry="3"/>
+  <path class="accent" d="M44 64 L43 70 L47 65 Z"/><path class="accent" d="M58 64 L62 65 L57 70 Z"/>
+  <!-- ember particles rising -->
+  <circle class="accent" cx="20" cy="40" r="2" opacity=".8"/>
+  <circle class="accent" cx="82" cy="36" r="1.5" opacity=".8"/>
+`,
+eagle_thunder: `
+  <ellipse class="glow" cx="50" cy="55" rx="42" ry="32"/>
+  <path class="dark" d="M48 50 C30 42 8 44 2 30 C16 32 30 36 46 44 Z"/>
+  <path class="dark" d="M52 50 C70 42 92 44 98 30 C84 32 70 36 54 44 Z"/>
+  <path class="accent" d="M44 48 C30 42 14 42 8 32 C20 35 32 38 44 44 Z" opacity=".5"/>
+  <path class="accent" d="M56 48 C70 42 86 42 92 32 C80 35 68 38 56 44 Z" opacity=".5"/>
+  <ellipse class="body" cx="50" cy="58" rx="20" ry="26"/>
+  <ellipse class="accent" cx="50" cy="66" rx="12" ry="14"/>
+  <circle class="body" cx="50" cy="34" r="13"/>
+  <path class="dark" d="M50 38 L42 46 L52 44 Z"/>
+  <circle class="eye" cx="44" cy="30" r="3"/><circle class="eye" cx="56" cy="30" r="3"/>
+  <path class="dark darkstroke" d="M42 84 L38 92 M42 84 L46 92 M58 84 L54 92 M58 84 L62 92" stroke-width="2.5" fill="none" stroke="currentColor"/>
+  <!-- lightning bolt crest on head -->
+  <path class="accent" d="M50 16 L44 26 L50 26 L46 36 L58 22 L50 22 Z"/>
+`,
+eagle_phoenix: `
+  <ellipse class="glow" cx="50" cy="55" rx="44" ry="36"/>
+  <!-- larger, flame-tipped wings -->
+  <path class="dark" d="M48 50 C26 40 4 42 0 26 C16 28 32 34 46 44 Z"/>
+  <path class="dark" d="M52 50 C74 40 96 42 100 26 C84 28 68 34 54 44 Z"/>
+  <path class="accent" d="M40 46 C26 40 10 40 4 28 C18 31 32 35 44 42 Z" opacity=".6"/>
+  <path class="accent" d="M60 46 C74 40 90 40 96 28 C82 31 68 35 56 42 Z" opacity=".6"/>
+  <!-- flame tail -->
+  <path class="accent" d="M50 80 C44 90 50 96 50 96 C50 96 56 90 50 80 Z"/>
+  <ellipse class="body" cx="50" cy="58" rx="20" ry="26"/>
+  <ellipse class="accent" cx="50" cy="66" rx="12" ry="14"/>
+  <circle class="body" cx="50" cy="34" r="13"/>
+  <path class="dark" d="M50 38 L42 46 L52 44 Z"/>
+  <circle class="eye" cx="44" cy="30" r="3"/><circle class="eye" cx="56" cy="30" r="3"/>
+  <!-- crest feathers -->
+  <path class="accent" d="M50 16 L46 26 L50 24 L54 26 Z"/>
+  <path class="dark darkstroke" d="M42 84 L38 92 M42 84 L46 92 M58 84 L54 92 M58 84 L62 92" stroke-width="2.5" fill="none" stroke="currentColor"/>
+`,
+
+drake_ice: `
+  <ellipse class="glow" cx="50" cy="58" rx="44" ry="36"/>
+  <!-- elongated wyvern body, low to ground, single pair of wings -->
+  <path class="dark" d="M30 48 C14 42 2 30 4 16 C14 22 24 26 32 36 Z"/>
+  <path class="accent" d="M26 44 C16 39 8 30 9 20 C16 25 23 29 30 37 Z" opacity=".5"/>
+  <path class="body" d="M28 56 C22 44 32 32 48 34 C66 36 78 48 78 62 C78 76 64 86 48 84 C34 82 28 70 28 56 Z"/>
+  <ellipse class="accent" cx="52" cy="66" rx="18" ry="14"/>
+  <!-- icy spikes along spine -->
+  <path class="accent" d="M40 32 L36 22 L46 28 Z"/><path class="accent" d="M54 32 L52 20 L62 28 Z"/>
+  <!-- long tail -->
+  <path class="dark" d="M28 70 C14 74 4 86 8 94 C16 88 24 80 32 74 Z"/>
+  <circle class="eye" cx="64" cy="50" r="4.5"/>
+  <!-- horn -->
+  <path class="dark" d="M68 40 L76 28 L72 44 Z"/>
+`,
+drake_prism: `
+  <ellipse class="glow" cx="50" cy="58" rx="44" ry="36"/>
+  <!-- angular faceted dragon, crystalline wings -->
+  <path class="dark" d="M30 48 L8 32 L4 14 L24 26 L34 38 Z"/>
+  <path class="accent" d="M28 44 L12 32 L10 20 L26 28 L32 38 Z" opacity=".5"/>
+  <path class="body" d="M30 56 L48 32 L72 38 L80 60 L66 84 L40 82 Z"/>
+  <path class="accent" d="M40 56 L50 42 L64 46 L68 60 L58 74 L44 72 Z"/>
+  <!-- crystal spine spikes -->
+  <path class="accent" d="M48 32 L46 20 L58 28 Z"/><path class="accent" d="M62 38 L64 26 L74 36 Z"/>
+  <circle class="eye" cx="64" cy="52" r="4.5"/>
+  <!-- crystal horn -->
+  <path class="dark" d="M70 42 L80 32 L74 46 Z"/>
+`,
+drake_celestial: `
+  <ellipse class="glow" cx="50" cy="58" rx="46" ry="38"/>
+  <!-- regal serpentine dragon with flowing mane/wings, larger -->
+  <path class="dark" d="M28 46 C8 38 -4 22 0 6 C12 14 22 20 32 32 Z"/>
+  <path class="accent" d="M24 42 C8 36 -2 22 2 10 C12 17 20 23 28 33 Z" opacity=".5"/>
+  <path class="body" d="M26 56 C18 42 30 28 50 30 C70 32 84 46 84 62 C84 78 68 88 50 86 C34 84 26 70 26 56 Z"/>
+  <ellipse class="accent" cx="54" cy="66" rx="20" ry="15"/>
+  <!-- flowing mane spikes -->
+  <path class="accent" d="M38 28 L32 14 L46 24 Z"/><path class="accent" d="M54 28 L52 12 L66 24 Z"/><path class="accent" d="M68 32 L70 16 L80 30 Z"/>
+  <!-- long flowing tail -->
+  <path class="dark" d="M28 70 C10 76 -2 92 6 100 C16 92 26 82 36 76 Z"/>
+  <circle class="eye" cx="66" cy="50" r="5"/>
+  <!-- crown-like horns -->
+  <path class="dark" d="M44 30 L40 16 L52 26 Z"/><path class="dark" d="M60 30 L62 14 L72 28 Z"/>
+`,
+titan_lava: `
+  <ellipse class="glow" cx="50" cy="55" rx="44" ry="38"/>
+  <!-- massive humanoid torso -->
+  <path class="body" d="M50 22 C66 22 76 34 76 48 C76 56 72 60 70 64 C76 70 80 80 76 90 L24 90 C20 80 24 70 30 64 C28 60 24 56 24 48 C24 34 34 22 50 22 Z"/>
+  <ellipse class="accent" cx="50" cy="50" rx="18" ry="16"/>
+  <!-- molten cracks -->
+  <path class="accent" d="M40 30 L44 50 L36 60 M60 30 L56 50 L64 60" stroke-width="3" fill="none" stroke="currentColor" class="darkstroke" opacity=".8"/>
+  <!-- glowing eyes -->
+  <circle class="eye" cx="42" cy="38" r="4.5"/><circle class="eye" cx="58" cy="38" r="4.5"/>
+  <!-- shoulder spikes -->
+  <path class="dark" d="M22 44 L8 36 L18 56 Z"/><path class="dark" d="M78 44 L92 36 L82 56 Z"/>
+`,
+titan_celestial: `
+  <ellipse class="glow" cx="50" cy="55" rx="44" ry="38"/>
+  <!-- tall regal humanoid with halo -->
+  <ellipse class="accent" cx="50" cy="20" rx="20" ry="6" opacity=".7"/>
+  <path class="body" d="M50 24 C64 24 72 36 72 50 C72 58 68 62 66 66 C72 72 76 82 72 90 L28 90 C24 82 28 72 34 66 C32 62 28 58 28 50 C28 36 36 24 50 24 Z"/>
+  <ellipse class="accent" cx="50" cy="52" rx="16" ry="14"/>
+  <circle class="eye" cx="42" cy="40" r="4"/><circle class="eye" cx="58" cy="40" r="4"/>
+  <!-- wing-like shoulder drapes -->
+  <path class="accent" d="M26 46 C14 44 6 54 8 66 C16 60 22 54 28 48 Z" opacity=".6"/>
+  <path class="accent" d="M74 46 C86 44 94 54 92 66 C84 60 78 54 72 48 Z" opacity=".6"/>
+`,
+titan_world: `
+  <ellipse class="glow" cx="50" cy="55" rx="46" ry="40"/>
+  <!-- huge rocky/continental humanoid -->
+  <path class="body" d="M50 20 C68 20 80 34 78 50 C84 56 84 68 78 76 C82 84 76 92 66 90 L34 90 C24 92 18 84 22 76 C16 68 16 56 22 50 C20 34 32 20 50 20 Z"/>
+  <ellipse class="accent" cx="50" cy="52" rx="20" ry="16"/>
+  <!-- continent-like patches -->
+  <ellipse class="dark" cx="38" cy="46" rx="8" ry="6" opacity=".6"/>
+  <ellipse class="dark" cx="62" cy="58" rx="7" ry="5" opacity=".6"/>
+  <circle class="eye" cx="42" cy="38" r="4.5"/><circle class="eye" cx="58" cy="38" r="4.5"/>
+  <!-- mountain-spike shoulders -->
+  <path class="dark" d="M20 50 L4 44 L16 64 Z"/><path class="dark" d="M80 50 L96 44 L84 64 Z"/>
+`,
+titan_void: `
+  <ellipse class="glow" cx="50" cy="55" rx="46" ry="40"/>
+  <!-- shadowy amorphous humanoid with void rifts -->
+  <path class="body" d="M50 22 C64 24 74 36 72 50 C78 58 78 70 70 78 C74 86 66 92 56 90 L44 90 C34 92 26 86 30 78 C22 70 22 58 28 50 C26 36 36 24 50 22 Z"/>
+  <ellipse class="accent" cx="50" cy="54" rx="18" ry="15" opacity=".4"/>
+  <!-- void rift cracks -->
+  <path class="accent" d="M40 32 L44 52 M60 34 L56 54 M50 60 L50 80" stroke-width="2.5" fill="none" stroke="currentColor" class="darkstroke" opacity=".9"/>
+  <!-- glowing void eyes -->
+  <circle class="eye" cx="42" cy="40" r="5"/><circle class="eye" cx="58" cy="40" r="5"/>
+  <!-- wisping shadow tendrils -->
+  <path class="dark" d="M24 56 C12 60 6 70 12 78 C20 72 24 64 28 56 Z" opacity=".7"/>
+  <path class="dark" d="M76 56 C88 60 94 70 88 78 C80 72 76 64 72 56 Z" opacity=".7"/>
+`,
+titan_nightmare: `
+  <ellipse class="glow" cx="50" cy="55" rx="48" ry="42"/>
+  <!-- skull-faced massive humanoid (nightmare boss) -->
+  <path class="body" d="M50 18 C68 18 80 32 78 48 C86 56 86 70 78 80 C82 90 72 96 60 94 L40 94 C28 96 18 90 22 80 C14 70 14 56 22 48 C20 32 32 18 50 18 Z"/>
+  <ellipse class="accent" cx="50" cy="50" rx="20" ry="18"/>
+  <!-- skull eye sockets -->
+  <ellipse class="dark" cx="42" cy="42" rx="7" ry="8"/><ellipse class="dark" cx="58" cy="42" rx="7" ry="8"/>
+  <circle class="eye" cx="42" cy="42" r="3.5"/><circle class="eye" cx="58" cy="42" r="3.5"/>
+  <!-- jagged teeth -->
+  <path class="dark" d="M40 58 L44 66 L48 58 L52 66 L56 58 L60 66" fill="none" stroke="currentColor" class="darkstroke" stroke-width="2.5"/>
+  <!-- horn spikes -->
+  <path class="dark" d="M30 24 L18 6 L36 20 Z"/><path class="dark" d="M70 24 L82 6 L64 20 Z"/>
+`,
+wraith_void: `
+  <ellipse class="glow" cx="50" cy="58" rx="36" ry="38"/>
+  <!-- floating ghost shape, tattered bottom -->
+  <path class="body" d="M50 16 C68 16 78 32 78 50 L78 70 L68 60 L60 76 L50 64 L40 76 L32 60 L22 70 L22 50 C22 32 32 16 50 16 Z"/>
+  <ellipse class="accent" cx="50" cy="44" rx="16" ry="14" opacity=".4"/>
+  <circle class="eye" cx="42" cy="40" r="5"/><circle class="eye" cx="58" cy="40" r="5"/>
+`,
+wraith_ash: `
+  <ellipse class="glow" cx="50" cy="58" rx="38" ry="38"/>
+  <!-- smoky/charred ghost with ember particles -->
+  <path class="body" d="M50 16 C68 16 78 32 78 50 L78 70 L68 60 L60 76 L50 64 L40 76 L32 60 L22 70 L22 50 C22 32 32 16 50 16 Z"/>
+  <ellipse class="accent" cx="50" cy="44" rx="16" ry="14" opacity=".5"/>
+  <circle class="eye" cx="42" cy="40" r="5"/><circle class="eye" cx="58" cy="40" r="5"/>
+  <!-- rising ember particles -->
+  <circle class="accent" cx="30" cy="18" r="2" opacity=".8"/>
+  <circle class="accent" cx="70" cy="14" r="1.6" opacity=".8"/>
+  <circle class="accent" cx="50" cy="6" r="1.4" opacity=".8"/>
+`,
+wraith_basic: `
+  <ellipse class="glow" cx="50" cy="58" rx="34" ry="36"/>
+  <!-- simpler, smaller, more tattered ghost -->
+  <path class="body" d="M50 22 C64 22 72 36 72 52 L72 74 L64 64 L56 78 L50 66 L44 78 L36 64 L28 74 L28 52 C28 36 36 22 50 22 Z"/>
+  <ellipse class="accent" cx="50" cy="48" rx="14" ry="12" opacity=".4"/>
+  <circle class="eye" cx="43" cy="44" r="4.5"/><circle class="eye" cx="57" cy="44" r="4.5"/>
+`,
+wraith_depths: `
+  <ellipse class="glow" cx="50" cy="55" rx="40" ry="40"/>
+  <!-- single giant eye floating, tendrils (Depths Horror) -->
+  <circle class="body" cx="50" cy="48" r="28"/>
+  <circle class="accent" cx="50" cy="48" r="18"/>
+  <circle class="eye" cx="50" cy="48" r="10"/>
+  <circle class="dark" cx="50" cy="48" r="5"/>
+  <!-- tendrils below -->
+  <path class="dark" d="M30 70 C24 80 26 92 32 96 C34 86 32 76 36 68 Z"/>
+  <path class="dark" d="M50 74 C48 86 50 96 56 98 C56 88 54 78 56 70 Z"/>
+  <path class="dark" d="M70 70 C76 80 74 92 68 96 C66 86 68 76 64 68 Z"/>
+`,
+hydra_storm: `
+  <ellipse class="glow" cx="50" cy="58" rx="46" ry="38"/>
+  <!-- 3-headed body -->
+  <ellipse class="body" cx="50" cy="64" rx="34" ry="24"/>
+  <ellipse class="accent" cx="50" cy="70" rx="20" ry="14"/>
+  <!-- three necks/heads -->
+  <path class="body" d="M30 50 C24 38 26 24 34 18 C38 28 38 40 36 50 Z"/>
+  <ellipse class="dark" cx="32" cy="18" rx="9" ry="7"/>
+  <path class="body" d="M50 46 C48 32 50 18 56 12 C60 24 60 38 56 48 Z"/>
+  <ellipse class="dark" cx="56" cy="12" rx="10" ry="8"/>
+  <path class="body" d="M70 50 C76 38 74 24 66 18 C62 28 62 40 64 50 Z"/>
+  <ellipse class="dark" cx="68" cy="18" rx="9" ry="7"/>
+  <!-- eyes on each head -->
+  <circle class="eye" cx="32" cy="18" r="2.5"/><circle class="eye" cx="56" cy="12" r="3"/><circle class="eye" cx="68" cy="18" r="2.5"/>
+`,
+dragonking: `
+  <ellipse class="glow" cx="50" cy="58" rx="46" ry="38"/>
+  <!-- large dragon body with crown -->
+  <path class="dark" d="M28 46 C8 38 -4 22 0 6 C12 14 22 20 32 32 Z"/>
+  <path class="dark" d="M72 46 C92 38 104 22 100 6 C88 14 78 20 68 32 Z"/>
+  <path class="accent" d="M24 42 C8 36 -2 22 2 10 C12 17 20 23 28 33 Z" opacity=".5"/>
+  <path class="accent" d="M76 42 C92 36 102 22 98 10 C88 17 80 23 72 33 Z" opacity=".5"/>
+  <path class="body" d="M26 56 C18 42 30 28 50 30 C70 32 84 46 84 62 C84 78 68 88 50 86 C34 84 26 70 26 56 Z"/>
+  <ellipse class="accent" cx="54" cy="66" rx="20" ry="15"/>
+  <!-- crown -->
+  <path class="dark" d="M40 26 L36 12 L46 10 L50 22 L54 10 L64 12 L60 26 Z" fill="#fbbf24"/>
+  <circle class="eye" cx="64" cy="52" r="5"/>
+`,
+
+jelly_void: `
+  <ellipse class="glow" cx="50" cy="50" rx="40" ry="36"/>
+  <!-- translucent dome with trailing tentacles -->
+  <path class="body" d="M16 46 C16 24 32 12 50 12 C68 12 84 24 84 46 C84 52 80 56 74 56 L26 56 C20 56 16 52 16 46 Z" opacity=".75"/>
+  <ellipse class="accent" cx="50" cy="36" rx="22" ry="16" opacity=".6"/>
+  <!-- tentacles -->
+  <path class="dark" d="M28 56 C24 70 28 84 34 86 C36 74 34 64 38 56 Z" opacity=".7"/>
+  <path class="dark" d="M44 56 C42 72 46 88 52 90 C52 76 50 64 54 56 Z" opacity=".7"/>
+  <path class="dark" d="M62 56 C60 70 64 84 70 86 C70 74 66 64 70 56 Z" opacity=".7"/>
+  <!-- glowing core -->
+  <circle class="eye" cx="50" cy="36" r="8"/>
+`,
+jelly_leviathan: `
+  <ellipse class="glow" cx="50" cy="55" rx="46" ry="40"/>
+  <!-- huge whale-like body -->
+  <path class="body" d="M10 50 C10 32 28 22 50 22 C76 22 92 36 92 52 C92 64 80 70 64 70 L26 70 C14 70 10 60 10 50 Z"/>
+  <ellipse class="accent" cx="50" cy="48" rx="28" ry="16"/>
+  <!-- fins -->
+  <path class="dark" d="M30 68 C26 80 32 90 40 88 C40 78 38 72 38 66 Z"/>
+  <path class="dark" d="M70 68 C74 80 68 90 60 88 C60 78 62 72 62 66 Z"/>
+  <!-- tail fluke -->
+  <path class="dark" d="M88 50 C100 44 106 56 100 64 C94 58 90 54 84 52 Z"/>
+  <!-- blowhole/eye -->
+  <circle class="eye" cx="34" cy="40" r="4"/>
+  <ellipse class="accent" cx="50" cy="26" rx="4" ry="6" opacity=".8"/>
+`,
+imp_inferno: `
+  <ellipse class="glow" cx="50" cy="55" rx="36" ry="34"/>
+  <!-- small horned humanoid -->
+  <ellipse class="body" cx="50" cy="56" rx="22" ry="26"/>
+  <ellipse class="accent" cx="50" cy="62" rx="13" ry="14"/>
+  <!-- horns -->
+  <path class="dark" d="M38 32 L30 16 L44 28 Z"/><path class="dark" d="M62 32 L70 16 L56 28 Z"/>
+  <!-- pointed ears -->
+  <path class="dark" d="M28 44 L16 38 L26 56 Z"/><path class="dark" d="M72 44 L84 38 L74 56 Z"/>
+  <circle class="eye" cx="42" cy="48" r="4"/><circle class="eye" cx="58" cy="48" r="4"/>
+  <!-- tail -->
+  <path class="dark" d="M68 78 C80 82 86 92 80 98 C76 90 70 84 64 80 Z"/>
+  <!-- pitchfork-like detail / claws -->
+  <path class="accent" d="M44 70 L40 78 L48 76 Z"/><path class="accent" d="M56 70 L60 78 L52 76 Z"/>
+`,
+imp_chaoslord: `
+  <ellipse class="glow" cx="50" cy="55" rx="40" ry="38"/>
+  <!-- larger humanoid with multiple horns and aura -->
+  <ellipse class="body" cx="50" cy="58" rx="26" ry="30"/>
+  <ellipse class="accent" cx="50" cy="64" rx="15" ry="16"/>
+  <!-- multiple jagged horns -->
+  <path class="dark" d="M34 30 L24 10 L42 24 Z"/><path class="dark" d="M50 26 L48 8 L60 22 Z"/><path class="dark" d="M66 30 L76 10 L58 24 Z"/>
+  <circle class="eye" cx="42" cy="50" r="4.5"/><circle class="eye" cx="58" cy="50" r="4.5"/>
+  <!-- swirling chaos tendrils -->
+  <path class="accent" d="M20 60 C8 64 4 76 12 84 C18 76 22 68 26 60 Z" opacity=".6"/>
+  <path class="accent" d="M80 60 C92 64 96 76 88 84 C82 76 78 68 74 60 Z" opacity=".6"/>
+  <!-- jagged mouth -->
+  <path class="dark darkstroke" d="M40 64 L44 70 L48 64 L52 70 L56 64 L60 70" fill="none" stroke="currentColor" stroke-width="2"/>
+`,
+insect_spider: `
+  <ellipse class="glow" cx="50" cy="55" rx="42" ry="34"/>
+  <!-- round body with 8 legs -->
+  <ellipse class="body" cx="50" cy="50" rx="22" ry="20"/>
+  <ellipse class="accent" cx="50" cy="54" rx="12" ry="10"/>
+  <!-- legs (4 each side) -->
+  <path class="dark darkstroke" d="M32 42 L8 28 M32 50 L4 50 M32 58 L8 72 M68 42 L92 28 M68 50 L96 50 M68 58 L92 72" stroke-width="3" fill="none" stroke="currentColor"/>
+  <!-- multiple eyes -->
+  <circle class="eye" cx="42" cy="42" r="3"/><circle class="eye" cx="50" cy="40" r="3"/><circle class="eye" cx="58" cy="42" r="3"/>
+  <!-- fangs -->
+  <path class="accent" d="M44 60 L42 68 L48 62 Z"/><path class="accent" d="M56 60 L58 68 L52 62 Z"/>
+`,
+insect_wasp: `
+  <ellipse class="glow" cx="50" cy="55" rx="42" ry="32"/>
+  <!-- elongated striped abdomen + wings -->
+  <ellipse class="dark" cx="58" cy="62" rx="22" ry="14"/>
+  <ellipse class="accent" cx="58" cy="62" rx="14" ry="9"/>
+  <!-- thorax/head -->
+  <circle class="body" cx="34" cy="48" r="16"/>
+  <ellipse class="accent" cx="34" cy="50" rx="9" ry="8"/>
+  <!-- wings -->
+  <ellipse class="accent" cx="44" cy="32" rx="16" ry="9" opacity=".5" transform="rotate(-20 44 32)"/>
+  <ellipse class="accent" cx="60" cy="36" rx="16" ry="9" opacity=".5" transform="rotate(10 60 36)"/>
+  <!-- stinger -->
+  <path class="dark" d="M80 62 L94 66 L80 70 Z"/>
+  <!-- stripes on abdomen -->
+  <path class="dark darkstroke" d="M48 56 L48 68 M58 54 L58 70 M68 56 L68 68" stroke-width="2.5" fill="none" stroke="currentColor"/>
+  <circle class="eye" cx="30" cy="44" r="3.5"/><circle class="eye" cx="40" cy="44" r="3.5"/>
+`,
+insect_bat: `
+  <ellipse class="glow" cx="50" cy="52" rx="44" ry="32"/>
+  <!-- small body, big bat wings -->
+  <path class="dark" d="M40 44 C20 36 4 38 0 24 C12 28 26 32 38 38 Z"/>
+  <path class="dark" d="M60 44 C80 36 96 38 100 24 C88 28 74 32 62 38 Z"/>
+  <path class="accent" d="M36 42 C20 36 8 36 4 26 C14 30 26 33 38 38 Z" opacity=".5"/>
+  <path class="accent" d="M64 42 C80 36 92 36 96 26 C86 30 74 33 62 38 Z" opacity=".5"/>
+  <ellipse class="body" cx="50" cy="50" rx="16" ry="14"/>
+  <!-- ears -->
+  <path class="dark" d="M42 38 L38 26 L48 36 Z"/><path class="dark" d="M58 38 L62 26 L52 36 Z"/>
+  <circle class="eye" cx="44" cy="48" r="3"/><circle class="eye" cx="56" cy="48" r="3"/>
+  <path class="accent" d="M46 56 L44 62 L50 58 Z"/><path class="accent" d="M54 56 L56 62 L50 58 Z"/>
+`,
+skeleton_soldier: `
+  <ellipse class="glow" cx="50" cy="55" rx="38" ry="36"/>
+  <!-- skull head -->
+  <circle class="body" cx="50" cy="32" r="16"/>
+  <ellipse class="dark" cx="43" cy="30" rx="4" ry="5"/><ellipse class="dark" cx="57" cy="30" rx="4" ry="5"/>
+  <circle class="eye" cx="43" cy="30" r="2"/><circle class="eye" cx="57" cy="30" r="2"/>
+  <path class="dark darkstroke" d="M44 40 L46 44 L48 40 L50 44 L52 40 L54 44 L56 40" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <!-- ribcage body -->
+  <path class="body" d="M36 50 L64 50 L60 84 L40 84 Z"/>
+  <path class="dark darkstroke" d="M38 56 L62 56 M38 64 L62 64 M38 72 L62 72" stroke-width="2.5" fill="none" stroke="currentColor"/>
+  <!-- shoulder armor -->
+  <ellipse class="accent" cx="32" cy="50" rx="9" ry="7"/><ellipse class="accent" cx="68" cy="50" rx="9" ry="7"/>
+`,
+skeleton_lich: `
+  <ellipse class="glow" cx="50" cy="55" rx="40" ry="38"/>
+  <!-- skull with crown, robe body -->
+  <circle class="body" cx="50" cy="30" r="15"/>
+  <ellipse class="dark" cx="43" cy="28" rx="4" ry="5"/><ellipse class="dark" cx="57" cy="28" rx="4" ry="5"/>
+  <circle class="eye" cx="43" cy="28" r="2.5"/><circle class="eye" cx="57" cy="28" r="2.5"/>
+  <!-- crown -->
+  <path class="dark" d="M38 18 L34 6 L42 12 L50 4 L58 12 L66 6 L62 18 Z" fill="#fbbf24"/>
+  <!-- flowing robe body (wider, triangular) -->
+  <path class="body" d="M34 46 L66 46 L78 90 L22 90 Z"/>
+  <ellipse class="accent" cx="50" cy="64" rx="16" ry="18" opacity=".5"/>
+  <!-- staff -->
+  <path class="dark darkstroke" d="M78 40 L84 92" stroke-width="2.5" fill="none" stroke="currentColor"/>
+  <circle class="accent" cx="78" cy="36" r="5"/>
+`,
+skeleton_lichemperor: `
+  <ellipse class="glow" cx="50" cy="55" rx="44" ry="42"/>
+  <!-- larger skull, bigger crown, dual staves, floating runes -->
+  <circle class="body" cx="50" cy="28" r="17"/>
+  <ellipse class="dark" cx="42" cy="26" rx="4.5" ry="5.5"/><ellipse class="dark" cx="58" cy="26" rx="4.5" ry="5.5"/>
+  <circle class="eye" cx="42" cy="26" r="3"/><circle class="eye" cx="58" cy="26" r="3"/>
+  <!-- ornate larger crown -->
+  <path class="dark" d="M34 14 L28 0 L38 8 L50 -2 L62 8 L72 0 L66 14 Z" fill="#fbbf24"/>
+  <!-- wider, longer robe -->
+  <path class="body" d="M30 44 L70 44 L86 92 L14 92 Z"/>
+  <ellipse class="accent" cx="50" cy="64" rx="20" ry="22" opacity=".5"/>
+  <!-- floating runes -->
+  <circle class="accent" cx="16" cy="50" r="3" opacity=".8"/><circle class="accent" cx="84" cy="50" r="3" opacity=".8"/>
+  <path class="dark darkstroke" d="M50 58 L50 80 M40 68 L60 68" stroke-width="2" fill="none" stroke="currentColor" opacity=".5"/>
+`,
+cosmic_horror: `
+  <ellipse class="glow" cx="50" cy="50" rx="44" ry="40"/>
+  <!-- amorphous mass with many tentacles and eyes -->
+  <path class="body" d="M50 18 C70 18 84 34 82 52 C84 66 72 80 56 78 C40 80 24 70 22 54 C18 36 32 18 50 18 Z"/>
+  <ellipse class="accent" cx="50" cy="48" rx="24" ry="20" opacity=".5"/>
+  <!-- multiple eyes -->
+  <circle class="eye" cx="38" cy="42" r="5"/><circle class="eye" cx="60" cy="40" r="4"/><circle class="eye" cx="50" cy="58" r="4.5"/>
+  <!-- tentacles -->
+  <path class="dark" d="M24 60 C12 66 6 78 14 86 C20 78 24 70 30 62 Z" opacity=".7"/>
+  <path class="dark" d="M76 60 C88 66 94 78 86 86 C80 78 76 70 70 62 Z" opacity=".7"/>
+  <path class="dark" d="M50 78 C46 90 50 98 56 98 C56 90 54 84 56 76 Z" opacity=".7"/>
+`,
+cosmic_starborn: `
+  <ellipse class="glow" cx="50" cy="50" rx="42" ry="42"/>
+  <!-- humanoid star-being, radiant -->
+  <circle class="body" cx="50" cy="40" r="18"/>
+  <path class="body" d="M36 52 L64 52 L70 90 L30 90 Z"/>
+  <ellipse class="accent" cx="50" cy="68" rx="14" ry="18" opacity=".5"/>
+  <!-- star points radiating -->
+  <path class="accent" d="M50 8 L54 22 L46 22 Z"/><path class="accent" d="M16 30 L28 36 L22 26 Z"/><path class="accent" d="M84 30 L72 36 L78 26 Z"/>
+  <path class="accent" d="M14 60 L26 58 L20 68 Z"/><path class="accent" d="M86 60 L74 58 L80 68 Z"/>
+  <circle class="eye" cx="44" cy="38" r="3"/><circle class="eye" cx="56" cy="38" r="3"/>
+`,
+cosmic_nebula: `
+  <ellipse class="glow" cx="50" cy="55" rx="44" ry="34"/>
+  <!-- lion-like beast made of swirling nebula clouds -->
+  <ellipse class="body" cx="50" cy="58" rx="30" ry="24"/>
+  <ellipse class="accent" cx="50" cy="62" rx="18" ry="14"/>
+  <!-- mane (cloud puffs) -->
+  <circle class="accent" cx="28" cy="42" r="10" opacity=".6"/><circle class="accent" cx="50" cy="32" r="11" opacity=".6"/><circle class="accent" cx="72" cy="42" r="10" opacity=".6"/>
+  <circle class="eye" cx="40" cy="50" r="4.5"/><circle class="eye" cx="60" cy="50" r="4.5"/>
+  <!-- star particles -->
+  <circle class="accent" cx="20" cy="64" r="1.5" opacity=".9"/><circle class="accent" cx="80" cy="64" r="1.5" opacity=".9"/>
+  <!-- snout -->
+  <ellipse class="dark" cx="50" cy="68" rx="8" ry="5"/>
+`,
+cosmic_chaosspawn: `
+  <ellipse class="glow" cx="50" cy="55" rx="44" ry="40"/>
+  <!-- swirling vortex with eye, asymmetric chaos -->
+  <path class="body" d="M50 16 C72 20 86 38 80 58 C88 68 78 84 60 84 C44 90 24 78 22 60 C12 46 22 24 42 18 Z"/>
+  <ellipse class="accent" cx="52" cy="50" rx="22" ry="20" opacity=".5"/>
+  <circle class="eye" cx="52" cy="50" r="9"/>
+  <circle class="dark" cx="52" cy="50" r="4"/>
+  <!-- chaotic spike protrusions -->
+  <path class="dark" d="M30 24 L18 12 L34 18 Z"/><path class="dark" d="M76 30 L92 22 L80 38 Z"/><path class="dark" d="M66 84 L74 96 L58 90 Z"/>
+`,
+cosmic_realitytear: `
+  <ellipse class="glow" cx="50" cy="50" rx="44" ry="44"/>
+  <!-- jagged tear/rift portal shape -->
+  <path class="body" d="M50 6 L62 30 L88 28 L66 46 L80 70 L54 58 L40 86 L36 58 L10 64 L30 42 L14 18 L40 26 Z"/>
+  <ellipse class="accent" cx="50" cy="48" rx="16" ry="16" opacity=".6"/>
+  <circle class="eye" cx="50" cy="48" r="7"/>
+`,
+
+tyrant_storm: `
+  <ellipse class="glow" cx="50" cy="55" rx="44" ry="40"/>
+  <!-- large humanoid with crackling energy arms -->
+  <path class="body" d="M50 20 C64 20 72 32 72 46 C72 54 68 58 66 62 C72 68 76 78 72 88 L28 88 C24 78 28 68 34 62 C32 58 28 54 28 46 C28 32 36 20 50 20 Z"/>
+  <ellipse class="accent" cx="50" cy="48" rx="18" ry="16"/>
+  <circle class="eye" cx="42" cy="36" r="4.5"/><circle class="eye" cx="58" cy="36" r="4.5"/>
+  <!-- lightning arms extending outward -->
+  <path class="accent" d="M28 50 L10 44 L18 56 L4 58 L16 68 Z"/>
+  <path class="accent" d="M72 50 L90 44 L82 56 L96 58 L84 68 Z"/>
+  <!-- crackling crown of bolts -->
+  <path class="accent" d="M40 22 L34 8 L44 16 Z"/><path class="accent" d="M60 22 L66 8 L56 16 Z"/>
+`,
+tyrant_stormascendant: `
+  <ellipse class="glow" cx="50" cy="55" rx="46" ry="42"/>
+  <!-- ascended/transcendent form: larger, halo, more elaborate energy -->
+  <ellipse class="accent" cx="50" cy="18" rx="22" ry="6" opacity=".7"/>
+  <path class="body" d="M50 22 C66 22 76 36 76 50 C76 58 72 62 70 66 C76 72 80 84 76 92 L24 92 C20 84 24 72 30 66 C28 62 24 58 24 50 C24 36 34 22 50 22 Z"/>
+  <ellipse class="accent" cx="50" cy="52" rx="20" ry="18"/>
+  <circle class="eye" cx="42" cy="38" r="5"/><circle class="eye" cx="58" cy="38" r="5"/>
+  <!-- large radiating energy wings -->
+  <path class="accent" d="M24 48 C8 42 -4 28 0 12 C12 22 22 32 30 44 Z" opacity=".6"/>
+  <path class="accent" d="M76 48 C92 42 104 28 100 12 C88 22 78 32 70 44 Z" opacity=".6"/>
+  <!-- multiple crackling orbs -->
+  <circle class="accent" cx="14" cy="60" r="4" opacity=".8"/><circle class="accent" cx="86" cy="60" r="4" opacity=".8"/>
+`,
+tyrant_shadowgod: `
+  <ellipse class="glow" cx="50" cy="55" rx="46" ry="44"/>
+  <!-- towering dark deity, multiple arms -->
+  <path class="body" d="M50 16 C66 16 76 30 76 46 C76 56 72 60 70 64 C78 70 82 82 78 92 L22 92 C18 82 22 70 30 64 C28 60 24 56 24 46 C24 30 34 16 50 16 Z"/>
+  <ellipse class="accent" cx="50" cy="48" rx="20" ry="18" opacity=".5"/>
+  <!-- glowing red eyes (multiple, cosmic) -->
+  <circle class="eye" cx="40" cy="36" r="4"/><circle class="eye" cx="60" cy="36" r="4"/><circle class="eye" cx="50" cy="28" r="3"/>
+  <!-- extra shadow arms -->
+  <path class="dark" d="M22 56 C8 60 0 74 8 84 C16 76 22 66 28 56 Z" opacity=".7"/>
+  <path class="dark" d="M78 56 C92 60 100 74 92 84 C84 76 78 66 72 56 Z" opacity=".7"/>
+  <path class="dark" d="M50 70 C44 84 48 96 56 96 C56 86 54 78 56 70 Z" opacity=".6"/>
+`,
+tyrant_stormking: `
+  <ellipse class="glow" cx="50" cy="55" rx="46" ry="42"/>
+  <!-- regal humanoid with crown and cape -->
+  <path class="body" d="M50 22 C64 22 72 34 72 48 C72 56 68 60 66 64 C72 70 76 80 72 90 L28 90 C24 80 28 70 34 64 C32 60 28 56 28 48 C28 34 36 22 50 22 Z"/>
+  <ellipse class="accent" cx="50" cy="50" rx="18" ry="16"/>
+  <circle class="eye" cx="42" cy="38" r="4.5"/><circle class="eye" cx="58" cy="38" r="4.5"/>
+  <!-- crown -->
+  <path class="dark" d="M36 22 L32 8 L42 14 L50 4 L58 14 L68 8 L64 22 Z" fill="#fbbf24"/>
+  <!-- flowing cape -->
+  <path class="accent" d="M28 50 C14 56 8 74 16 90 L28 90 C26 76 26 62 30 50 Z" opacity=".6"/>
+  <path class="accent" d="M72 50 C86 56 92 74 84 90 L72 90 C74 76 74 62 70 50 Z" opacity=".6"/>
+`,
+tyrant_abyssal: `
+  <ellipse class="glow" cx="50" cy="55" rx="48" ry="44"/>
+  <!-- massive devouring maw, void body -->
+  <path class="body" d="M50 14 C70 14 84 30 82 50 C90 60 88 76 76 86 C80 96 68 100 56 96 L44 96 C32 100 20 96 24 86 C12 76 10 60 18 50 C16 30 30 14 50 14 Z"/>
+  <ellipse class="accent" cx="50" cy="50" rx="22" ry="20" opacity=".4"/>
+  <!-- giant maw with teeth -->
+  <ellipse class="dark" cx="50" cy="60" rx="20" ry="14"/>
+  <path class="accent" d="M34 52 L38 64 L42 52 L46 64 L50 52 L54 64 L58 52 L62 64 L66 52" fill="none" stroke="currentColor" class="darkstroke" stroke-width="2"/>
+  <!-- glowing eyes above maw -->
+  <circle class="eye" cx="40" cy="34" r="4.5"/><circle class="eye" cx="60" cy="34" r="4.5"/>
+  <!-- void tendrils -->
+  <path class="dark" d="M16 64 C4 70 0 84 10 92 C18 84 22 74 26 64 Z" opacity=".7"/>
+  <path class="dark" d="M84 64 C96 70 100 84 90 92 C82 84 78 74 74 64 Z" opacity=".7"/>
+`,
+tyrant_sovereign: `
+  <ellipse class="glow" cx="50" cy="50" rx="48" ry="46"/>
+  <!-- ultimate boss: humanoid with yin-yang motif, ornate crown, full aura -->
+  <ellipse class="accent" cx="50" cy="14" rx="26" ry="8" opacity=".6"/>
+  <path class="body" d="M50 18 C66 18 76 32 76 48 C76 58 71 62 68 66 C76 72 80 84 76 94 L24 94 C20 84 24 72 32 66 C29 62 24 58 24 48 C24 32 34 18 50 18 Z"/>
+  <ellipse class="accent" cx="50" cy="50" rx="20" ry="18"/>
+  <!-- yin-yang emblem on chest -->
+  <circle class="dark" cx="50" cy="56" r="9"/>
+  <path class="accent" d="M50 47 A4.5 4.5 0 0 1 50 56 A4.5 4.5 0 0 0 50 65 A9 9 0 0 0 50 47 Z"/>
+  <circle class="accent" cx="50" cy="51.5" r="1.5"/><circle class="dark" cx="50" cy="60.5" r="1.5"/>
+  <circle class="eye" cx="40" cy="36" r="4.5"/><circle class="eye" cx="60" cy="36" r="4.5"/>
+  <!-- ornate twin crown spikes -->
+  <path class="dark" d="M34 18 L26 2 L40 12 Z"/><path class="dark" d="M66 18 L74 2 L60 12 Z"/>
+  <path class="dark" d="M50 14 L46 0 L54 0 Z" fill="#fbbf24"/>
+  <!-- radiant wing-like aura -->
+  <path class="accent" d="M24 46 C6 40 -8 24 -2 6 C12 16 24 28 32 42 Z" opacity=".5"/>
+  <path class="accent" d="M76 46 C94 40 108 24 102 6 C88 16 76 28 68 42 Z" opacity=".5"/>
+`,
+};
+
+const ENEMY_SHAPE_MAP={
+  'Stone Golem': ['golem_stone','earth'],
+  'Crystal Golem': ['golem_crystal','earth'],
+  'Flesh Golem': ['golem_flesh','earth'],
+  'Infinity Golem': ['golem_infinity','earth'],
+  'Fire Sprite': ['sprite_fire','fire'],
+  'Storm Sprite': ['sprite_storm','air'],
+  'Sea Serpent': ['serpent_sea','water'],
+  'Abyssal Eel': ['serpent_eel','water'],
+  'Cloud Serpent': ['serpent_cloud','air'],
+  'Cosmos Serpent': ['serpent_cosmos','water'],
+  'Shadow Wolf': ['wolf_shadow','dark'],
+  'Entropy Hound': ['wolf_entropy','dark'],
+  'Magma Hound': ['wolf_magma','fire'],
+  'Thunder Eagle': ['eagle_thunder','lightning'],
+  'Phoenix Lord': ['eagle_phoenix','fire'],
+  'Ice Drake': ['drake_ice','water'],
+  'Prism Dragon': ['drake_prism','light'],
+  'Celestial Dragon': ['drake_celestial','light'],
+  'Lava Titan': ['titan_lava','fire'],
+  'Celestial Titan': ['titan_celestial','light'],
+  'World Titan': ['titan_world','earth'],
+  'Void Titan': ['titan_void','dark'],
+  'Nightmare Titan': ['titan_nightmare','dark'],
+  'Void Wraith': ['wraith_void','dark'],
+  'Ash Wraith': ['wraith_ash','fire'],
+  'Wraith': ['wraith_basic','dark'],
+  'Depths Horror': ['wraith_depths','dark'],
+  'Storm Hydra': ['hydra_storm','air'],
+  'Dragon King': ['dragonking','fire'],
+  'Void Jelly': ['jelly_void','water'],
+  'Leviathan': ['jelly_leviathan','water'],
+  'Inferno Imp': ['imp_inferno','fire'],
+  'Chaos Lord': ['imp_chaoslord','dark'],
+  'Gem Spider': ['insect_spider','dark'],
+  'Diamond Wasp': ['insect_wasp','air'],
+  'Thunder Bat': ['insect_bat','lightning'],
+  'Bone Soldier': ['skeleton_soldier','dark'],
+  'Lich King': ['skeleton_lich','dark'],
+  'Lich Emperor': ['skeleton_lichemperor','dark'],
+  'Cosmic Horror': ['cosmic_horror','dark'],
+  'Starborn': ['cosmic_starborn','light'],
+  'Nebula Beast': ['cosmic_nebula','light'],
+  'Chaos Spawn': ['cosmic_chaosspawn','dark'],
+  'Reality Tear': ['cosmic_realitytear','dark'],
+  'Storm Tyrant': ['tyrant_storm','lightning'],
+  'Storm Ascendant': ['tyrant_stormascendant','air'],
+  'Shadow God': ['tyrant_shadowgod','dark'],
+  'Storm King': ['tyrant_stormking','lightning'],
+  'Abyssal Devourer': ['tyrant_abyssal','dark'],
+  'Zodiac Sovereign': ['tyrant_sovereign','light'],
+};
+
+// Zodiac-shaped enemy variants (PVP/Council factions) - reuse zodiac SVG shapes with faction palette
+const ENEMY_ZODIAC_VARIANT_MAP={
+  'Divine Rat':['Rat','divine'],
+  'Divine Ox':['Ox','divine'],
+  'Divine Tiger':['Tiger','divine'],
+  'Divine Monkey':['Monkey','divine'],
+  'Rival Rat':['Rat','rival'],
+  'Rival Tiger':['Tiger','rival'],
+  'Myth Ox':['Ox','myth'],
+  'Myth Rabbit':['Rabbit','myth'],
+  'Myth Rooster':['Rooster','myth'],
+  'Myth Snake':['Snake','myth'],
+  'Champion Snake':['Snake','champion'],
+  'Elite Monkey':['Monkey','elite'],
+  'Ancient Rat':['Rat','ancient'],
+  'Celestial Tiger':['Tiger','celestial'],
+  'Flame Rabbit':['Rabbit','flame'],
+  'Void Goat':['Goat','void'],
+  'Hero Commander':['__tyrant_stormking','hero'],
+};
+
 // ══ PIXEL SPRITE STUBS (data unavailable, use emoji fallback) ══
 const _PIX_DAT={};
 const _PIX_PAL={};
 const _PIX_EVO={};
 function getPixelSprite(name, stage, size) {
-  // Returns null to trigger emoji fallback everywhere
-  return null;
+  const shape=ZODIAC_SVG_SHAPES[name];
+  if(!shape)return null;// non-zodiac (e.g. captured/enemy names) -> emoji fallback
+  size=size||32;
+  const tier=Math.max(0,Math.min(6,stage||0));
+  const cls='zsvg zt'+tier+' z-'+name.toLowerCase();
+  return `<span class="${cls}" style="width:${size}px;height:${size}px;"><svg viewBox="0 0 100 100">${shape}${ZODIAC_SVG_DECOR}</svg></span>`;
 }
 function getZodiacSprite(name,size){
   const stage=getEvoStage(name);
@@ -3136,8 +4158,39 @@ function getZodiacSprite(name,size){
 function getEnemySprite(enemy,size){
   if(!enemy)return '';
   size=size||40;
-  const z=ZODIACS.find(z2=>z2.name===(enemy.name||''));
+  const name=enemy.name||'';
+  // 1. Zodiac-shaped enemy variants (Divine Rat, Rival Tiger, Myth Rooster, etc.)
+  const zv=ENEMY_ZODIAC_VARIANT_MAP[name];
+  if(zv){
+    const[baseZodiac,palette]=zv;
+    if(baseZodiac.startsWith('__')){
+      // Special case: non-zodiac shape (e.g. Hero Commander -> tyrant_stormking archetype)
+      const archKey=baseZodiac.slice(2);
+      const shape=ENEMY_ARCHETYPE_SHAPES[archKey];
+      if(shape){
+        const elem=ENEMY_SHAPE_MAP[name]?ENEMY_SHAPE_MAP[name][1]:'light';
+        return `<span class="eicon e-${elem}" style="width:${size}px;height:${size}px;"><svg viewBox="0 0 100 100">${shape}</svg></span>`;
+      }
+    }else{
+      const shape=ZODIAC_SVG_SHAPES[baseZodiac];
+      if(shape){
+        return `<span class="zsvg zt0 z-${baseZodiac.toLowerCase()} ef-${palette}" style="width:${size}px;height:${size}px;"><svg viewBox="0 0 100 100">${shape}${ZODIAC_SVG_DECOR}</svg></span>`;
+      }
+    }
+  }
+  // 2. Generic archetype shapes (golems, wraiths, dragons, bosses, etc.)
+  const am=ENEMY_SHAPE_MAP[name];
+  if(am){
+    const[archKey,elem]=am;
+    const shape=ENEMY_ARCHETYPE_SHAPES[archKey];
+    if(shape){
+      return `<span class="eicon e-${elem}" style="width:${size}px;height:${size}px;"><svg viewBox="0 0 100 100">${shape}</svg></span>`;
+    }
+  }
+  // 3. Player zodiac fighting as enemy (Reborn/Capture/Mirror templates) - reuse zodiac shapes
+  const z=ZODIACS.find(z2=>z2.name===name);
   if(z){const spr=getPixelSprite(z.name,0,size);if(spr)return spr;}
+  // 4. Emoji fallback
   const el=document.createElement('div');
   el.style.cssText='width:'+size+'px;height:'+size+'px;display:flex;align-items:center;justify-content:center;font-size:'+(size*0.6)+'px;';
   el.textContent=enemy.emoji||'👾';
