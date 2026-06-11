@@ -1,10 +1,10 @@
 // Sheng Xiao Zodiac — Service Worker
-const CACHE = 'sheng-xiao-v1';
+const CACHE = 'sheng-xiao-v2';
 const ASSETS = [
-  '/zodiac_battle_v2-56.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
+  './zodiac_battle_v2.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
 ];
 
 // Install: cache all assets
@@ -23,7 +23,7 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch: serve from cache, fallback to network
+// Fetch: serve from cache, fallback to network, fallback to cached page if offline
 self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(cached => {
@@ -35,7 +35,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return response;
-      }).catch(() => caches.match('/zodiac_battle_v2-56.html'));
+      }).catch(() => caches.match('./zodiac_battle_v2.html'));
     })
   );
 });
