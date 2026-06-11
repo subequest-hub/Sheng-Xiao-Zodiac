@@ -12144,12 +12144,13 @@ function debugFirestore(){
   alert(msg);
 }
 
-// Only register service worker when hosted on a real server (not local file or preview)
+// Service workers cannot be registered from blob: URLs (browser security restriction).
+// Only register when an actual sw.js file is served alongside this page (e.g. GitHub Pages).
 if('serviceWorker' in navigator && location.protocol === 'https:' && !location.hostname.includes('claudeusercontent')){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
       .then(reg => console.log('SW registered:', reg.scope))
-      .catch(err => console.log('SW failed:', err));
+      .catch(err => {});
   });
 }
 // PWA install prompt
