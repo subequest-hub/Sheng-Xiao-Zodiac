@@ -525,7 +525,7 @@ window.FB = { auth, db, rtdb, gprov,
   onSnapshot, getDocs, updateDoc, serverTimestamp, increment,
   where, addDoc, deleteDoc, runTransaction, arrayUnion, arrayRemove,
   ref, push, onChildAdded, rtServerTimestamp,
-  rtQuery, limitToLast, get: rtGet, onValue, set, remove };
+  rtQuery, limitToLast, rtGet, onValue, set, remove };
 
 // Direct references for debugging
 window.fbDB = db;
@@ -12187,9 +12187,16 @@ async function openWorldProfile(uid){
     `;
   }catch(e){
     console.error('Leaderboard error:',e.code, e.message);
+    const uid=fbUID();
     body.innerHTML=`<div style="padding:16px;text-align:center;">
       <div style="font-size:11px;color:#ef4444;margin-bottom:8px;">❌ ${e.message||e.code}</div>
       <div style="font-size:9px;color:var(--txt2);margin-bottom:8px;">Code: ${e.code||'unknown'}</div>
+      ${e.code==='permission-denied'?`<div style="font-size:9px;color:var(--txt2);margin-bottom:8px;">This usually means Firestore security rules haven't been published yet — see the setup guide.</div>`:''}
+      ${uid?`<div style="margin:10px 0;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;">
+        <div style="font-size:9px;color:var(--txt2);margin-bottom:4px;">Your Firebase UID (for GM setup):</div>
+        <div style="font-size:10px;font-weight:700;word-break:break-all;margin-bottom:6px;">${escHtml(uid)}</div>
+        <button class="btn bs bblk" style="width:100%;font-size:10px;" onclick="showMyUID()">📋 Copy UID</button>
+      </div>`:''}
       <button class="btn bp" style="margin-top:8px;" onclick="syncSaveToCloud().then(()=>setTimeout(renderLeaderboard,1000))">🔄 Sync & Retry</button>
     </div>`;
   }
@@ -14894,7 +14901,7 @@ async function _runFirestoreSetup(){
 // Your UID — set this after your first sign-in (check Firebase Auth console)
 // Or leave as email check for now (more flexible)
 const GM_EMAILS = ['subequest@gmail.com'];
-const GM_UIDS = []; // Add your UID here after first sign-in for extra security
+const GM_UIDS = ['j1LdxXyveCUBN7HfB0xvKzmXOO23']; // Carlos's UID (redundant with GM_EMAILS, both check the same account)
 
 function isGM(){
   const user = window._fbUser;
