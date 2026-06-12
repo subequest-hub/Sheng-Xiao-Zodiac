@@ -1617,12 +1617,14 @@ const THEMES={
   oceandepth: {name:'Ocean Depth',emoji:'🌊',unlock:150,vars:{'--bg':'#000d1a','--bg2':'#001a33','--bg3':'#002b52','--acc':'#38bdf8','--ok':'#0891b2','--bad':'#ef4444'}},
   forestmoss: {name:'Forest Moss',emoji:'🌿',unlock:75,vars:{'--bg':'#030d03','--bg2':'#071a07','--bg3':'#0f2b0f','--acc':'#4ade80','--ok':'#22c55e','--bad':'#ef4444'}},
 };
+let _neonThemeIv=null;
 function applyTheme(themeId){
   const theme=THEMES[themeId||'default']||THEMES.default;
   Object.entries(theme.vars).forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
+  if(_neonThemeIv){clearInterval(_neonThemeIv);_neonThemeIv=null;}
   if(themeId==='neoncyber'){
     // Animate hue rotation for neon effect
-    let h=0;setInterval(()=>{h=(h+1)%360;document.documentElement.style.setProperty('--acc',`hsl(${h},100%,60%)`);},100);
+    let h=0;_neonThemeIv=setInterval(()=>{h=(h+1)%360;document.documentElement.style.setProperty('--acc',`hsl(${h},100%,60%)`);},100);
   }
 }
 function isThemeUnlocked(themeId){
@@ -2734,7 +2736,8 @@ function getMythicalStacks(name){
 function addMythicalStack(name){
   if(!G.mythicalStacks)G.mythicalStacks={};
   const _stackCap=Math.max(10,(G.ascension||0)*10);
-  if((G.mythicalStacks[name]||0)<_stackCap)
+  const wasAtCap=(G.mythicalStacks[name]||0)>=_stackCap;
+  if(!wasAtCap)
     G.mythicalStacks[name]=(G.mythicalStacks[name]||0)+1;
   const stacks=G.mythicalStacks[name];
   // Don't directly bake into r stats — liveM() applies stack multiplier
@@ -2745,7 +2748,8 @@ function addMythicalStack(name){
   // Store base stats only — liveM() applies mythical multiplier via getMythicalMult()
   r.maxHp=st.maxHp;r.atk=st.atk;r.def=st.def;r.spd=st.spd;
   r.hp=Math.min(r.hp,r.maxHp);
-  toast(`💫 ${name} Mythical Stack ×${stacks}! (+${Math.round(getMythicalMult(stacks)*100-100)}% stats)`,'ok');
+  if(wasAtCap)toast(`💫 ${name} is already at max Mythical Stacks (×${stacks})!`,'');
+  else toast(`💫 ${name} Mythical Stack ×${stacks}! (+${Math.round(getMythicalMult(stacks)*100-100)}% stats)`,'ok');
   checkMythicConvergence();
 }
 function getMaxHp(name){const m=liveM(name);return m?m.maxHp:(G.roster[name]?G.roster[name].maxHp:0);}
@@ -4489,7 +4493,8 @@ function initWeeklyQuests(){
     G.nextWeeklyReset=getNextWeeklyReset();
     const _wc=WEEKLY_QUEST_POOL[Math.floor(Math.random()*WEEKLY_QUEST_POOL.length)];
     G.weeklyQuests=[{..._wc,completed:false,reqProgress:(_wc.requirements||[]).map(()=>0)}];G.goldEarned=0;
-    G.weeklyProgress={};G.bossWeek=0;G.perfectWeek=0;G.goldWeek=0;G.summonWeek=0;G.ultWeek=0;save();
+    G.weeklyProgress={};G.bossWeek=0;G.perfectWeek=0;G.goldWeek=0;G.summonWeek=0;G.ultWeek=0;
+    rivalWeeklyUpdate();save();
   }
 }
 function initMonthlyQuests(){
@@ -5770,8 +5775,6 @@ function renderSquad(){
   const f=getActiveM();
   if(f){
     const hp=(f.hp/f.maxHp)*100;
-    const _fs=getPixelSprite(f.zodiac,getEvoStage(f.zodiac),52);
-    const _fsIsImg=_fs&&_fs.startsWith('<img');
     // Off-screen legacy elements - don't modify their visual properties to prevent bleed
     // Just keep them for JS compatibility; sprite/emoji not needed there
     const nick=G.nicknames&&G.nicknames[f.zodiac];
@@ -5818,7 +5821,8 @@ function pickFighter(name){
   renderBattleCards();  // refresh full card including enemy
   updateDmgPreview();
   const z=getZodiac(name);
-  setMsg(`${z.emoji} ${name} ready!`,`ATK:${fmt(r.atk)} DEF:${fmt(r.def)} SPD:${fmt(r.spd)}`,'');
+  const m=liveM(name)||r;
+  setMsg(`${z.emoji} ${name} ready!`,`ATK:${fmt(m.atk)} DEF:${fmt(m.def)} SPD:${fmt(m.spd)}`,'');
   vib(25);
 }
 function cycleActive(dir=1){if(!G.alive)return;const alive=G.party.filter(n=>{const r=G.roster[n];return r&&r.hp>0;});if(alive.length<2)return;const idx=alive.indexOf(G.active);const next=alive[(idx+dir+alive.length)%alive.length];if(next&&next!==G.active)pickFighter(next);}
@@ -6080,9 +6084,9 @@ function enemyAtk(){
   if(rSlot.hp<=0){
     // Pet phoenix: revive once per battle
     if(G.activePet==='phoenix'&&G.pets.phoenix&&!G._phoenixUsedThisBattle){
-      G._phoenixUsedThisBattle=true;rSlot.hp=Math.floor(getMaxHp(G.active)*.5);
+      G._phoenixUsedThisBattle=true;rSlot.hp=Math.floor(getMaxHp(t.name)*.5);
       setMsg(`🔥 Phoenix! ${t.name} revived!`,'','heal');renderSquad();
-      addUltCharge(G.active,5);advTurn();return;
+      addUltCharge(t.name,5);advTurn();return;
     }else{
       const alive=getAlive();
       if(!alive){onLose();return;}
@@ -6094,7 +6098,7 @@ function enemyAtk(){
       return;                // ← don't fall through to advTurn below
     }
   }
-  addUltCharge(G.active,5);advTurn();
+  addUltCharge(t.name,5);advTurn();
 }
 
 // ══ SMART AUTO ══
@@ -6261,7 +6265,7 @@ function onWin(sMult=1){
   if(starsEarned>0){G.stars=(G.stars||0)+starsEarned;addLog('rewards',`⭐ +${starsEarned} stars earned!`,e.boss||e.isAreaBoss?'Boss kill bonus':'');}
   const _winXpMult=(1+(G.prestigeShop?.xpBonus||0))*(1+getPetBonus('xp'))*(1+getHouseBonus('xpBonus'))*(getWorldEventMult?getWorldEventMult('xp'):1)*(1+(_winSetB.xp||0))*(1+(_guildBonus.xp||0));
   G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=Math.floor((e.xp+e.level*5)*_winXpMult);lvCheck(n);}});
-  G.party.forEach(n=>{const r=G.roster[n];if(r){const mx=getMaxHp(n);r.hp=Math.min(mx,r.hp+Math.floor(mx*B.HEAL_BETWEEN));
+  if(!G.bossRushActive&&!(G.towerActive&&isTowerHealDisabled()))G.party.forEach(n=>{const r=G.roster[n];if(r){const mx=getMaxHp(n);r.hp=Math.min(mx,r.hp+Math.floor(mx*B.HEAL_BETWEEN));
     // Moonwell: auto-heal extra 2% HP per battle
     const moonHeal=getHouseBonus('autoHeal');if(moonHeal>0)r.hp=Math.min(mx,r.hp+Math.floor(mx*moonHeal));}});
   // Ensure active fighter is alive after between-battle heal; swap if still 0 HP
@@ -6296,7 +6300,8 @@ function onWin(sMult=1){
   const _we=document.getElementById('winEmoji');if(_we)_we.textContent=winEmoji;
   const _vm=document.getElementById('vMsg');if(_vm)_vm.textContent=`${e.emoji} ${e.name} defeated!${G.streak>1?` 🔥 ${G.streak} streak!`:''}${G.damageTakenFight===0?' 🛡️ PERFECT!':''}`;
   const xpAmt=e.xp+e.level*2;
-  const _vr=document.getElementById('vRew');if(_vr)_vr.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;font-size:11px;"><span class="hst">💰 +${gold}g</span><span class="hst">⭐ +${xpAmt} XP</span><span class="hst">❤️ Full Heal</span>${G.damageTakenFight===0?'<span class="hst" style="border-color:#10b981;">🛡️ Perfect +20g</span>':''}${starsEarned>0?`<span class="hst" style="border-color:#a78bfa;">⭐ +${starsEarned} Stars</span>`:''}${dropped?`<span class="hst" style="border-color:${EQUIPMENT_RARITIES[dropped.rarity].color};">${dropped.icon} ${dropped.rarity}</span>`:''}</div>`;
+  const _noHealNow=G.bossRushActive||(G.towerActive&&isTowerHealDisabled());
+  const _vr=document.getElementById('vRew');if(_vr)_vr.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;font-size:11px;"><span class="hst">💰 +${gold}g</span><span class="hst">⭐ +${xpAmt} XP</span>${_noHealNow?'':'<span class="hst">❤️ Full Heal</span>'}${G.damageTakenFight===0?'<span class="hst" style="border-color:#10b981;">🛡️ Perfect +20g</span>':''}${starsEarned>0?`<span class="hst" style="border-color:#a78bfa;">⭐ +${starsEarned} Stars</span>`:''}${dropped?`<span class="hst" style="border-color:${EQUIPMENT_RARITIES[dropped.rarity].color};">${dropped.icon} ${dropped.rarity}</span>`:''}</div>`;
   updateBattleStats(gold,Object.values(G.fightDmg||{}).reduce((a,b)=>a+b,0),_battleDuration);
   if(G.auto){
     clearInterval(autoIv);autoIv=null; // stop interval during win delay
@@ -6324,7 +6329,7 @@ function nextEnemy(){
   closeM('mWin');const c=document.getElementById('eCube');if(c){c.style.opacity='1';c.classList.remove('deadFade');}
   G.combo=0;G.playerStatus={};G.enemyStatus={};G.playerBuffs={};G.enemyArmor=0;G.enemySkillQueue=null;
   G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
-  if(!G.towerActive&&!G.inDungeon){
+  if(!G.towerActive&&!G.inDungeon&&!G.bossRushActive){
     G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});
   }
   renderSquad();
@@ -6347,6 +6352,7 @@ function nextEnemy(){
       else toast(`👑 Boss Rush done (with faints). +${bonus}g +${bonusStars}⭐`,'ok');
       G._bossRushFainted=false;spawnEnemy();
     }else{
+      if(!getAlive()){G.bossRushActive=false;G.towerActive=false;G._bossRushFainted=false;G.alive=true;onLose();return;}
       const t=bosses[G.bossRushFloor];const sc=getWinScale();
       const floorMult=15*Math.pow(2.5,G.bossRushFloor);const atkFloorMult=8*Math.pow(2.0,G.bossRushFloor);
       G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc*floorMult),hp:Math.floor(B.BASE_HP*t.hpM*sc*floorMult),atk:Math.floor(B.BASE_ATK*t.atkM*sc*atkFloorMult)};
@@ -6468,8 +6474,7 @@ function summonEquipment(count,goldCost,starCost=0){
   const results=[];
   for(let i=0;i<count;i++){
     // Star cost gives guaranteed Rare+
-    const forceRarity=starCost>0?['Rare','Epic','Legendary','Mythical'][Math.floor(Math.random()*4)]:null;
-    const savedEnemy=G.enemy;
+    const forceRarity=starCost>0;
     if(forceRarity){
       // temporarily boost rarity
       const roll=Math.random();
@@ -7033,7 +7038,7 @@ function renderRoster(){
       html+=`<div style="position:absolute;top:3px;right:3px;font-size:7px;color:${RF[r.rarity]};font-weight:700;">${RSYM[r.rarity]||'◆'}</div>`;
       if(pStars>0)html+=`<div class="zmast">${pStars}⭐</div>`;
     }
-    const _m2=r?liveM(z.name):null;const zPower=_m2?Math.floor((_m2.atk+_m2.def+_m2.spd+_m2.maxHp*.1)*({Normal:1,Shiny:1.2,Omega:1.4,Mythical:1.8}[_m2.rarity]||1)):0;
+    const _lm=r?liveM(z.name):null;const zPower=_lm?Math.floor((_lm.atk+_lm.def+_lm.spd+_lm.maxHp*.1)*({Normal:1,Shiny:1.2,Omega:1.4,Mythical:1.8}[_lm.rarity]||1)):0;
     html+=`<div class="ze" style="display:flex;align-items:center;justify-content:center;">${r?(getPixelSprite(z.name,getEvoStage(z.name),36)||`<span style='font-size:28px'>${evo?evo.emoji:z.emoji}</span>`):('<span style="font-size:28px;">'+z.emoji+'</span>')}</div>`;
     html+=`<div class="zn" style="color:${r?z.color:'var(--txt2)'}">${z.name}</div>`;
     if(r&&zPower>0){const _pt2=getPowerTier(zPower);html+=`<div style="font-size:7px;color:${_pt2.color};">${_pt2.emoji} ${fmt(zPower)}</div>`;}
@@ -7042,7 +7047,7 @@ function renderRoster(){
       if(evoStg>0){const _maxEvoDisp=(r&&r.rarity==='Mythical'&&r.level>=50)?MAX_EVO_STAGE_MYTHICAL:MAX_EVO_STAGE;html+=`<div style="font-size:8px;color:var(--acc);">Stage ${evoStg}/${_maxEvoDisp}</div>`;}
       if(stacks>0)html+=`<div style="font-size:8px;color:#f87171;">×${stacks} stacks</div>`;
       if(eqCount>0)html+=`<div style="font-size:8px;color:#a78bfa;">⚔️×${eqCount}</div>`;
-      const _lm=liveM(z.name);const _bmax=_lm?_lm.maxHp:r.maxHp;
+      const _bmax=_lm?_lm.maxHp:r.maxHp;
       const hp=_bmax>0?Math.floor((r.hp/_bmax)*100):0;
       html+=`<div class="zhp"><div class="zhpf" style="width:${hp}%"></div></div>`;
       const tiers=[...Array(MAX_EVO_STAGE+1)].map((_,i)=>`<div class="ztdot${evoStg>i?' owned':''}" style="${evoStg>i?`background:${z.color};`:''}"></div>`).join('');
@@ -7350,7 +7355,7 @@ function buyItem(id,qty=1){
   if(id==='prestigeReset'){
     const totalSpent=Object.entries(G.prestigeShopBought||{}).reduce((sum,[id2,n])=>{
       const item2=PRESTIGE_SHOP_ITEMS.find(i=>i.id===id2);if(!item2)return sum;
-      let c=0;for(let i=0;i<n;i++)c+=Math.max(1,Math.ceil(item2.baseCost*Math.pow(1.2,i)));return sum+c;
+      let c=0;for(let i=0;i<n;i++)c+=Math.max(1,Math.ceil(item2.baseCost*Math.pow(1.12,i)));return sum+c;
     },0);
     G.prestigeShop={goldFindBonus:0,xpBonus:0,critBonus:0,critDmgBonus:0,atkBonus:0,defBonus:0,hpBonus:0,spdBonus:0,starBonus:0,eqDropBonus:0,ultChargeBonus:0,comboBonus:0,dotBonus:0,healBonus:0,expBonus:0,bpXpBonus:0};
     G.prestigeShopBought={};G.stars=(G.stars||0)+totalSpent;
@@ -7382,13 +7387,19 @@ function claimBpReward(tier,isPremium){
   if(reward.gold){G.gold+=reward.gold;G.totalGold+=reward.gold;}
   if(reward.stars)G.stars=(G.stars||0)+reward.stars;
   if(reward.item==='heal')G.pot.heal++;else if(reward.item==='revive')G.pot.revive++;else if(reward.item==='expKey')G.expKeys++;
-  if(reward.skillPt){const ap=G.active||G.party[0];if(ap)addSkillPoint(ap);}
+  if(reward.skillPt){const ap=G.active||G.party[0];if(ap)for(let i=0;i<reward.skillPt;i++)addSkillPoint(ap);}
   if(reward.special==='shinyTicket')G.guaranteedShiny=(G.guaranteedShiny||0)+1;
   if(reward.special==='omegaTicket')G.guaranteedOmega=(G.guaranteedOmega||0)+1;
   if(reward.special==='mythicTicket')G.guaranteedMythic=(G.guaranteedMythic||0)+1;
   if(reward.special==='prestigeOrb'){G.freePrestige=(G.freePrestige||0)+1;toast('⭐ Prestige Orb! Free prestige ready!','ok');}
   updateHdr();save();renderBattlePass();
-  const desc=reward.gold?`+${reward.gold}g`:reward.stars?`+${reward.stars}⭐`:reward.item||reward.special||'reward';
+  const parts=[];
+  if(reward.gold)parts.push(`+${reward.gold}g`);
+  if(reward.stars)parts.push(`+${reward.stars}⭐`);
+  if(reward.skillPt)parts.push(`+${reward.skillPt}📚`);
+  if(reward.item)parts.push(reward.item);
+  if(reward.special)parts.push(reward.special);
+  const desc=parts.length?parts.join(' '):'reward';
   toast(`🎫 BP Tier ${tier}: ${desc}!`,'ok');
 }
 function renderBattlePass(){
@@ -7408,7 +7419,9 @@ function renderBattlePass(){
     const fKey=`${n}_f`;const pKey=`${n}_p`;const fClaimed=G.bpClaimed&&G.bpClaimed[fKey];const pClaimed=G.bpClaimed&&G.bpClaimed[pKey];
     const fR=t.free;const pR=t.premium;
     const fDesc=fR.gold?`💰${fR.gold}`:fR.stars?`⭐${fR.stars}`:fR.item||'?';
-    const pDesc=pR.gold?`💰${pR.gold}`:pR.stars?`⭐${pR.stars}`:pR.special||pR.skillPt?'📚SP':pR.item||'?';
+    const specialLabel={shinyTicket:'✨Shiny',omegaTicket:'💎Omega',mythicTicket:'💫Mythic',prestigeOrb:'🌟Orb'}[pR.special];
+    let pDesc=pR.gold?`💰${pR.gold}`:pR.stars?`⭐${pR.stars}`:pR.skillPt?'📚SP':pR.item||'?';
+    if(specialLabel)pDesc+=` +${specialLabel}`;
     const special=pR.special?'⭐':null;
     html+=`<div id="bp_tier_${n}" style="display:flex;align-items:center;gap:6px;border-radius:9px;border:1px solid ${isActive?'var(--acc)':isDone?'var(--ok)':'rgba(71,85,105,.3)'};background:${isActive?'rgba(245,158,11,.1)':isDone?'rgba(16,185,129,.05)':'rgba(28,38,56,.5)'};padding:6px 8px;flex-shrink:0;">`;
     html+=`<div style="font-size:10px;font-weight:700;color:${isActive?'var(--acc)':isDone?'var(--ok)':'var(--txt2)'};min-width:42px;">T${n}${special||''}</div>`;
@@ -8067,7 +8080,7 @@ function startBossRush(){
   // Boss Rush is WAY harder: 15x HP, 8x ATK, scales exponentially per floor
   const rushMult=15;const atkMult=8;
   G.enemy={...t,maxHp:Math.floor(B.BASE_HP*t.hpM*sc*rushMult),hp:Math.floor(B.BASE_HP*t.hpM*sc*rushMult),atk:Math.floor(B.BASE_ATK*t.atkM*sc*atkMult)};
-  G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;G._bossRushRegen=true;
+  G.alive=true;G.combo=0;G.usedPot=false;G.enemyStatus={};G.enemyArmor=0;G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
   renderEnemy();renderBattleCards();buildTurns();setMsg(`👑 BOSS RUSH! ${t.emoji} ${t.name} — EXTREME MODE`,'No healing between bosses. Each boss is 15× stronger!','');
   if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}
 }
@@ -8186,6 +8199,7 @@ function startTowerVariant(variantId){
     G.party=[f];toast('🧍 Single Tower: Only '+f+'!','ok');
   }
   if(variantId==='timed'){
+    clearInterval(_timedTowerTimer);_timedTowerTimer=null;
     _timedTowerEnd=Date.now()+10*60*1000;
     _timedTowerTimer=setInterval(()=>{
       const left=_timedTowerEnd-Date.now();
@@ -8296,8 +8310,12 @@ function confirmAbandonRun(){
   });
 }
 function endTowerRun(){
-  // Restore pre-run snapshot for ironman
-  if(G._preRunSnapshot&&!G._rebornMode){
+  // Clean up any lingering Timed Tower interval (e.g. if abandoned mid-run)
+  if(_timedTowerTimer){clearInterval(_timedTowerTimer);_timedTowerTimer=null;}
+  // Restore pre-run snapshot — only for variants without their own dedicated real-state backup
+  // (ironman/reborn/capture each restore roster/party/active/equipment themselves below;
+  // ironman additionally must NOT have gold/stars reverted, since run earnings should be kept)
+  if(G._preRunSnapshot&&!G._rebornMode&&!G._ironmanMode&&!G._captureMode){
     const snap=G._preRunSnapshot;
     G.gold=snap.gold;G.stars=snap.stars;
     G.party=snap.party;G.active=snap.active;
@@ -8305,6 +8323,7 @@ function endTowerRun(){
     toast('↩️ Returned to your squad!','ok');
     updateHdr();renderSquad();
   }
+  delete G._preRunSnapshot;
   // Reborn: restore the clean real roster backup
   if(G._rebornMode&&G._rebornRealRoster){
     G.roster=G._rebornRealRoster;
@@ -10295,6 +10314,14 @@ async function syncSaveToCloud(){
       avatar: fbAvatar() || '',
       lastSeen: serverTimestamp(),
     }, {merge: true});
+    // Also write the full save blob so loadFromCloud() can restore it
+    const s={...G};
+    delete s.enemy;delete s.enemyQ;delete s.turns;delete s.alive;
+    delete s.combo;delete s.usedPot;delete s.curTurn;
+    delete s.playerStatus;delete s.enemyStatus;delete s.enemyArmor;
+    delete s.playerBuffs;delete s.enemySkillQueue;delete s.fightDmg;delete s.damageTakenFight;
+    const saveDocRef = doc(db, 'players', uid, 'saveData', 'latest');
+    await setDoc(saveDocRef, {data: JSON.stringify(s), updatedAt: serverTimestamp()}, {merge: true});
     console.log('Cloud sync OK via SDK');
     if(window._manualSync) toast('☁️ Cloud save synced!','ok');
   }catch(e){
@@ -10309,14 +10336,12 @@ async function loadFromCloud(){
   const currentUser=window.FB?.auth?.currentUser;
   if(!currentUser) return false;
   try{
-    const token=await currentUser.getIdToken(true);
+    const {db, doc, getDoc} = window.FB;
     const uid=currentUser.uid;
-    const projectId='sheng-xiao-zodiac';
-    const url=`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/players/${uid}/saveData/latest`;
-    const resp=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
-    if(!resp.ok) return false;
-    const doc=await resp.json();
-    const dataStr=doc.fields?.data?.stringValue;
+    const saveDocRef = doc(db, 'players', uid, 'saveData', 'latest');
+    const snap = await getDoc(saveDocRef);
+    if(!snap.exists()) return false;
+    const dataStr = snap.data()?.data;
     if(dataStr){
       const cloud=JSON.parse(dataStr);
       // Only load if cloud save is newer/better
@@ -10411,7 +10436,6 @@ async function renderLeaderboard(){
 }
 
 // ── CHAT ──────────────────────────────────────────────────────────────────────
-let _chatListening=false;
 let _chatMsgCount=0;
 
 function openChat(){
@@ -10420,25 +10444,17 @@ function openChat(){
     openMultiplayer();return;
   }
   openM('mChat');
-  if(!_chatListening)_startChatListener();
-}
-
-function _startChatListener(){
-  if(!window.FB||_chatListening)return;
-  _chatListening=true;
-  try{
-    const {rtdb,ref,rtQuery,limitToLast,onChildAdded}=window.FB;
-    const msgsRef=rtQuery(ref(rtdb,'globalChat'),limitToLast(50));
-    onChildAdded(msgsRef,snap=>{
-      const msg=snap.val();
-      _renderChatMsg(msg);
-      _chatMsgCount++;
-      // Badge on hub button
-      const sub=document.getElementById('hubChatSub');
-      const chatOpen=document.getElementById('mChat')?.style?.display!=='none';
-      if(sub&&!chatOpen)sub.textContent=`${_chatMsgCount} new`;
-    });
-  }catch(e){console.warn('Chat listener failed:',e);}
+  _startWorldChatListener();// shared listener also drives this modal
+  // Populate existing messages
+  const box=document.getElementById('chatMessages');
+  if(box&&window._worldChatMsgs){
+    box.innerHTML='';
+    window._worldChatMsgs.forEach(m=>_renderChatMsg(m));
+  }
+  // Reset unread badge since the user is now viewing chat
+  _chatMsgCount=0;
+  const sub=document.getElementById('hubChatSub');
+  if(sub)sub.textContent='Global chat';
 }
 
 function _renderChatMsg(msg){
@@ -10600,12 +10616,19 @@ function _startWorldChatListener(){
       if(window._worldChatMsgs.length > 100) window._worldChatMsgs.shift();
       const feed = document.getElementById('worldChatFeed');
       if(feed) _appendChatMsg(feed, msg);
-      // Unread badge
+      // Unread badge (World tab)
       const activeTab = G._activeLogTab;
       if(activeTab !== 'world'){
         const btn = document.getElementById('ltab-world');
         if(btn) btn.style.background = 'rgba(245,158,11,.3)';
       }
+      // Also drive the legacy mChat modal (shared global chat feed)
+      const box=document.getElementById('chatMessages');
+      if(box)_renderChatMsg(msg);
+      _chatMsgCount++;
+      const sub=document.getElementById('hubChatSub');
+      const chatOpen=document.getElementById('mChat')?.style?.display!=='none';
+      if(sub&&!chatOpen)sub.textContent=`${_chatMsgCount} new`;
     });
   }catch(e){ console.warn('World chat listener failed:', e); }
 }
@@ -10795,12 +10818,12 @@ async function openEditProfile(){
   const trimmed = newName.trim().substring(0,20);
   const newBio = prompt('Enter a short bio (max 80 chars, optional):',G._playerBio||'');
   try{
-    const {auth,updateProfile,db,doc,updateDoc} = window.FB;
+    const {auth,updateProfile,db,doc,setDoc} = window.FB;
     await updateProfile(auth.currentUser,{displayName:trimmed});
     const earnedBadges = getEarnedBadges(G).map(b=>({id:b.id,emoji:b.emoji,name:b.name}));
     const activeTitle = getActiveTitle();
     G.playerName=trimmed;if(newBio!==null)G._playerBio=newBio.trim().substring(0,80);
-    await updateDoc(doc(db,'players',fbUID()),{name:trimmed,bio:G._playerBio||'',badges:earnedBadges,activeTitle:activeTitle?.name||''});
+    await setDoc(doc(db,'players',fbUID()),{name:trimmed,bio:G._playerBio||'',badges:earnedBadges,activeTitle:activeTitle?.name||''},{merge:true});
     save();
     toast(`✅ Profile updated!`,'ok');
     openWorldProfile();
@@ -11045,8 +11068,8 @@ async function createFaction(){
     G._factionUpgrades = {};
     G._factionLevel = 1;
     // Update player record
-    const {doc,updateDoc} = window.FB;
-    await updateDoc(doc(db,'players',fbUID()),{factionId:ref.id,factionName:name.trim().substring(0,24),isLeader:true});
+    const {doc,setDoc} = window.FB;
+    await setDoc(doc(db,'players',fbUID()),{factionId:ref.id,factionName:name.trim().substring(0,24),isLeader:true},{merge:true});
     save();
     toast(`🏰 Faction "${name}" created!`,'ok');
     _startFactionChatListener(ref.id);
@@ -11057,14 +11080,14 @@ async function createFaction(){
 async function joinFaction(factionId){
   if(!fbReady())return;
   try{
-    const {db,doc,getDoc,updateDoc,increment} = window.FB;
+    const {db,doc,getDoc,updateDoc,setDoc,increment} = window.FB;
     const fSnap = await getDoc(doc(db,'factions',factionId));
     if(!fSnap.exists()){toast('Faction not found','er');return;}
     const f = fSnap.data();
     if((f.memberCount||0)>=(f.maxMembers||20)){toast('Faction is full!','er');return;}
     G._factionId = factionId;G._factionCoins=0;G._factionUpgrades={...f.upgrades||{}};G._factionLevel=f.level||1;
     await updateDoc(doc(db,'factions',factionId),{memberCount:increment(1)});
-    await updateDoc(doc(db,'players',fbUID()),{factionId,factionName:f.name,isLeader:false});
+    await setDoc(doc(db,'players',fbUID()),{factionId,factionName:f.name,isLeader:false},{merge:true});
     save();
     toast(`🏰 Joined faction: ${f.name}!`,'ok');
     _startFactionChatListener(factionId);
@@ -11296,8 +11319,8 @@ async function _onPvpWin(){
   G.stars=(G.stars||0)+starsEarned;
   // Update leaderboard
   try{
-    const {db,doc,updateDoc} = window.FB;
-    await updateDoc(doc(db,'players',fbUID()),{pvpPoints:G._pvpPoints,pvpWins:G._pvpWins});
+    const {db,doc,setDoc} = window.FB;
+    await setDoc(doc(db,'players',fbUID()),{pvpPoints:G._pvpPoints,pvpWins:G._pvpWins},{merge:true});
   }catch(e){}
   save();updateHdr();
   vib&&vib([100,50,200,100,300]);
@@ -11317,8 +11340,8 @@ async function _onPvpLoss(){
   G._pvpHistory.unshift({vs:opp?.name||'?',result:'loss',pts:-losePts,ts:Date.now()});
   if(G._pvpHistory.length>20) G._pvpHistory.length=20;
   try{
-    const {db,doc,updateDoc} = window.FB;
-    await updateDoc(doc(db,'players',fbUID()),{pvpPoints:G._pvpPoints,pvpLosses:G._pvpLosses});
+    const {db,doc,setDoc} = window.FB;
+    await setDoc(doc(db,'players',fbUID()),{pvpPoints:G._pvpPoints,pvpLosses:G._pvpLosses},{merge:true});
   }catch(e){}
   save();
   toast(`💀 PvP Loss! -${losePts} pts`,'er');
@@ -11744,22 +11767,25 @@ async function checkIncomingGifts(){
   if(!fbReady()) return;
   try{
     const {rtdb,ref,onValue,set} = window.FB;
+    if(!G._claimedGiftKeys)G._claimedGiftKeys={};
     onValue(ref(rtdb,`gifts/${fbUID()}`), snap=>{
       if(!snap.exists()) return;
+      let changed=false;
       snap.forEach(child=>{
         const g = child.val();
-        if(g&&!g.claimed&&!g._processed){
+        if(g&&!g.claimed&&!G._claimedGiftKeys[child.key]){
           // Apply gift
           if(g.itemId==='potion') G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});
           else if(g.itemId==='stars5') G.stars=(G.stars||0)+5;
           else if(g.itemId==='gold1k'){G.gold+=1000;G.totalGold+=1000;}
           else if(g.itemId==='expkey') G.pot={...G.pot,expKey:(G.pot?.expKey||0)+1};
-          save();updateHdr();
+          G._claimedGiftKeys[child.key]=true;changed=true;
           toast(`🎁 Gift from ${escHtml(g.fromName||'?')}: ${g.itemEmoji} ${g.itemName}!`,'ok');
           // Mark claimed
           set(ref(rtdb,`gifts/${fbUID()}/${child.key}/claimed`),true);
         }
       });
+      if(changed){save();updateHdr();}
     },{onlyOnce:true});
   }catch(e){}
 }
@@ -12439,11 +12465,36 @@ async function renderServerBoss(){
     try{
       const {db,doc,getDoc}=window.FB;
       const snap=await getDoc(doc(db,'server','boss'));
-      if(snap.exists()&&snap.data().hp!=null) bossData={...bossData,...snap.data()};
+      if(snap.exists()&&snap.data().currentHp!=null) bossData={...bossData,...snap.data()};
     }catch(e){}
   }
   const pct=Math.min(100,Math.floor((bossData.currentHp/bossData.maxHp)*100));
   const myDmg=G._serverBossDmg||0;
+  // Server Boss defeated: grant reward once per kill cycle, then respawn
+  if(bossData.currentHp<=0){
+    const killTag=(bossData.killCount||0); // increments each respawn
+    if(G._serverBossLastReward!==killTag){
+      G._serverBossLastReward=killTag;
+      const bonusGold=50000;const bonusStars=10;
+      G.gold+=bonusGold;G.totalGold+=bonusGold;G.stars=(G.stars||0)+bonusStars;
+      G._serverBossDmg=0;
+      updateHdr();save();
+      toast(`🎉 SERVER BOSS DEFEATED! +${fmt(bonusGold)}g +${bonusStars}⭐ for your contribution!`,'ok');
+      _pushTicker(`🐉 The Server Boss has fallen! Everyone earns rewards!`);
+      // Try to respawn the boss for everyone (best-effort; any client racing here is fine, Firestore last-write-wins)
+      if(fbReady()){
+        try{
+          const {db,doc,setDoc,serverTimestamp}=window.FB;
+          await setDoc(doc(db,'server','boss'),{
+            currentHp:bossData.maxHp,
+            killCount:(bossData.killCount||0)+1,
+            playerDamage:{},
+            lastHit:serverTimestamp(),
+          },{merge:true});
+        }catch(e){}
+      }
+    }
+  }
   body.innerHTML=`
     <div style="text-align:center;padding:14px;background:rgba(139,0,0,.15);border:1px solid rgba(220,38,38,.3);border-radius:12px;margin-bottom:12px;">
       <div style="font-size:48px;">${bossData.emoji}</div>
@@ -12481,7 +12532,7 @@ async function attackServerBoss(){
         currentHp:increment(-dmg),
         [`playerDamage.${fbUID()}`]:increment(dmg),
         lastHit:serverTimestamp(),
-      },{merge:true});
+      });
       toast(`Your total damage: ${fmt(G._serverBossDmg)}. Keep attacking!`,'ok');
       // Refresh display
       setTimeout(renderServerBoss,500);
