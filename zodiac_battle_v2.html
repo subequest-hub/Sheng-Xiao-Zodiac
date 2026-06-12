@@ -493,7 +493,8 @@ import { getFirestore, doc, setDoc, getDoc,
          collection, query, orderBy, limit,
          onSnapshot, getDocs, updateDoc,
          serverTimestamp, increment,
-         where, addDoc, deleteDoc }               from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+         where, addDoc, deleteDoc, runTransaction,
+         arrayUnion, arrayRemove }  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getDatabase, ref, push, onChildAdded,
          serverTimestamp as rtServerTimestamp,
          query as rtQuery, limitToLast,
@@ -522,7 +523,7 @@ window.FB = { auth, db, rtdb, gprov,
   onAuthStateChanged, updateProfile,
   doc, setDoc, getDoc, collection, query, orderBy, limit,
   onSnapshot, getDocs, updateDoc, serverTimestamp, increment,
-  where, addDoc, deleteDoc,
+  where, addDoc, deleteDoc, runTransaction, arrayUnion, arrayRemove,
   ref, push, onChildAdded, rtServerTimestamp,
   rtQuery, limitToLast, get: rtGet, onValue, set, remove };
 
@@ -950,6 +951,18 @@ onAuthStateChanged(auth, user => {
   <div class="hub-section">
     <div class="hub-title">🌐 Online</div>
     <div class="hub-grid">
+      <button class="hub-btn" onclick="closeM('mMore');openSoulZodiacs()">
+        <span class="hub-icon">👻</span><span class="hub-label">Soul Zodiacs</span>
+        <span class="hub-sub" id="hubSoulZodiacsSub">Tower Fl.5000+</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openSoulSanctuary()">
+        <span class="hub-icon">⏳</span><span class="hub-label">Soul Sanctuary</span>
+        <span class="hub-sub" id="hubSanctuarySub">Tower Fl.5000+</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openBossTrials()">
+        <span class="hub-icon">⚔️</span><span class="hub-label">Boss Trials</span>
+        <span class="hub-sub" id="hubBossTrialsSub">Tower Fl.5000+</span>
+      </button>
       <button class="hub-btn" onclick="closeM('mMore');openOnlineMode()">
         <span class="hub-icon">🔑</span><span class="hub-label">Sign In</span>
         <span class="hub-sub" id="hubMPSub">Sign in</span>
@@ -957,6 +970,14 @@ onAuthStateChanged(auth, user => {
       <button class="hub-btn" onclick="closeM('mMore');openWorldProfile()">
         <span class="hub-icon">👤</span><span class="hub-label">My Profile</span>
         <span class="hub-sub" id="hubProfileSub">World profile</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openMailbox()">
+        <span class="hub-icon">📬</span><span class="hub-label">Mail</span>
+        <span class="hub-sub" id="hubMailSub">Check mail</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openFriendsList()">
+        <span class="hub-icon">👥</span><span class="hub-label">Friends</span>
+        <span class="hub-sub" id="hubFriendsSub">Add friends</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');openFaction()">
         <span class="hub-icon">🏰</span><span class="hub-label">Faction</span>
@@ -987,7 +1008,7 @@ onAuthStateChanged(auth, user => {
         <span class="hub-sub">All vs one</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');switchMarketTab('buy');openM('mAuctionHouse')">
-        <span class="hub-icon">🏪</span><span class="hub-label">Market</span>
+        <span class="hub-icon">🏪</span><span class="hub-label">Soul Market</span>
         <span class="hub-sub" id="essenceBadge2">💎 0 Essence</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');renderBountyBoard().then(h=>{document.getElementById('bountyBody').innerHTML=h;openM('mBountyBoard')})">
@@ -1361,6 +1382,26 @@ function showTab(tab){
   const tabModals={squad:'mSquad',summon:'mSummon',quests:'mQuests',shop:'mShop',more:'mMore'};
   // Update godly badge on every hub open
   {const _gb=document.getElementById('hubGodlySub');if(_gb){const _pend=(G._pendingGodly||[]).length;const _own=(getOwnedGodlyIds?getOwnedGodlyIds():new Set()).size;if(_pend>0){_gb.textContent=`✨ ${_pend} ready!`;_gb.style.color='#fbbf24';}else{_gb.textContent=`${_own}/24 pieces`;_gb.style.color='';}}}
+  // Update Soul Zodiacs badge
+  {const _sb=document.getElementById('hubSoulZodiacsSub');if(_sb){
+    if(!isSoulZodiacsUnlocked()){_sb.textContent=`🔒 Tower Fl.${getSoulUnlockFloor()}+`;_sb.style.color='';}
+    else if(G.activeSoulZodiac){const sd=G.soulZodiacs[G.activeSoulZodiac]||{};_sb.textContent=`${G.activeSoulZodiac} Lv.${sd.level||0}`;_sb.style.color='var(--acc)';}
+    else{_sb.textContent='Select your Soul';_sb.style.color='#fbbf24';}
+  }}
+  // Update Soul Sanctuary badge
+  {const _ssb=document.getElementById('hubSanctuarySub');if(_ssb){
+    if(!isSoulZodiacsUnlocked()){_ssb.textContent=`🔒 Tower Fl.${getSoulUnlockFloor()}+`;_ssb.style.color='';}
+    else{
+      const _banked=_getSanctuaryBankedMs();const _ready=Math.floor(_banked/SOUL_SANCTUARY_RATE_MS);
+      if(_ready>0){_ssb.textContent=`👻 ${_ready} ready!`;_ssb.style.color='#fbbf24';}
+      else{_ssb.textContent='Gathering...';_ssb.style.color='';}
+    }
+  }}
+  // Update Boss Trials badge
+  {const _btb=document.getElementById('hubBossTrialsSub');if(_btb){
+    if(!isSoulZodiacsUnlocked()){_btb.textContent=`🔒 Tower Fl.${getSoulUnlockFloor()}+`;_btb.style.color='';}
+    else{_btb.textContent='1-3 player co-op';_btb.style.color='';}
+  }}
   // Hub sub-screens: open appropriate modal
   const hubModals={
     blacksmith:'mBlacksmith', setbuilder:'mSetBuilder', prestigeshop:'mPrestigeShop',
@@ -1753,6 +1794,409 @@ const ZODIACS=[
   {name:'Pig',    emoji:'🐖',color:'#FFB6C1',trait:'lucky',   base:{atk:38,def:46,spd:39,hp:242}},
 ];
 
+// ══ SOUL ZODIACS (Online endgame) ══
+// Pure flat stats, no bonuses applied. Lv1 base, +20 HP / +10 ATK / +5 DEF / +5 SPD per level.
+// Each passive is balanced around the same "~20% value per 5 turns" budget, expressed differently.
+const SOUL_ZODIAC_BASE={hp:20,atk:10,def:5,spd:5};
+const SOUL_ZODIAC_PER_LEVEL={hp:20,atk:10,def:5,spd:5};
+const SOUL_PASSIVES={
+  Dragon: {name:'Draconic Might',  desc:'Party ATK +20%.'},
+  Rat:    {name:'Swift Strike',    desc:'Party attacks again every 5th turn.'},
+  Snake:  {name:'Venom Coil',      desc:'20% chance each turn to stun the enemy for 1 turn.'},
+  Goat:   {name:'Herd Ward',       desc:'Party heals 4% max HP every turn.'},
+  Tiger:  {name:"Predator's Edge", desc:'Party crit chance +10% and crit damage +20%.'},
+  Rabbit: {name:'Lucky Charm',     desc:'Party gold and star rewards +20%.'},
+  Horse:  {name:'Stampede',        desc:'Party SPD +20% (more turns per battle).'},
+  Monkey: {name:'Trickster',       desc:"20% chance each turn to dodge the enemy's attack entirely."},
+  Rooster:{name:'Dawn Call',       desc:'Party ultimate charge +20% per turn.'},
+  Dog:    {name:'Loyal Guard',     desc:'Party DEF +20%.'},
+  Pig:    {name:'Bountiful Feast', desc:'20% chance each turn for the active fighter to gain a shield equal to 20% max HP.'},
+  Ox:     {name:'Iron Resolve',    desc:'Party takes 20% less damage from critical hits.'},
+};
+function getSoulZodiacStats(name,level){
+  const lv=Math.max(1,level||1);
+  return{
+    hp: SOUL_ZODIAC_BASE.hp+SOUL_ZODIAC_PER_LEVEL.hp*(lv-1),
+    atk:SOUL_ZODIAC_BASE.atk+SOUL_ZODIAC_PER_LEVEL.atk*(lv-1),
+    def:SOUL_ZODIAC_BASE.def+SOUL_ZODIAC_PER_LEVEL.def*(lv-1),
+    spd:SOUL_ZODIAC_BASE.spd+SOUL_ZODIAC_PER_LEVEL.spd*(lv-1),
+  };
+}
+// The active Soul Zodiac's pure stats contribute directly to Server Boss damage,
+// using the same weighting as calcPowerRating (no passives — stats only).
+function getSoulZodiacBonusPower(){
+  const name=G.activeSoulZodiac;if(!name)return 0;
+  const sd=G.soulZodiacs&&G.soulZodiacs[name];if(!sd||!(sd.level>0))return 0;
+  const s=getSoulZodiacStats(name,sd.level);
+  return Math.floor(s.atk*2+s.def+s.spd+s.hp*0.1);
+}
+
+// ── SOUL ZODIAC SKINS & TITLES (consumable, tradeable, stack-leveled like Souls) ──
+// Won as random rewards from leaderboard events. Each skin/title variant is leveled
+// independently by consuming duplicates (same mechanic as Souls -> Soul Zodiac levels).
+// Display format when a skin+title are selected: "{Title} {Zodiac} ({titleLv})({skinLv})"
+const ZODIAC_SKINS={
+  Rat:{
+    police:{name:'Police',desc:'A sharp police cap and uniform sash.'},
+    ninja:{name:'Ninja',desc:'A stealthy headband and face wrap.'},
+  },
+  Ox:{
+    farmer:{name:'Farmer',desc:'A straw hat and denim overalls.'},
+    knight:{name:'Knight',desc:'A polished steel helm and chestplate.'},
+  },
+  Tiger:{
+    samurai:{name:'Samurai',desc:'A crimson headband and shoulder armor.'},
+    pirate:{name:'Pirate',desc:'A tricorn hat and an eyepatch.'},
+  },
+  Rabbit:{
+    wizard:{name:'Wizard',desc:'A starry pointed hat and sparkling eyes.'},
+    chef:{name:'Chef',desc:'A tall toque and a crisp apron.'},
+  },
+  Dragon:{
+    royal:{name:'Royal',desc:'A golden crown and regal wing-cape.'},
+    cyber:{name:'Cyber',desc:'A glowing visor and circuit-trace markings.'},
+  },
+  Snake:{
+    cowboy:{name:'Cowboy',desc:'A wide-brim hat and a red bandana.'},
+    scholar:{name:'Scholar',desc:'Round spectacles and a neat bowtie.'},
+  },
+  Horse:{
+    racer:{name:'Racer',desc:'A racing helmet and tinted goggles.'},
+    viking:{name:'Viking',desc:'A horned helm and a fur mantle.'},
+  },
+  Goat:{
+    hippie:{name:'Hippie',desc:'A flowery headband and round shades.'},
+    business:{name:'Business',desc:'Sleek glasses and a sharp necktie.'},
+  },
+  Monkey:{
+    dj:{name:'DJ',desc:'Big headphones and a backwards cap.'},
+    explorer:{name:'Explorer',desc:'A safari hat and an adventurer\'s scarf.'},
+  },
+  Rooster:{
+    astronaut:{name:'Astronaut',desc:'A transparent visor helmet and a white spacesuit collar.'},
+    punk:{name:'Punk',desc:'A spiked mohawk and a studded collar.'},
+  },
+  Dog:{
+    detective:{name:'Detective',desc:'A deerstalker cap and a magnifying glass.'},
+    superhero:{name:'Superhero',desc:'A masked cowl and a flowing cape.'},
+  },
+  Pig:{
+    sumo:{name:'Sumo',desc:'A topknot and a ceremonial belt.'},
+    beach:{name:'Beach',desc:'Cool sunglasses and a tropical lei.'},
+  },
+};
+const ZODIAC_TITLES={
+  // Titles are zodiac-agnostic name prefixes; "ultimate" can apply to any zodiac.
+  ultimate:{name:'Ultimate',desc:'A title reserved for the most dedicated.'},
+  shadow:{name:'Shadow',desc:'A title earned by the swift and unseen.'},
+  radiant:{name:'Radiant',desc:'A title that shines above the rest.'},
+};
+// SVG accessory overlays, drawn in the same 0-0-100-100 viewBox as the base zodiac shape.
+// Appended on top of the existing shape — no new sprite assets needed.
+const ZODIAC_SKIN_OVERLAYS={
+  Rat:{
+    police:`
+      <path d="M28 19 C28 11 72 11 72 19 L74 27 C74 29 26 29 26 27 Z" fill="#2b3a55"/>
+      <ellipse cx="50" cy="28" rx="24" ry="3" fill="#1d2940"/>
+      <circle cx="50" cy="18" r="3" fill="#fbbf24"/>
+      <path d="M30 78 L70 78 L66 88 L34 88 Z" fill="#2b3a55" opacity=".9"/>
+    `,
+    ninja:`
+      <path d="M18 30 C30 22 70 22 82 30 L78 38 C64 32 36 32 22 38 Z" fill="#1f2430"/>
+      <path d="M82 30 L96 26 L86 36 Z" fill="#1f2430"/>
+      <rect x="34" y="44" width="32" height="8" rx="2" fill="#1f2430"/>
+    `,
+  },
+  Ox:{
+    farmer:`
+      <ellipse cx="50" cy="24" rx="30" ry="8" fill="#d9a25b"/>
+      <ellipse cx="50" cy="20" rx="16" ry="7" fill="#e6b873"/>
+      <path d="M30 70 L34 86 L42 86 L40 72 Z" fill="#5b7fb5"/>
+      <path d="M70 70 L66 86 L58 86 L60 72 Z" fill="#5b7fb5"/>
+      <rect x="40" y="68" width="20" height="6" fill="#5b7fb5"/>
+    `,
+    knight:`
+      <path d="M28 26 C28 14 72 14 72 26 L72 40 C72 48 28 48 28 40 Z" fill="#9aa5b1"/>
+      <rect x="40" y="38" width="20" height="6" fill="#5b6470"/>
+      <ellipse cx="50" cy="68" rx="22" ry="16" fill="#b8c2cc" opacity=".6"/>
+      <path d="M50 8 L46 16 L54 16 Z" fill="#fbbf24"/>
+    `,
+  },
+  Tiger:{
+    samurai:`
+      <path d="M22 20 C40 12 60 12 78 20 L76 28 C60 22 40 22 24 28 Z" fill="#b91c1c"/>
+      <path d="M76 28 L92 24 L84 34 Z" fill="#b91c1c"/>
+      <path d="M22 58 C14 56 12 50 16 44 C22 50 26 54 32 58 Z" fill="#7c2d12"/>
+      <path d="M78 58 C86 56 88 50 84 44 C78 50 74 54 68 58 Z" fill="#7c2d12"/>
+    `,
+    pirate:`
+      <path d="M24 18 C40 8 60 8 76 18 L72 30 C58 24 42 24 28 30 Z" fill="#1f2430"/>
+      <circle cx="50" cy="18" r="3" fill="#f4f4f5"/>
+      <ellipse cx="62" cy="46" rx="9" ry="7" fill="#1f2430"/>
+      <path d="M53 44 L71 48" stroke="#1f2430" stroke-width="2" fill="none"/>
+    `,
+  },
+  Rabbit:{
+    wizard:`
+      <path d="M50 4 L66 38 C58 34 42 34 34 38 Z" fill="#6d28d9"/>
+      <circle cx="50" cy="8" r="3" fill="#fbbf24"/>
+      <ellipse cx="50" cy="38" rx="18" ry="4" fill="#6d28d9"/>
+      <circle cx="44" cy="22" r="1.5" fill="#fde047"/><circle cx="56" cy="28" r="1.5" fill="#fde047"/>
+    `,
+    chef:`
+      <path d="M34 24 C34 10 66 10 66 24 C70 22 74 28 70 32 C66 36 34 36 30 32 C26 28 30 22 34 24 Z" fill="#f8fafc"/>
+      <rect x="38" y="70" width="24" height="14" rx="2" fill="#f8fafc" opacity=".9"/>
+      <rect x="38" y="70" width="24" height="3" fill="#cbd5e1"/>
+    `,
+  },
+  Dragon:{
+    royal:`
+      <path d="M30 22 L38 32 L50 18 L62 32 L70 22 L66 36 L34 36 Z" fill="#fbbf24"/>
+      <circle cx="38" cy="30" r="2.5" fill="#ef4444"/><circle cx="50" cy="22" r="2.5" fill="#3b82f6"/><circle cx="62" cy="30" r="2.5" fill="#ef4444"/>
+      <path d="M22 60 C14 70 14 84 24 90 L30 78 Z" fill="#7c2d12" opacity=".85"/>
+      <path d="M78 60 C86 70 86 84 76 90 L70 78 Z" fill="#7c2d12" opacity=".85"/>
+    `,
+    cyber:`
+      <path d="M30 44 C40 40 60 40 70 44 L70 52 C60 48 40 48 30 52 Z" fill="#22d3ee" opacity=".8"/>
+      <circle cx="38" cy="48" r="2" fill="#0ea5e9"/><circle cx="62" cy="48" r="2" fill="#0ea5e9"/>
+      <path d="M20 64 L34 64 M66 64 L80 64 M50 78 L50 88" stroke="#22d3ee" stroke-width="2" fill="none" opacity=".8"/>
+    `,
+  },
+  Snake:{
+    cowboy:`
+      <path d="M40 14 C40 6 72 6 72 14 C82 14 82 24 70 24 L40 24 C32 24 32 14 40 14 Z" fill="#a16207"/>
+      <ellipse cx="56" cy="24" rx="20" ry="3" fill="#854d0e"/>
+      <path d="M64 40 C70 38 76 42 74 48 C68 46 64 44 62 40 Z" fill="#dc2626"/>
+    `,
+    scholar:`
+      <ellipse cx="48" cy="32" rx="9" ry="8" fill="none" stroke="#374151" stroke-width="2.5"/>
+      <ellipse cx="68" cy="28" rx="9" ry="8" fill="none" stroke="#374151" stroke-width="2.5"/>
+      <path d="M57 30 L59 28" stroke="#374151" stroke-width="2.5" fill="none"/>
+      <path d="M46 70 L54 76 L46 82 Z M62 70 L54 76 L62 82 Z" fill="#7c2d12"/>
+    `,
+  },
+  Horse:{
+    racer:`
+      <path d="M28 24 C28 12 76 12 76 26 C76 34 70 38 60 36 L40 36 C30 38 28 32 28 24 Z" fill="#dc2626"/>
+      <ellipse cx="51" cy="44" rx="22" ry="9" fill="none" stroke="#1f2430" stroke-width="3"/>
+      <circle cx="40" cy="44" r="1.5" fill="#1f2430"/><circle cx="64" cy="42" r="1.5" fill="#1f2430"/>
+    `,
+    viking:`
+      <path d="M32 24 C32 12 68 12 68 24 L68 32 C68 38 32 38 32 32 Z" fill="#9aa5b1"/>
+      <path d="M30 22 C20 14 12 16 10 24 C18 26 26 28 32 30 Z" fill="#f8fafc"/>
+      <path d="M70 22 C80 14 88 16 90 24 C82 26 74 28 68 30 Z" fill="#f8fafc"/>
+      <ellipse cx="51" cy="68" rx="20" ry="14" fill="#92400e" opacity=".4"/>
+    `,
+  },
+  Goat:{
+    hippie:`
+      <path d="M22 26 C22 18 78 18 78 26 L76 32 C58 28 42 28 24 32 Z" fill="#16a34a"/>
+      <circle cx="34" cy="29" r="2.5" fill="#fbbf24"/><circle cx="50" cy="27" r="2.5" fill="#ef4444"/><circle cx="66" cy="29" r="2.5" fill="#3b82f6"/>
+      <ellipse cx="40" cy="48" rx="9" ry="7" fill="none" stroke="#1f2430" stroke-width="2.5"/>
+      <ellipse cx="60" cy="48" rx="9" ry="7" fill="none" stroke="#1f2430" stroke-width="2.5"/>
+      <path d="M49 48 L51 48" stroke="#1f2430" stroke-width="2.5"/>
+    `,
+    business:`
+      <ellipse cx="40" cy="48" rx="8" ry="7" fill="none" stroke="#374151" stroke-width="2.5"/>
+      <ellipse cx="60" cy="48" rx="8" ry="7" fill="none" stroke="#374151" stroke-width="2.5"/>
+      <path d="M48 48 L52 48" stroke="#374151" stroke-width="2.5"/>
+      <path d="M46 74 L54 74 L51 90 L49 90 Z" fill="#1e3a8a"/>
+    `,
+  },
+  Monkey:{
+    dj:`
+      <path d="M22 32 C22 14 78 14 78 32" fill="none" stroke="#1f2430" stroke-width="6"/>
+      <ellipse cx="22" cy="38" rx="8" ry="10" fill="#1f2430"/><ellipse cx="78" cy="38" rx="8" ry="10" fill="#1f2430"/>
+      <ellipse cx="22" cy="38" rx="4" ry="6" fill="#22d3ee"/><ellipse cx="78" cy="38" rx="4" ry="6" fill="#22d3ee"/>
+      <path d="M34 22 C34 10 66 10 66 22 C66 26 34 26 34 22 Z" fill="#1f2430"/>
+    `,
+    explorer:`
+      <path d="M22 30 C22 16 78 16 78 30 C78 36 22 36 22 30 Z" fill="#a16207"/>
+      <ellipse cx="50" cy="30" rx="30" ry="5" fill="#854d0e"/>
+      <path d="M30 70 C40 76 60 76 70 70 L66 80 C56 84 44 84 34 80 Z" fill="#16a34a"/>
+    `,
+  },
+  Rooster:{
+    astronaut:`
+      <circle cx="74" cy="38" r="18" fill="none" stroke="#bcd9ff" stroke-width="2.5" opacity=".85"/>
+      <path d="M62 32 A18 18 0 0 1 86 32" fill="#bcd9ff" opacity=".25"/>
+      <path class="body" d="M40 70 C50 64 62 64 70 70 L70 84 C60 90 48 90 38 84 Z" opacity=".9" fill="#f4f6fb"/>
+      <circle cx="54" cy="76" r="3" fill="#94a3b8"/>
+    `,
+    punk:`
+      <path d="M50 6 L58 30 L50 26 L42 30 Z" fill="#ec4899"/>
+      <path d="M50 6 L56 26 L50 24 L44 26 Z" fill="#f9a8d4"/>
+      <circle cx="34" cy="60" r="2.5" fill="#1f2430"/><circle cx="42" cy="64" r="2.5" fill="#1f2430"/><circle cx="50" cy="66" r="2.5" fill="#1f2430"/><circle cx="58" cy="64" r="2.5" fill="#1f2430"/>
+    `,
+  },
+  Dog:{
+    detective:`
+      <path d="M28 26 C28 14 72 14 72 26 L72 34 C72 40 28 40 28 34 Z" fill="#92400e"/>
+      <ellipse cx="50" cy="26" rx="22" ry="5" fill="#78350f"/>
+      <path d="M20 28 L28 30 L20 36 Z M80 28 L72 30 L80 36 Z" fill="#92400e"/>
+      <circle cx="50" cy="64" r="10" fill="none" stroke="#9aa5b1" stroke-width="3"/>
+      <path d="M58 71 L66 79" stroke="#9aa5b1" stroke-width="3"/>
+    `,
+    superhero:`
+      <path d="M34 42 C34 32 66 32 66 42 L62 52 C56 48 44 48 38 52 Z" fill="#1d4ed8"/>
+      <circle cx="44" cy="46" r="2" fill="#1f2430"/><circle cx="56" cy="46" r="2" fill="#1f2430"/>
+      <path d="M28 50 C16 56 12 72 20 84 L34 70 Z M72 50 C84 56 88 72 80 84 L66 70 Z" fill="#dc2626" opacity=".85"/>
+    `,
+  },
+  Pig:{
+    sumo:`
+      <ellipse cx="50" cy="22" rx="10" ry="8" fill="#1f2430"/>
+      <path d="M44 18 C42 12 58 12 56 18 Z" fill="#1f2430"/>
+      <rect x="34" y="74" width="32" height="6" fill="#f8fafc"/>
+      <circle cx="50" cy="77" r="2.5" fill="#dc2626"/>
+    `,
+    beach:`
+      <ellipse cx="38" cy="46" rx="9" ry="6" fill="none" stroke="#1f2430" stroke-width="2.5"/>
+      <ellipse cx="62" cy="46" rx="9" ry="6" fill="none" stroke="#1f2430" stroke-width="2.5"/>
+      <path d="M47 46 L53 46" stroke="#1f2430" stroke-width="2.5"/>
+      <circle cx="30" cy="64" r="4" fill="#f472b6"/><circle cx="70" cy="64" r="4" fill="#fbbf24"/><circle cx="50" cy="70" r="4" fill="#34d399"/>
+    `,
+  },
+};
+
+function getZodiacSkinOverlay(zodiacName,skinId){return ZODIAC_SKIN_OVERLAYS[zodiacName]?.[skinId]||'';}
+// Render a zodiac sprite with its currently-equipped skin overlay (if any) applied on top.
+function getSoulZodiacSpriteWithSkin(zodiacName,size){
+  size=size||48;
+  const shape=ZODIAC_SVG_SHAPES[zodiacName];
+  if(!shape)return getZodiac(zodiacName)?.emoji||'👻';
+  const skinId=G.selectedSkin?.[zodiacName];
+  const overlay=skinId?getZodiacSkinOverlay(zodiacName,skinId):'';
+  return `<span class="zsvg zt0 z-${zodiacName.toLowerCase()}" style="width:${size}px;height:${size}px;"><svg viewBox="0 0 100 100">${shape}${overlay}</svg></span>`;
+}
+// Build the full display name for a Soul Zodiac, e.g. "Ultimate Rat (11)(5)"
+function getSoulZodiacDisplayName(zodiacName){
+  const titleSel=G.selectedTitle?.[zodiacName];
+  const skinSel=G.selectedSkin?.[zodiacName];
+  const titleLv=titleSel?(G.zodiacTitles?.[zodiacName]?.[titleSel]||0):0;
+  const skinLv=skinSel?(G.zodiacSkins?.[zodiacName]?.[skinSel]||0):0;
+  const titleName=titleSel?(ZODIAC_TITLES[titleSel]?.name||''):'';
+  let display=titleName?`${titleName} ${zodiacName}`:zodiacName;
+  const suffixes=[];
+  if(titleSel&&titleLv>0)suffixes.push(`(${titleLv})`);
+  if(skinSel&&skinLv>0)suffixes.push(`(${skinLv})`);
+  if(suffixes.length)display+=` ${suffixes.join('')}`;
+  return display;
+}
+// Consume one Skin/Title token -> +1 level on that variant for the given zodiac
+function consumeZodiacSkin(zodiacName,skinId){
+  if(!G.zodiacSkinTokens?.[zodiacName]?.[skinId]||G.zodiacSkinTokens[zodiacName][skinId]<=0){
+    toast('No tokens of this Skin to consume!','er');return;
+  }
+  G.zodiacSkinTokens[zodiacName][skinId]--;
+  if(!G.zodiacSkins[zodiacName])G.zodiacSkins[zodiacName]={};
+  G.zodiacSkins[zodiacName][skinId]=(G.zodiacSkins[zodiacName][skinId]||0)+1;
+  save();
+  const z=getZodiac(zodiacName);
+  toast(`${z?.emoji||''} ${ZODIAC_SKINS[zodiacName]?.[skinId]?.name||skinId} skin for ${zodiacName} is now Lv.${G.zodiacSkins[zodiacName][skinId]}!`,'ok');
+}
+function consumeZodiacTitle(zodiacName,titleId){
+  if(!G.zodiacTitleTokens?.[zodiacName]?.[titleId]||G.zodiacTitleTokens[zodiacName][titleId]<=0){
+    toast('No tokens of this Title to consume!','er');return;
+  }
+  G.zodiacTitleTokens[zodiacName][titleId]--;
+  if(!G.zodiacTitles[zodiacName])G.zodiacTitles[zodiacName]={};
+  G.zodiacTitles[zodiacName][titleId]=(G.zodiacTitles[zodiacName][titleId]||0)+1;
+  save();
+  const z=getZodiac(zodiacName);
+  toast(`${z?.emoji||''} "${ZODIAC_TITLES[titleId]?.name||titleId}" title for ${zodiacName} is now Lv.${G.zodiacTitles[zodiacName][titleId]}!`,'ok');
+}
+function selectZodiacSkin(zodiacName,skinId){
+  if(!G.zodiacSkins?.[zodiacName]?.[skinId]){toast("You don't own this skin yet!",'er');return;}
+  if(!G.selectedSkin)G.selectedSkin={};
+  G.selectedSkin[zodiacName]=G.selectedSkin[zodiacName]===skinId?null:skinId; // toggle off if already selected
+  save();
+  toast(G.selectedSkin[zodiacName]?`✅ ${ZODIAC_SKINS[zodiacName]?.[skinId]?.name} skin equipped for ${zodiacName}!`:'Skin unequipped.','ok');
+}
+function selectZodiacTitle(zodiacName,titleId){
+  if(!G.zodiacTitles?.[zodiacName]?.[titleId]){toast("You don't own this title yet!",'er');return;}
+  if(!G.selectedTitle)G.selectedTitle={};
+  G.selectedTitle[zodiacName]=G.selectedTitle[zodiacName]===titleId?null:titleId; // toggle off if already selected
+  save();
+  toast(G.selectedTitle[zodiacName]?`✅ "${ZODIAC_TITLES[titleId]?.name}" title equipped for ${zodiacName}!`:'Title unequipped.','ok');
+}
+function openZodiacCosmetics(zodiacName){
+  G._cosmeticsZodiac=zodiacName;
+  openM('mZodiacCosmetics');
+  renderZodiacCosmetics();
+}
+function renderZodiacCosmetics(){
+  const zodiacName=G._cosmeticsZodiac;if(!zodiacName)return;
+  const body=document.getElementById('zodiacCosmeticsBody');if(!body)return;
+  const z=getZodiac(zodiacName);
+  const title=document.getElementById('zodiacCosmeticsTitle');
+  if(title)title.textContent=`🎨 ${zodiacName} — Skins & Titles`;
+  // Skins
+  const skinVariants=ZODIAC_SKINS[zodiacName]||{};
+  let skinsHtml='';
+  Object.entries(skinVariants).forEach(([id,info])=>{
+    const owned=G.zodiacSkins?.[zodiacName]?.[id]||0;
+    const tokens=G.zodiacSkinTokens?.[zodiacName]?.[id]||0;
+    const isSelected=G.selectedSkin?.[zodiacName]===id;
+    if(!owned&&!tokens)return;
+    skinsHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${isSelected?'rgba(245,158,11,.1)':'rgba(28,38,56,.6)'};border:1px solid ${isSelected?'var(--acc)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:5px;">
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:700;">${escHtml(info.name)} ${owned?`<span style="color:var(--txt2);font-weight:400;">Lv.${owned}</span>`:''}</div>
+        <div style="font-size:9px;color:var(--txt2);">${escHtml(info.desc)}</div>
+        ${tokens>0?`<div style="font-size:9px;color:#e879f9;">${tokens} token${tokens===1?'':'s'} to consume</div>`:''}
+      </div>
+      ${tokens>0?`<button class="btn bs bblk" style="font-size:9px;padding:4px 8px;" onclick="consumeZodiacSkin('${zodiacName}','${id}');renderZodiacCosmetics()">Use</button>`:''}
+      ${owned?`<button class="btn ${isSelected?'bd':'bs'} bblk" style="font-size:9px;padding:4px 8px;" onclick="selectZodiacSkin('${zodiacName}','${id}');renderZodiacCosmetics()">${isSelected?'Unequip':'Equip'}</button>`:''}
+    </div>`;
+  });
+  // Titles
+  let titlesHtml='';
+  Object.entries(ZODIAC_TITLES).forEach(([id,info])=>{
+    const owned=G.zodiacTitles?.[zodiacName]?.[id]||0;
+    const tokens=G.zodiacTitleTokens?.[zodiacName]?.[id]||0;
+    const isSelected=G.selectedTitle?.[zodiacName]===id;
+    if(!owned&&!tokens)return;
+    titlesHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${isSelected?'rgba(245,158,11,.1)':'rgba(28,38,56,.6)'};border:1px solid ${isSelected?'var(--acc)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:5px;">
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:700;">"${escHtml(info.name)}" ${owned?`<span style="color:var(--txt2);font-weight:400;">Lv.${owned}</span>`:''}</div>
+        <div style="font-size:9px;color:var(--txt2);">${escHtml(info.desc)}</div>
+        ${tokens>0?`<div style="font-size:9px;color:#e879f9;">${tokens} token${tokens===1?'':'s'} to consume</div>`:''}
+      </div>
+      ${tokens>0?`<button class="btn bs bblk" style="font-size:9px;padding:4px 8px;" onclick="consumeZodiacTitle('${zodiacName}','${id}');renderZodiacCosmetics()">Use</button>`:''}
+      ${owned?`<button class="btn ${isSelected?'bd':'bs'} bblk" style="font-size:9px;padding:4px 8px;" onclick="selectZodiacTitle('${zodiacName}','${id}');renderZodiacCosmetics()">${isSelected?'Unequip':'Equip'}</button>`:''}
+    </div>`;
+  });
+  body.innerHTML=`
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="margin-bottom:6px;">${getSoulZodiacSpriteWithSkin(zodiacName,64)}</div>
+      <div style="font-size:14px;font-weight:700;">${escHtml(getSoulZodiacDisplayName(zodiacName))}</div>
+    </div>
+    ${skinsHtml?`<div style="font-size:10px;font-weight:700;margin-bottom:6px;">👕 Skins</div>${skinsHtml}`:''}
+    ${titlesHtml?`<div style="font-size:10px;font-weight:700;margin:10px 0 6px;">🏷️ Titles</div>${titlesHtml}`:''}
+    ${!skinsHtml&&!titlesHtml?'<div style="text-align:center;color:var(--txt2);padding:14px;font-size:10px;">No skins or titles yet for this Soul Zodiac. Win them in leaderboard events!</div>':''}
+  `;
+}
+// Award a random Skin or Title token (used by leaderboard distribution and GM grants)
+function awardRandomZodiacCosmetic(type){
+  const zodiacNames=ZODIACS.map(z=>z.name);
+  const catalog=type==='skin'?ZODIAC_SKINS:ZODIAC_TITLES;
+  // For skins, only zodiacs with at least one defined skin variant are eligible
+  const eligibleZodiacs=type==='skin'?zodiacNames.filter(n=>ZODIAC_SKINS[n]&&Object.keys(ZODIAC_SKINS[n]).length):zodiacNames;
+  if(!eligibleZodiacs.length)return null;
+  const zodiacName=eligibleZodiacs[Math.floor(Math.random()*eligibleZodiacs.length)];
+  const variantIds=type==='skin'?Object.keys(ZODIAC_SKINS[zodiacName]):Object.keys(ZODIAC_TITLES);
+  const variantId=variantIds[Math.floor(Math.random()*variantIds.length)];
+  const store=type==='skin'?'zodiacSkinTokens':'zodiacTitleTokens';
+  if(!G[store])G[store]={};
+  if(!G[store][zodiacName])G[store][zodiacName]={};
+  G[store][zodiacName][variantId]=(G[store][zodiacName][variantId]||0)+1;
+  save();
+  const z=getZodiac(zodiacName);
+  const variantName=type==='skin'?ZODIAC_SKINS[zodiacName][variantId].name:ZODIAC_TITLES[variantId].name;
+  toast(`🎉 ${type==='skin'?'Skin':'Title'} obtained: ${z?.emoji||''} ${variantName} ${zodiacName}!`,'ok');
+  return{zodiacName,variantId,type};
+}
+
 // 5-stage evolutions
 const EVOLUTIONS={
   Rat:[{emoji:'🐀',name:'Rat'},{emoji:'🐁',name:'Mouse Knight'},{emoji:'👑🐀',name:'Rat Emperor'},{emoji:'⚡🐀',name:'Thunder Rat'},{emoji:'🌟🐀',name:'Cosmic Rat'},{emoji:'👑⚡🐀',name:'Rat Overlord'},{emoji:'🌌🐀',name:'Cosmic Rat Ascendant'}],
@@ -2116,7 +2560,7 @@ const DEF=()=>({
   ultCharge:{},playerBuffs:{},enemySkillQueue:null,
   enemyPhase:0,enemyShield:false,enemyImmune:null,
   expeditions:{},expKeys:0,
-  towerFloor:0,towerActive:false,
+  towerFloor:0,towerActive:false,_soulAwardedThisAscension:false,
   bossRushActive:false,bossRushFloor:0,
   stars:0,currentArea:'meadow',areaProgress:{},
   prestigeShop:{goldFindBonus:0,xpBonus:0,critBonus:0,atkBonus:0,defBonus:0,hpBonus:0,starBonus:0,eqDropBonus:0},prestigeShopBought:{},
@@ -5488,7 +5932,8 @@ function init(){
   const loaded=load();
   if(!loaded){['Rat','Tiger','Dragon'].forEach(n=>unlockOrUpgrade(n,'Normal'));G.party=['Rat','Tiger','Dragon'];G.active='Rat';}
   if(!G.roster[G.active]||!G.party.includes(G.active))G.active=G.party[0]||Object.keys(G.roster)[0]||'Rat';
-  ['mastery','ultCharge','formation','nicknames','playerStatus','enemyStatus','playerBuffs','fightDmg','evoStage','prestigeStars','expeditions','mythicalStacks','skillTree','skillPoints','areaProgress'].forEach(k=>{if(!G[k])G[k]={};});
+  ['mastery','ultCharge','formation','nicknames','playerStatus','enemyStatus','playerBuffs','fightDmg','evoStage','prestigeStars','expeditions','mythicalStacks','skillTree','skillPoints','areaProgress','soulZodiacs','zodiacSkins','zodiacTitles','zodiacSkinTokens','zodiacTitleTokens','selectedSkin','selectedTitle'].forEach(k=>{if(!G[k])G[k]={};});
+  if(!G._soulSanctuaryStart)G._soulSanctuaryStart=Date.now();
   G.ultCharge={};
   if(!G.equipment)G.equipment=[];
   if(!G.stars)G.stars=0;
@@ -8172,6 +8617,13 @@ function isTowerHealDisabled(){return isTowerVariant('ironman')||_towerDebuffs.s
 
 function applyTowerFloorRewards(floor){
   if(!G.towerActive||floor===0||floor%10!==0||G._captureMode)return;
+  // Soul Zodiac drop: exactly 1 soul per ascension, awarded the first time this
+  // ascension's climb crosses the unlock floor (default 5000, GM-overridable).
+  if(!G._soulAwardedThisAscension&&floor>=getSoulUnlockFloor()){
+    G._soulAwardedThisAscension=true;
+    const soulName=awardRandomSoul();
+    addLog('rewards','👻 Soul obtained: '+(getZodiac(soulName)?.emoji||'')+' '+soulName,'Floor '+floor);
+  }
   if(isTowerVariant('buff')){
     const b=TOWER_BUFFS[Math.floor(Math.random()*TOWER_BUFFS.length)];
     _towerBuffs.push(b);
@@ -10270,11 +10722,83 @@ function fbUID(){return (window.FB?.auth?.currentUser?.uid)||(window._fbUser?.ui
 function fbName(){const u=window.FB?.auth?.currentUser||window._fbUser;return u?.displayName||u?.email||'Anonymous';}
 function fbAvatar(){const u=window.FB?.auth?.currentUser||window._fbUser;return u?.photoURL||null;}
 
+// ── MODERATION (bans, mutes) ────────────────────────────────────────────────────
+let _myModeration=null; // cached from players/{uid}.moderation
+let _globalMute=null;   // cached from server/globalMute
+async function checkMyModerationStatus(){
+  if(!fbReady())return;
+  try{
+    const {db,doc,getDoc}=window.FB;
+    const [pSnap,gSnap]=await Promise.all([
+      getDoc(doc(db,'players',fbUID())),
+      getDoc(doc(db,'server','globalMute')),
+    ]);
+    _myModeration=pSnap.exists()?(pSnap.data().moderation||null):null;
+    _globalMute=gSnap.exists()?gSnap.data():null;
+    if(isBanned()){
+      const m=_myModeration;
+      const msg=m.bannedUntil?`You are timed out until ${new Date(m.bannedUntil).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}.`:'You have been permanently banned.';
+      toast(`🚫 ${msg}`,'er');
+    }
+  }catch(e){}
+}
+function isBanned(){
+  if(!_myModeration)return false;
+  if(_myModeration.banned)return true; // permanent
+  if(_myModeration.bannedUntil&&Date.now()<_myModeration.bannedUntil)return true;
+  return false;
+}
+function getBanInfo(){
+  if(!_myModeration)return null;
+  if(_myModeration.banned)return{permanent:true};
+  if(_myModeration.bannedUntil&&Date.now()<_myModeration.bannedUntil)return{permanent:false,until:_myModeration.bannedUntil};
+  return null;
+}
+// scope: 'world' | 'faction' | 'trade'
+function isMuted(scope){
+  if(_globalMute&&_globalMute.chatMutedUntil&&Date.now()<_globalMute.chatMutedUntil&&scope!=='trade')return true;
+  if(!_myModeration)return false;
+  const field={world:'muteWorldChatUntil',faction:'muteFactionChatUntil',trade:'muteTradeUntil'}[scope];
+  if(!field)return false;
+  return !!(_myModeration[field]&&Date.now()<_myModeration[field]);
+}
+function getMuteUntil(scope){
+  if(_globalMute&&_globalMute.chatMutedUntil&&Date.now()<_globalMute.chatMutedUntil&&scope!=='trade')return _globalMute.chatMutedUntil;
+  if(!_myModeration)return null;
+  const field={world:'muteWorldChatUntil',faction:'muteFactionChatUntil',trade:'muteTradeUntil'}[scope];
+  return _myModeration?.[field]||null;
+}
+// Centralized gate for online actions (PvP, trading, Boss Trials, factions, etc.)
+// Returns true if allowed; shows a clear ban message and returns false otherwise.
+function _onlineActionAllowed(){
+  if(!isBanned())return true;
+  const info=getBanInfo();
+  if(info.permanent)toast('🚫 Your account has been permanently banned from online features.','er');
+  else toast(`🚫 You are timed out from online features until ${new Date(info.until).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}.`,'er');
+  return false;
+}
+// Simple client-side chat rate limit: 1 message per 2 seconds across all channels.
+// (Defense-in-depth UX guard — real abuse protection belongs in Firestore/RTDB rules.)
+let _lastChatSendAt=0;
+const CHAT_RATE_LIMIT_MS=2000;
+function _chatRateLimitOk(){
+  const now=Date.now();
+  if(now-_lastChatSendAt<CHAT_RATE_LIMIT_MS){
+    toast('Slow down! Wait a moment before sending another message.','er');
+    return false;
+  }
+  _lastChatSendAt=now;
+  return true;
+}
+
 // ── Sign-in callbacks ─────────────────────────────────────────────────────────
 window._onFBSignIn = function(user){
   // Update hub Online section badges
   const sub=document.getElementById('hubMPSub');
   if(sub)sub.textContent=user.displayName||'Online';
+  checkMyModerationStatus();
+  checkFriendRequests();
+  _loadBlockedUids();
   // Wait for auth token to be fully propagated before syncing
   setTimeout(()=>syncSaveToCloud(),3000);
   const profSub=document.getElementById('hubProfileSub');
@@ -10313,6 +10837,9 @@ async function syncSaveToCloud(){
       pvpPoints: G._pvpPoints || 0,
       avatar: fbAvatar() || '',
       lastSeen: serverTimestamp(),
+      soulZodiac: G.activeSoulZodiac || null,
+      soulZodiacLevels: Object.fromEntries(Object.entries(G.soulZodiacs||{}).map(([k,v])=>[k,v.level||0])),
+      ascEssence: G._ascEssence||0,
     }, {merge: true});
     // Also write the full save blob so loadFromCloud() can restore it
     const s={...G};
@@ -10330,6 +10857,798 @@ async function syncSaveToCloud(){
     if(window._manualSync) alert('SDK Error:\nCode: '+e.code+'\nMsg: '+e.message+'\nUID: '+uid+'\n\nIf permission-denied with open rules:\nGo to Firebase Console → App Check → disable enforcement for Firestore');
   }
 }
+
+// ── SOUL ZODIACS (Online endgame) ──────────────────────────────────────────────
+const SOUL_UNLOCK_FLOOR=5000;
+let _soulUnlockOverride=null; // {floor, expiresAt} - GM-set temporary reduction
+function getSoulUnlockFloor(){
+  if(_soulUnlockOverride&&Date.now()<_soulUnlockOverride.expiresAt)return _soulUnlockOverride.floor;
+  return SOUL_UNLOCK_FLOOR;
+}
+async function checkSoulUnlockOverride(){
+  if(!window.FB)return;
+  try{
+    const {db,doc,getDoc}=window.FB;
+    const snap=await getDoc(doc(db,'server','soulUnlockConfig'));
+    if(!snap.exists())return;
+    const cfg=snap.data();
+    if(cfg.floor&&cfg.expiresAt&&Date.now()<cfg.expiresAt){
+      _soulUnlockOverride={floor:cfg.floor,expiresAt:cfg.expiresAt};
+      if(cfg.floor<SOUL_UNLOCK_FLOOR)toast(`👻 LIMITED TIME: Soul Zodiacs unlock at Tower Floor ${cfg.floor}!`,'ok');
+    }else{
+      _soulUnlockOverride=null;
+    }
+  }catch(e){}
+}
+function isSoulZodiacsUnlocked(){return(G.towerBestFloor||0)>=getSoulUnlockFloor();}
+function openSoulZodiacs(){
+  if(!isSoulZodiacsUnlocked()){
+    toast(`👻 Reach Tower Floor ${getSoulUnlockFloor()} to unlock Soul Zodiacs!`,'er');
+    return;
+  }
+  renderSoulZodiacs();
+  openM('mSoulZodiacs');
+}
+function renderSoulZodiacs(){
+  const body=document.getElementById('soulZodiacsBody');if(!body)return;
+  const active=G.activeSoulZodiac||null;
+  body.innerHTML=`
+    <div style="text-align:center;font-size:11px;color:var(--txt2);margin-bottom:10px;">
+      Select one Soul Zodiac to bring into online events. Spend Souls to permanently level up a Soul Zodiac's stats — its passive stays the same at every level. Unused Souls of other types can be traded.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      ${ZODIACS.map(z=>{
+        const sd=G.soulZodiacs[z.name]||{level:0,souls:0};
+        const lv=sd.level||0;
+        const stats=lv>0?getSoulZodiacStats(z.name,lv):null;
+        const passive=SOUL_PASSIVES[z.name];
+        const isActive=active===z.name;
+        const hasAny=lv>0;
+        const displayName=getSoulZodiacDisplayName(z.name);
+        const hasCosmetics=Object.values(G.zodiacSkins?.[z.name]||{}).some(l=>l>0)||Object.values(G.zodiacTitles?.[z.name]||{}).some(l=>l>0)
+          ||Object.values(G.zodiacSkinTokens?.[z.name]||{}).some(c=>c>0)||Object.values(G.zodiacTitleTokens?.[z.name]||{}).some(c=>c>0);
+        return `<div style="background:${isActive?'rgba(245,158,11,.12)':'rgba(28,38,56,.6)'};border:1px solid ${isActive?'var(--acc)':'rgba(71,85,105,.3)'};border-radius:10px;padding:10px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="font-size:22px;">${z.emoji}</span>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:12px;">${escHtml(displayName)}${isActive?' <span style="color:var(--acc);">★</span>':''}</div>
+              <div style="font-size:9px;color:var(--txt2);">${hasAny?`Lv.${lv}`:'Not obtained'}</div>
+            </div>
+          </div>
+          ${hasAny?`<div style="font-size:9px;color:var(--txt2);margin-bottom:4px;">HP ${stats.hp} · ATK ${stats.atk} · DEF ${stats.def} · SPD ${stats.spd}</div>`:''}
+          <div style="font-size:10px;font-weight:700;color:var(--acc);margin-bottom:2px;">${passive.name}</div>
+          <div style="font-size:9px;color:var(--txt2);margin-bottom:8px;">${passive.desc}</div>
+          <div style="display:flex;gap:4px;margin-bottom:4px;">
+            ${hasAny?`<button class="btn ${isActive?'bd':'bs'} bblk" style="flex:1;font-size:10px;padding:6px;" onclick="selectSoulZodiac('${z.name}')" ${isActive?'disabled':''}>${isActive?'Selected':'Select'}</button>`:''}
+            <button class="btn bs bblk" style="flex:1;font-size:10px;padding:6px;" onclick="consumeSoul('${z.name}')" ${sd.souls>0?'':'disabled'}>💀 Use Soul (${sd.souls||0})</button>
+            <button class="btn bs bblk" style="flex:0 0 auto;font-size:10px;padding:6px 8px;" onclick="openSoulZodiacLeaderboard('${z.name}')">🏆</button>
+          </div>
+          ${hasCosmetics?`<button class="btn bs bblk" style="width:100%;font-size:10px;padding:6px;" onclick="openZodiacCosmetics('${z.name}')">🎨 Skins & Titles</button>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+async function openSoulZodiacLeaderboard(zodiacName){
+  const z=getZodiac(zodiacName);
+  openM('mSoulZodiacLB');
+  const body=document.getElementById('soulZodiacLBBody');
+  const title=document.getElementById('soulZodiacLBTitle');
+  if(title)title.textContent=`${z?.emoji||'👻'} ${zodiacName} Rankings`;
+  if(!body)return;
+  if(!window.FB){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see rankings</div>';return;}
+  body.innerHTML='<div style="text-align:center;padding:20px;">Loading...</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs}=window.FB;
+    const field=`soulZodiacLevels.${zodiacName}`;
+    const q=query(collection(db,'players'),orderBy(field,'desc'),limit(50));
+    const snap=await getDocs(q);
+    const players=[];
+    snap.forEach(d=>{
+      const data=d.data();
+      const lv=data.soulZodiacLevels?.[zodiacName]||0;
+      if(lv>0)players.push({id:d.id,...data,_lv:lv});
+    });
+    if(!players.length){body.innerHTML=`<div style="text-align:center;padding:20px;color:var(--txt2);">No players have leveled up a ${zodiacName} Soul Zodiac yet. Be the first!</div>`;return;}
+    const myUID=fbUID();
+    let html='';
+    players.forEach((p,i)=>{
+      const isMe=p.id===myUID;
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+        background:${isMe?'rgba(245,158,11,.1)':'rgba(28,38,56,.5)'};
+        border:1px solid ${isMe?'rgba(245,158,11,.4)':'rgba(71,85,105,.2)'};
+        border-radius:8px;margin-bottom:4px;">
+        <span style="font-size:14px;min-width:24px;">${medal}</span>
+        ${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">`:`<span style="font-size:20px;">${z?.emoji||'👻'}</span>`}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isMe?'var(--acc)':'var(--txt)'};">${isMe?'⭐ ':''}${p.name||'Anonymous'}</div>
+          ${p.soulZodiac===zodiacName?'<div style="font-size:9px;color:#e879f9;">★ Active</div>':''}
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--acc);">Lv.${p._lv}</div>
+      </div>`;
+    });
+    body.innerHTML=html;
+  }catch(e){
+    if(e.code==='permission-denied'){body.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt2);font-size:11px;">🔒 Permission error — make sure Firestore rules are published.</div>';}
+    else if(e.code==='failed-precondition'){body.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt2);font-size:11px;">⚠️ This ranking needs a Firestore index. Check the browser console for a link to create it.</div>';}
+    else{body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+  }
+}
+async function openBossTrialLeaderboard(){
+  openM('mSoulZodiacLB');
+  const body=document.getElementById('soulZodiacLBBody');
+  const title=document.getElementById('soulZodiacLBTitle');
+  if(title)title.textContent='⚔️ Boss Trials — Top Damage';
+  if(!body)return;
+  if(!window.FB){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see rankings</div>';return;}
+  body.innerHTML='<div style="text-align:center;padding:20px;">Loading...</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs}=window.FB;
+    const q=query(collection(db,'players'),orderBy('bossTrialDamage','desc'),limit(50));
+    const snap=await getDocs(q);
+    const players=[];
+    snap.forEach(d=>{
+      const data=d.data();
+      if((data.bossTrialDamage||0)>0)players.push({id:d.id,...data});
+    });
+    if(!players.length){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">No Boss Trial damage recorded yet. Be the first!</div>';return;}
+    const myUID=fbUID();
+    let html='<div style="font-size:10px;color:var(--txt2);margin-bottom:8px;text-align:center;">Lifetime damage dealt across all Boss Trials</div>';
+    players.forEach((p,i)=>{
+      const isMe=p.id===myUID;
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+      const z=getZodiac(p.soulZodiac);
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+        background:${isMe?'rgba(245,158,11,.1)':'rgba(28,38,56,.5)'};
+        border:1px solid ${isMe?'rgba(245,158,11,.4)':'rgba(71,85,105,.2)'};
+        border-radius:8px;margin-bottom:4px;">
+        <span style="font-size:14px;min-width:24px;">${medal}</span>
+        ${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">`:`<span style="font-size:20px;">${z?.emoji||'⚔️'}</span>`}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isMe?'var(--acc)':'var(--txt)'};">${isMe?'⭐ ':''}${escHtml(p.name||'Anonymous')}</div>
+          <div style="font-size:9px;color:var(--txt2);">🏆 ${fmt(p.bossTrialBosses||0)} bosses defeated</div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--acc);">${fmt(p.bossTrialDamage||0)}</div>
+      </div>`;
+    });
+    body.innerHTML=html;
+  }catch(e){
+    if(e.code==='permission-denied'){body.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt2);font-size:11px;">🔒 Permission error — make sure Firestore rules are published.</div>';}
+    else if(e.code==='failed-precondition'){body.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt2);font-size:11px;">⚠️ This ranking needs a Firestore index. Check the browser console for a link to create it.</div>';}
+    else{body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+  }
+}
+function selectSoulZodiac(name){
+  if(!(G.soulZodiacs[name]&&G.soulZodiacs[name].level>0)){toast("You don't have this Soul Zodiac yet!",'er');return;}
+  G.activeSoulZodiac=name;save();renderSoulZodiacs();
+  toast(`👻 ${name} selected for online events!`,'ok');
+}
+function consumeSoul(name){
+  const sd=G.soulZodiacs[name];
+  if(!sd||!(sd.souls>0)){toast('No Souls of this type to use!','er');return;}
+  sd.souls--;
+  sd.level=(sd.level||0)+1;
+  save();renderSoulZodiacs();
+  const z=getZodiac(name);
+  toast(`${z?.emoji||'👻'} ${name} Soul consumed! Now Lv.${sd.level}`,'ok');
+}
+// Award a random Soul (called on Tower floor 5000+ clears, or offline accumulation)
+function awardRandomSoul(){
+  const names=ZODIACS.map(z=>z.name);
+  const name=names[Math.floor(Math.random()*names.length)];
+  if(!G.soulZodiacs[name])G.soulZodiacs[name]={level:0,souls:0};
+  G.soulZodiacs[name].souls=(G.soulZodiacs[name].souls||0)+1;
+  save();
+  const z=getZodiac(name);
+  toast(`👻 Soul obtained: ${z?.emoji||''} ${name}!`,'ok');
+  return name;
+}
+
+// ── OFFLINE SOUL SANCTUARY ──────────────────────────────────────────────────────
+// Passively accumulates Souls while the player is away. Rate: 1 Soul per hour,
+// capped at 12 hours banked (12 Souls max). Essence can be spent to instantly add
+// hours to the bank at a flat cost (an Essence sink), same unit as passive time —
+// still capped at 12 hours.
+const SOUL_SANCTUARY_RATE_MS=60*60*1000;       // 1 soul per hour
+const SOUL_SANCTUARY_CAP_HOURS=12;             // cap: 12 hours banked = 12 souls
+const SOUL_SANCTUARY_CAP_MS=SOUL_SANCTUARY_CAP_HOURS*SOUL_SANCTUARY_RATE_MS;
+const SOUL_SANCTUARY_SPEEDUP_COST=10; // essence cost per hour added
+
+function _getSanctuaryBankedMs(){
+  if(!G._soulSanctuaryStart)G._soulSanctuaryStart=Date.now();
+  const elapsed=Date.now()-G._soulSanctuaryStart;
+  return Math.min(elapsed,SOUL_SANCTUARY_CAP_MS);
+}
+function openSoulSanctuary(){
+  if(!isSoulZodiacsUnlocked()){
+    toast(`👻 Reach Tower Floor ${getSoulUnlockFloor()} to unlock the Soul Sanctuary!`,'er');
+    return;
+  }
+  renderSoulSanctuary();
+  openM('mSoulSanctuary');
+}
+function renderSoulSanctuary(){
+  const body=document.getElementById('soulSanctuaryBody');if(!body)return;
+  const banked=_getSanctuaryBankedMs();
+  const readySouls=Math.floor(banked/SOUL_SANCTUARY_RATE_MS);
+  const atCap=banked>=SOUL_SANCTUARY_CAP_MS;
+  const pct=Math.min(100,Math.floor(banked/SOUL_SANCTUARY_CAP_MS*100));
+  const remainMs=SOUL_SANCTUARY_CAP_MS-banked;
+  const remainHrs=Math.floor(remainMs/3600000);const remainMins=Math.floor((remainMs%3600000)/60000);
+  const essence=getAscEssence();
+  const hoursToFill=Math.ceil(remainMs/SOUL_SANCTUARY_RATE_MS);
+  const costToFill=hoursToFill*SOUL_SANCTUARY_SPEEDUP_COST;
+  body.innerHTML=`
+    <div style="text-align:center;margin-bottom:10px;">
+      <div style="font-size:36px;">⏳👻</div>
+      <div style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;font-weight:700;margin-top:4px;">Soul Sanctuary</div>
+      <div class="t2 ts" style="font-size:10px;">Passively gathers Souls while you're away — 1 Soul per hour, up to 12 hours (12 Souls max).</div>
+    </div>
+    <div style="background:rgba(28,38,56,.6);border-radius:10px;padding:10px;margin-bottom:10px;">
+      <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-bottom:6px;">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#a78bfa,#e879f9);border-radius:4px;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt2);">
+        <span>👻 ${readySouls}/${SOUL_SANCTUARY_CAP_HOURS} Souls ready</span>
+        <span>${atCap?'Bank full!':`+1 Soul in ${Math.max(0,Math.ceil((SOUL_SANCTUARY_RATE_MS-(banked%SOUL_SANCTUARY_RATE_MS))/60000))}m`}</span>
+      </div>
+    </div>
+    <button class="btn bp" style="width:100%;margin-bottom:8px;" onclick="claimSanctuarySouls()" ${readySouls>0?'':'disabled'}>👻 Claim ${readySouls} Soul${readySouls===1?'':'s'}</button>
+    <div style="background:rgba(232,121,249,.08);border:1px solid rgba(232,121,249,.2);border-radius:10px;padding:10px;">
+      <div style="font-size:11px;font-weight:700;color:#e879f9;margin-bottom:4px;">💎 Speed Up with Essence</div>
+      <div style="font-size:9px;color:var(--txt2);margin-bottom:8px;">Spend 💎${SOUL_SANCTUARY_SPEEDUP_COST} Essence per hour to instantly add time to the bank (up to the 12h cap). Your Essence: 💎${fmt(essence)}</div>
+      <button class="btn bs bblk" style="width:100%;font-size:11px;" onclick="speedUpSanctuary()" ${atCap?'disabled':''}>
+        ${atCap?'Bank already full!':`💎${fmt(costToFill)} — Fill remaining ${remainHrs}h ${remainMins}m`}
+      </button>
+    </div>`;
+}
+function claimSanctuarySouls(){
+  const banked=_getSanctuaryBankedMs();
+  const readySouls=Math.floor(banked/SOUL_SANCTUARY_RATE_MS);
+  if(readySouls<=0){toast('No Souls ready to claim yet!','er');return;}
+  for(let i=0;i<readySouls;i++)awardRandomSoul();
+  // Reset the bank, keeping any leftover partial progress
+  G._soulSanctuaryStart=Date.now()-(banked%SOUL_SANCTUARY_RATE_MS);
+  save();renderSoulSanctuary();
+}
+function speedUpSanctuary(){
+  const banked=_getSanctuaryBankedMs();
+  const remainMs=SOUL_SANCTUARY_CAP_MS-banked;
+  if(remainMs<=0){toast('Sanctuary bank is already full!','er');return;}
+  const hoursToFill=Math.ceil(remainMs/SOUL_SANCTUARY_RATE_MS);
+  const cost=hoursToFill*SOUL_SANCTUARY_SPEEDUP_COST;
+  if(getAscEssence()<cost){toast(`Need 💎${fmt(cost)} Essence to fill the Sanctuary!`,'er');return;}
+  G._ascEssence=(G._ascEssence||0)-cost;
+  // Add the purchased hours to the bank, capped at SOUL_SANCTUARY_CAP_MS
+  const addedMs=hoursToFill*SOUL_SANCTUARY_RATE_MS;
+  G._soulSanctuaryStart=Math.max(Date.now()-SOUL_SANCTUARY_CAP_MS,(G._soulSanctuaryStart||Date.now())-addedMs);
+  save();updateHdr();renderSoulSanctuary();
+  toast(`💎 Sanctuary sped up! -${fmt(cost)} Essence`,'ok');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BOSS TRIALS — 1-3 player co-op Soul Zodiac team fights
+// ══════════════════════════════════════════════════════════════════════════════
+const BOSS_TRIAL_BASE={hp:50,maxHp:50,atk:10,def:5,spd:10};
+const BOSS_TRIAL_MAX_ROUNDS=60; // safety cap so a stalemate can't loop forever
+
+// Build a "fighter" object for one lobby member from their active Soul Zodiac
+function _bossTrialFighter(member){
+  const sd=member.soulZodiacLevel||1;
+  const stats=getSoulZodiacStats(member.soulZodiac,sd);
+  const passive=SOUL_PASSIVES[member.soulZodiac];
+  return{uid:member.uid,name:member.name,zodiac:member.soulZodiac,level:sd,
+    stats,passiveId:member.soulZodiac,passiveName:passive?.name||'',dmgDealt:0};
+}
+
+// Run a full Boss Trial simulation: 1-3 fighters vs. a chain of doubling bosses.
+// Returns {events:[...], bossesDefeated, totalDamage, perPlayerDamage:{uid:dmg}, victory(bool, team survived to cap)}
+function runBossTrialSimulation(fighters){
+  const events=[];
+  const team={hp:0,maxHp:0};
+  fighters.forEach(f=>{team.maxHp+=f.stats.hp;});
+  team.hp=team.maxHp;
+  let bossLevel=1;
+  let boss={...BOSS_TRIAL_BASE};
+  events.push({type:'start',fighters:fighters.map(f=>({name:f.name,zodiac:f.zodiac,level:f.level,passive:f.passiveName})),teamMaxHp:team.maxHp,boss:{...boss},bossLevel});
+  let bossesDefeated=0;
+  const perPlayerDamage={};
+  fighters.forEach(f=>perPlayerDamage[f.uid]=0);
+
+  // Count passives present (stacking allowed)
+  const countPassive=id=>fighters.filter(f=>f.passiveId===id).length;
+  const dragonCount=countPassive('Dragon');   // +20% team ATK each
+  const tigerCount=countPassive('Tiger');     // +10% crit chance / +20% crit dmg each
+  const rabbitCount=countPassive('Rabbit');   // +20% reward (handled outside sim)
+  const horseCount=countPassive('Horse');     // +20% team SPD each (extra round chance)
+  const roosterCount=countPassive('Rooster'); // +20% ult charge/turn (translated to +dmg here)
+  const dogCount=countPassive('Dog');         // +20% team DEF each
+  const oxCount=countPassive('Ox');           // -20% crit dmg taken each
+
+  const atkMult=1+dragonCount*0.20+roosterCount*0.20;
+  const defMult=1+dogCount*0.20;
+  const critChance=Math.min(0.9,tigerCount*0.10);
+  const critDmgMult=1+tigerCount*0.20;
+  const critTakenReduction=Math.min(0.9,oxCount*0.20);
+
+  let round=0;
+  while(round<BOSS_TRIAL_MAX_ROUNDS){
+    round++;
+    // ── Team attacks boss ──
+    let teamAtk=0;fighters.forEach(f=>teamAtk+=f.stats.atk);
+    teamAtk=Math.floor(teamAtk*atkMult);
+    let dmgToBoss=Math.max(1,teamAtk-Math.floor(boss.def*0.5));
+    let crit=false;
+    if(critChance>0&&Math.random()<critChance){crit=true;dmgToBoss=Math.floor(dmgToBoss*critDmgMult);}
+    // Snake: each Snake fighter has independent 20% chance to stun the boss this round
+    let bossStunned=false;
+    fighters.forEach(f=>{if(f.passiveId==='Snake'&&Math.random()<0.20)bossStunned=true;});
+    // Pig: each Pig fighter has 20% chance to shield the team for 20% of team max HP
+    let shieldGained=0;
+    fighters.forEach(f=>{if(f.passiveId==='Pig'&&Math.random()<0.20)shieldGained+=Math.floor(team.maxHp*0.20);});
+    // Monkey: each Monkey fighter has 20% chance the team dodges the boss's attack entirely
+    let dodged=false;
+    fighters.forEach(f=>{if(f.passiveId==='Monkey'&&Math.random()<0.20)dodged=true;});
+
+    boss.hp-=dmgToBoss;
+    // Attribute damage proportionally to each fighter's share of team ATK
+    fighters.forEach(f=>{
+      const share=teamAtk>0?(f.stats.atk*atkMult)/teamAtk:1/fighters.length;
+      const d=Math.floor(dmgToBoss*share);
+      perPlayerDamage[f.uid]+=d;f.dmgDealt+=d;
+    });
+    events.push({type:'attack',round,dmg:dmgToBoss,crit,bossHp:Math.max(0,boss.hp),bossMaxHp:boss.maxHp});
+    if(shieldGained>0){team.hp=Math.min(team.maxHp+shieldGained,team.hp+shieldGained);events.push({type:'shield',round,amount:shieldGained});}
+
+    // Rat: each 5th round, team attacks again for free (independent extra-attack per Rat fighter, capped)
+    fighters.forEach(f=>{
+      if(f.passiveId==='Rat'&&round%5===0&&boss.hp>0){
+        let extraDmg=Math.max(1,Math.floor(f.stats.atk*atkMult)-Math.floor(boss.def*0.5));
+        boss.hp-=extraDmg;perPlayerDamage[f.uid]+=extraDmg;f.dmgDealt+=extraDmg;
+        events.push({type:'extra_attack',round,name:f.name,dmg:extraDmg,bossHp:Math.max(0,boss.hp),bossMaxHp:boss.maxHp});
+      }
+    });
+
+    // Horse: each Horse fighter gives the team a 20% chance of an extra full-team attack this round
+    let horseExtraRounds=0;
+    for(let i=0;i<horseCount;i++)if(Math.random()<0.20)horseExtraRounds++;
+    for(let h=0;h<horseExtraRounds&&boss.hp>0;h++){
+      let extraDmg=Math.max(1,teamAtk-Math.floor(boss.def*0.5));
+      boss.hp-=extraDmg;
+      fighters.forEach(f=>{
+        const share=teamAtk>0?(f.stats.atk*atkMult)/teamAtk:1/fighters.length;
+        const d=Math.floor(extraDmg*share);perPlayerDamage[f.uid]+=d;f.dmgDealt+=d;
+      });
+      events.push({type:'stampede',round,dmg:extraDmg,bossHp:Math.max(0,boss.hp),bossMaxHp:boss.maxHp});
+    }
+
+    // Boss defeated?
+    if(boss.hp<=0){
+      bossesDefeated++;
+      events.push({type:'boss_defeated',round,bossLevel});
+      bossLevel++;
+      boss={hp:BOSS_TRIAL_BASE.hp*Math.pow(2,bossLevel-1),maxHp:BOSS_TRIAL_BASE.hp*Math.pow(2,bossLevel-1),
+            atk:BOSS_TRIAL_BASE.atk*Math.pow(2,bossLevel-1),def:BOSS_TRIAL_BASE.def*Math.pow(2,bossLevel-1),spd:BOSS_TRIAL_BASE.spd*Math.pow(2,bossLevel-1)};
+      events.push({type:'new_boss',bossLevel,boss:{...boss}});
+      continue; // boss doesn't get to attack the round it dies
+    }
+
+    // ── Boss attacks team (unless stunned or dodged) ──
+    if(bossStunned){
+      events.push({type:'stun',round});
+    }else if(dodged){
+      events.push({type:'dodge',round});
+    }else{
+      let dmgToTeam=Math.max(1,boss.atk-Math.floor((teamAvgDef(fighters)*defMult)*0.5));
+      let bossCrit=Math.random()<0.15;
+      if(bossCrit){
+        dmgToTeam=Math.floor(dmgToTeam*1.5);
+        if(critTakenReduction>0)dmgToTeam=Math.floor(dmgToTeam*(1-critTakenReduction));
+      }
+      team.hp-=dmgToTeam;
+      events.push({type:'boss_attack',round,dmg:dmgToTeam,crit:bossCrit,teamHp:Math.max(0,team.hp),teamMaxHp:team.maxHp});
+    }
+
+    // Goat: team heals 4% of max HP per Goat fighter, every round
+    const goatCount=countPassive('Goat');
+    if(goatCount>0&&team.hp>0&&team.hp<team.maxHp){
+      const healAmt=Math.floor(team.maxHp*0.04*goatCount);
+      const before=team.hp;
+      team.hp=Math.min(team.maxHp,team.hp+healAmt);
+      if(team.hp>before)events.push({type:'heal',round,amount:team.hp-before,teamHp:team.hp,teamMaxHp:team.maxHp});
+    }
+
+    // Team wiped?
+    if(team.hp<=0){
+      events.push({type:'team_wiped',round});
+      break;
+    }
+  }
+  const teamWiped=team.hp<=0;
+  events.push({type:'end',bossesDefeated,teamHp:Math.max(0,team.hp),teamMaxHp:team.maxHp,rounds:round,teamWiped});
+  return{events,bossesDefeated,perPlayerDamage,totalDamage:Object.values(perPlayerDamage).reduce((a,b)=>a+b,0),teamWiped,rounds:round};
+}
+function teamAvgDef(fighters){
+  if(!fighters.length)return 0;
+  return Math.floor(fighters.reduce((s,f)=>s+f.stats.def,0)/fighters.length);
+}
+
+// ── BOSS TRIALS LOBBY MANAGEMENT ────────────────────────────────────────────────
+const BOSS_TRIAL_LOBBY_STALE_MS=90000; // ~90s without a ping = considered gone
+let _bossTrialLobbyId=null;
+let _bossTrialHeartbeatIv=null;
+let _bossTrialListenerUnsub=null;
+
+function _myBossTrialMember(){
+  if(!fbReady())return null;
+  if(!G.activeSoulZodiac||!(G.soulZodiacs?.[G.activeSoulZodiac]?.level>0)){return null;}
+  return{
+    uid:fbUID(),name:G.playerName||fbName()||'Anonymous',avatar:fbAvatar()||'',
+    soulZodiac:G.activeSoulZodiac,soulZodiacLevel:G.soulZodiacs[G.activeSoulZodiac].level||1,
+    lastPing:Date.now(),
+  };
+}
+
+async function openBossTrials(){
+  if(!isSoulZodiacsUnlocked()){toast(`👻 Reach Tower Floor ${getSoulUnlockFloor()} to unlock Boss Trials!`,'er');return;}
+  if(!fbReady()){toast('Sign in to join Boss Trials!','er');return;}
+  if(!_onlineActionAllowed())return;
+  if(!G.activeSoulZodiac||!(G.soulZodiacs?.[G.activeSoulZodiac]?.level>0)){toast('Select a Soul Zodiac first!','er');return;}
+  openM('mBossTrials');
+  renderBossTrialsLobbyBrowser();
+}
+
+async function renderBossTrialsLobbyBrowser(){
+  const body=document.getElementById('bossTrialsBody');if(!body)return;
+  // If already in a lobby, show that lobby directly
+  if(_bossTrialLobbyId){renderBossTrialLobby();return;}
+  body.innerHTML='<div style="text-align:center;padding:16px;">Loading lobbies...</div>';
+  try{
+    const {db,collection,query,where,orderBy,limit,getDocs}=window.FB;
+    const q=query(collection(db,'bossTrials'),where('status','==','waiting'),orderBy('createdAt','asc'),limit(10));
+    const snap=await getDocs(q);
+    const lobbies=[];
+    snap.forEach(d=>{
+      const data=d.data();
+      const fresh=(data.members||[]).filter(m=>Date.now()-(m.lastPing||0)<BOSS_TRIAL_LOBBY_STALE_MS);
+      lobbies.push({id:d.id,...data,freshMembers:fresh});
+    });
+    body.innerHTML=`
+      <div style="text-align:center;font-size:11px;color:var(--txt2);margin-bottom:10px;">
+        Bring your active Soul Zodiac into a 1-3 player co-op fight against a chain of doubling bosses. Damage dealt counts toward the leaderboard!
+      </div>
+      <button class="btn bp" style="width:100%;margin-bottom:6px;" onclick="autoMatchBossTrial()">⚔️ Find / Create Lobby</button>
+      <button class="btn bs bblk" style="width:100%;margin-bottom:10px;" onclick="openBossTrialLeaderboard()">🏆 Leaderboard</button>
+      ${lobbies.length?`<div style="font-size:10px;color:var(--txt2);margin-bottom:6px;">Open lobbies:</div>`:''}
+      ${lobbies.map(l=>`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;margin-bottom:5px;">
+        <span style="font-size:18px;">👻</span>
+        <div style="flex:1;font-size:11px;">${escHtml(l.members?.[0]?.name||'Someone')}'s Lobby <span style="color:var(--txt2);">(${l.freshMembers.length}/3)</span></div>
+        <button class="btn bs bblk" style="font-size:9px;padding:4px 8px;" onclick="joinBossTrialLobby('${l.id}')">Join</button>
+      </div>`).join('')}
+      ${!lobbies.length?'<div style="text-align:center;color:var(--txt2);padding:10px;font-size:10px;">No open lobbies. Create one!</div>':''}
+    `;
+  }catch(e){
+    body.innerHTML=`<div style="color:#ef4444;font-size:10px;padding:10px;">Error: ${e.message}</div>`;
+  }
+}
+
+// Auto-match: join the oldest open lobby with space, or create a new one (capped at 10 open lobbies)
+async function autoMatchBossTrial(){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  const me=_myBossTrialMember();
+  if(!me){toast('Select a Soul Zodiac first!','er');return;}
+  try{
+    const cfg=await _getBossTrialConfig();
+    const maxLobbies=cfg.maxOpenLobbies||10;
+    const {db,collection,query,where,orderBy,limit,getDocs,doc,runTransaction,serverTimestamp}=window.FB;
+    const q=query(collection(db,'bossTrials'),where('status','==','waiting'),orderBy('createdAt','asc'),limit(maxLobbies));
+    const snap=await getDocs(q);
+    let target=null;let openCount=0;
+    snap.forEach(d=>{
+      const data=d.data();
+      const fresh=(data.members||[]).filter(m=>Date.now()-(m.lastPing||0)<BOSS_TRIAL_LOBBY_STALE_MS);
+      if(fresh.length<3&&!target)target={id:d.id,fresh};
+      openCount++;
+    });
+    if(target){await joinBossTrialLobby(target.id);return;}
+    if(openCount>=maxLobbies){toast('All lobbies are full right now — try again in a moment!','er');return;}
+    // Create a new lobby
+    const ref=doc(collection(db,'bossTrials'));
+    await runTransaction(db,async(tx)=>{
+      tx.set(ref,{leaderUid:me.uid,status:'waiting',members:[me],createdAt:serverTimestamp()});
+    });
+    _bossTrialLobbyId=ref.id;
+    toast('👻 Lobby created! Waiting for more players...','ok');
+    _startBossTrialHeartbeat();
+    _startBossTrialListener();
+    renderBossTrialsLobbyBrowser();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function joinBossTrialLobby(lobbyId){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  const me=_myBossTrialMember();
+  if(!me){toast('Select a Soul Zodiac first!','er');return;}
+  try{
+    const {db,doc,runTransaction}=window.FB;
+    const ref=doc(db,'bossTrials',lobbyId);
+    let joined=false;
+    await runTransaction(db,async(tx)=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists()||snap.data().status!=='waiting')throw new Error('Lobby no longer available');
+      const data=snap.data();
+      let members=(data.members||[]).filter(m=>Date.now()-(m.lastPing||0)<BOSS_TRIAL_LOBBY_STALE_MS);
+      if(members.some(m=>m.uid===me.uid)){joined=true;return;} // already in
+      if(members.length>=3)throw new Error('Lobby is full');
+      members=[...members,me];
+      const updates={members};
+      if(members.length>=3)updates.status='starting';
+      tx.update(ref,updates);
+      joined=true;
+    });
+    if(!joined)return;
+    _bossTrialLobbyId=lobbyId;
+    toast('👻 Joined lobby!','ok');
+    _startBossTrialHeartbeat();
+    _startBossTrialListener();
+    renderBossTrialLobby();
+  }catch(e){toast('Failed: '+e.message,'er');renderBossTrialsLobbyBrowser();}
+}
+
+async function renderBossTrialLobby(){
+  const body=document.getElementById('bossTrialsBody');if(!body)return;
+  if(!_bossTrialLobbyId){renderBossTrialsLobbyBrowser();return;}
+  try{
+    const {db,doc,getDoc}=window.FB;
+    const snap=await getDoc(doc(db,'bossTrials',_bossTrialLobbyId));
+    if(!snap.exists()){_leaveBossTrialCleanup();renderBossTrialsLobbyBrowser();return;}
+    const data=snap.data();
+    if(data.status==='done'){renderBossTrialResult(data);return;}
+    if(data.status==='active'||data.status==='starting'){
+      await _maybeRunBossTrialFight(data);return;
+    }
+    const fresh=(data.members||[]).filter(m=>Date.now()-(m.lastPing||0)<BOSS_TRIAL_LOBBY_STALE_MS);
+    const isLeader=data.leaderUid===fbUID();
+    body.innerHTML=`
+      <div style="text-align:center;margin-bottom:10px;">
+        <div style="font-size:36px;">👻</div>
+        <div style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;font-weight:700;">Boss Trial Lobby</div>
+        <div class="t2 ts" style="font-size:10px;">${fresh.length}/3 players · waiting for ${isLeader?'more players, or start the fight':'the leader to start'}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+        ${fresh.map(m=>{const z=getZodiac(m.soulZodiac);return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;">
+          <span style="font-size:20px;">${z?.emoji||'👻'}</span>
+          <div style="flex:1;font-size:11px;">${escHtml(m.name)}${m.uid===data.leaderUid?' <span style="color:var(--acc);">★ Leader</span>':''}</div>
+          <div style="font-size:10px;color:var(--txt2);">${m.soulZodiac} Lv.${m.soulZodiacLevel}</div>
+        </div>`;}).join('')}
+      </div>
+      ${isLeader?`<button class="btn bp" style="width:100%;margin-bottom:6px;" onclick="startBossTrialFight()">⚔️ Start Fight (${fresh.length}/3)</button>`:''}
+      <button class="btn bs bblk" style="width:100%;" onclick="leaveBossTrialLobby()">🚪 Leave Lobby</button>
+    `;
+  }catch(e){
+    body.innerHTML=`<div style="color:#ef4444;font-size:10px;padding:10px;">Error: ${e.message}</div>`;
+  }
+}
+
+function _startBossTrialHeartbeat(){
+  if(_bossTrialHeartbeatIv)clearInterval(_bossTrialHeartbeatIv);
+  _bossTrialHeartbeatIv=setInterval(_bossTrialPing,30000);
+}
+async function _bossTrialPing(){
+  if(!_bossTrialLobbyId||!fbReady())return;
+  try{
+    const {db,doc,runTransaction}=window.FB;
+    const ref=doc(db,'bossTrials',_bossTrialLobbyId);
+    await runTransaction(db,async(tx)=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists())return;
+      const data=snap.data();
+      if(data.status!=='waiting')return;
+      const myUid=fbUID();
+      let members=(data.members||[]).map(m=>m.uid===myUid?{...m,lastPing:Date.now()}:m);
+      // Drop stale members and reassign leader if needed
+      const fresh=members.filter(m=>m.uid===myUid||Date.now()-(m.lastPing||0)<BOSS_TRIAL_LOBBY_STALE_MS);
+      if(!fresh.length){tx.delete(ref);return;}
+      let leaderUid=data.leaderUid;
+      if(!fresh.some(m=>m.uid===leaderUid))leaderUid=fresh[0].uid;
+      tx.update(ref,{members:fresh,leaderUid});
+    });
+  }catch(e){/* best-effort */}
+}
+function _startBossTrialListener(){
+  if(_bossTrialListenerUnsub)return;
+  try{
+    const {db,doc,onSnapshot}=window.FB;
+    _bossTrialListenerUnsub=onSnapshot(doc(db,'bossTrials',_bossTrialLobbyId),snap=>{
+      const m=document.getElementById('mBossTrials');
+      if(m&&m.style.display!=='none')renderBossTrialLobby();
+    });
+  }catch(e){}
+}
+function _leaveBossTrialCleanup(){
+  if(_bossTrialHeartbeatIv){clearInterval(_bossTrialHeartbeatIv);_bossTrialHeartbeatIv=null;}
+  if(_bossTrialListenerUnsub){_bossTrialListenerUnsub();_bossTrialListenerUnsub=null;}
+  _bossTrialLobbyId=null;
+}
+async function leaveBossTrialLobby(){
+  if(!_bossTrialLobbyId){_leaveBossTrialCleanup();renderBossTrialsLobbyBrowser();return;}
+  const lobbyId=_bossTrialLobbyId;
+  try{
+    const {db,doc,getDoc,runTransaction}=window.FB;
+    const ref=doc(db,'bossTrials',lobbyId);
+    const snap0=await getDoc(ref);
+    // Once a trial is done (or actively being simulated), just stop watching it locally
+    if(snap0.exists()&&(snap0.data().status==='done'||snap0.data().status==='active'||snap0.data().status==='starting')){
+      _leaveBossTrialCleanup();renderBossTrialsLobbyBrowser();return;
+    }
+    await runTransaction(db,async(tx)=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists())return;
+      const data=snap.data();
+      const myUid=fbUID();
+      const remaining=(data.members||[]).filter(m=>m.uid!==myUid);
+      if(!remaining.length){tx.delete(ref);return;}
+      let leaderUid=data.leaderUid;
+      if(leaderUid===myUid)leaderUid=remaining[0].uid; // promote earliest-joined remaining member
+      tx.update(ref,{members:remaining,leaderUid});
+    });
+    toast('👻 Left the lobby.','ok');
+  }catch(e){}
+  _leaveBossTrialCleanup();
+  renderBossTrialsLobbyBrowser();
+}
+
+async function startBossTrialFight(){
+  if(!_bossTrialLobbyId)return;
+  try{
+    const {db,doc,runTransaction}=window.FB;
+    const ref=doc(db,'bossTrials',_bossTrialLobbyId);
+    await runTransaction(db,async(tx)=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists())throw new Error('Lobby no longer exists');
+      const data=snap.data();
+      if(data.leaderUid!==fbUID())throw new Error('Only the leader can start the fight');
+      if(data.status!=='waiting')return; // already starting/active
+      tx.update(ref,{status:'active'});
+    });
+    renderBossTrialLobby();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// Whoever's client notices status==='active' first claims it (via transaction) and
+// runs the simulation, writing the result for everyone to see.
+async function _maybeRunBossTrialFight(data){
+  const body=document.getElementById('bossTrialsBody');
+  if(body)body.innerHTML='<div style="text-align:center;padding:30px;">⚔️ The fight is starting...</div>';
+  try{
+    const {db,doc,runTransaction,serverTimestamp}=window.FB;
+    const ref=doc(db,'bossTrials',_bossTrialLobbyId);
+    let result=null;let members=null;
+    await runTransaction(db,async(tx)=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists())throw new Error('Lobby no longer exists');
+      const d=snap.data();
+      if(d.status==='done'){result=d.result;members=d.members;return;}
+      if(d.status!=='active'&&d.status!=='starting')return;
+      members=d.members||[];
+      const fighters=members.map(m=>_bossTrialFighter(m));
+      const sim=runBossTrialSimulation(fighters);
+      result=sim;
+      tx.update(ref,{status:'done',result:sim,finishedAt:serverTimestamp()});
+    });
+    if(!result){setTimeout(()=>renderBossTrialLobby(),1000);return;}
+    renderBossTrialResult({members,result});
+  }catch(e){
+    // Another client may have already claimed it — just poll for the result
+    setTimeout(()=>renderBossTrialLobby(),1000);
+  }
+}
+
+let _bossTrialReplayIv=null;
+async function renderBossTrialResult(data){
+  const body=document.getElementById('bossTrialsBody');if(!body)return;
+  if(_bossTrialReplayIv){clearInterval(_bossTrialReplayIv);_bossTrialReplayIv=null;}
+  const result=data.result;const members=data.members||[];
+  const myUid=fbUID();
+  const myDmg=result.perPlayerDamage?.[myUid]||0;
+  body.innerHTML=`
+    <div style="text-align:center;margin-bottom:8px;">
+      <div style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;font-weight:700;">⚔️ Boss Trial</div>
+    </div>
+    <div id="bossTrialReplay" style="background:rgba(28,38,56,.6);border-radius:10px;padding:10px;margin-bottom:10px;min-height:160px;font-size:11px;line-height:1.6;max-height:240px;overflow-y:auto;"></div>
+    <div id="bossTrialReplayBars" style="margin-bottom:10px;"></div>
+    <div id="bossTrialSummary" style="display:none;">
+      <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:10px;margin-bottom:10px;text-align:center;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px;">🏆 ${result.bossesDefeated} Boss${result.bossesDefeated===1?'':'es'} Defeated!</div>
+        <div style="font-size:10px;color:var(--txt2);">Your damage: ${fmt(myDmg)} · Team total: ${fmt(result.totalDamage)}</div>
+        <div id="bossTrialRewardLine" style="font-size:11px;color:#e879f9;margin-top:6px;"></div>
+      </div>
+      <button class="btn bp" style="width:100%;" onclick="leaveBossTrialLobby()">Done</button>
+    </div>
+  `;
+  // Animate the replay
+  const log=document.getElementById('bossTrialReplay');
+  const bars=document.getElementById('bossTrialReplayBars');
+  const events=result.events||[];
+  let idx=0;
+  let bossPct=100,teamPct=100;
+  const renderBars=()=>{
+    bars.innerHTML=`
+      <div style="font-size:9px;color:var(--txt2);margin-bottom:2px;">👹 Boss HP</div>
+      <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-bottom:6px;"><div style="height:100%;width:${bossPct}%;background:linear-gradient(90deg,#991b1b,#ef4444);border-radius:4px;transition:width .3s;"></div></div>
+      <div style="font-size:9px;color:var(--txt2);margin-bottom:2px;">🛡️ Team HP</div>
+      <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${teamPct}%;background:linear-gradient(90deg,#059669,#34d399);border-radius:4px;transition:width .3s;"></div></div>`;
+  };
+  renderBars();
+  const renderEvent=(ev)=>{
+    let line='';
+    switch(ev.type){
+      case'start':line=`<div style="color:var(--acc);font-weight:700;">⚔️ The trial begins! ${ev.fighters.map(f=>`${getZodiac(f.zodiac)?.emoji||'👻'} ${f.name}`).join(', ')}</div>`;break;
+      case'attack':line=`Round ${ev.round}: Team deals ${ev.crit?'<b style="color:#fbbf24;">CRIT </b>':''}<b>${fmt(ev.dmg)}</b> dmg to the boss (${fmt(Math.max(0,ev.bossHp))}/${fmt(ev.bossMaxHp)} HP)`;break;
+      case'extra_attack':line=`<span style="color:#60a5fa;">⚡ ${escHtml(ev.name)}'s Swift Strike triggers! +${fmt(ev.dmg)} dmg</span>`;break;
+      case'stampede':line=`<span style="color:#fb923c;">🐎 Stampede! The team attacks again for ${fmt(ev.dmg)} dmg</span>`;break;
+      case'stun':line=`<span style="color:#a78bfa;">🐍 Venom Coil stuns the boss — it can't attack this round!</span>`;break;
+      case'dodge':line=`<span style="color:#34d399;">🐒 Trickster dodges the boss's attack entirely!</span>`;break;
+      case'shield':line=`<span style="color:#fbbf24;">🐖 Bountiful Feast grants the team a shield (+${fmt(ev.amount)} HP)!</span>`;break;
+      case'boss_attack':line=`Round ${ev.round}: Boss ${ev.crit?'<b style="color:#ef4444;">CRIT </b>':''}deals <b style="color:#ef4444;">${fmt(ev.dmg)}</b> dmg to the team (${fmt(Math.max(0,ev.teamHp))}/${fmt(ev.teamMaxHp)} HP)`;break;
+      case'heal':line=`<span style="color:#10b981;">🐐 Herd Ward heals the team for ${fmt(ev.amount)} HP!</span>`;break;
+      case'boss_defeated':line=`<div style="color:#fbbf24;font-weight:700;">💥 Boss ${ev.bossLevel} defeated!</div>`;break;
+      case'new_boss':line=`<div style="color:#f87171;font-weight:700;">👹 A new boss appears! (Lv.${ev.bossLevel}, ${fmt(ev.boss.hp)} HP)</div>`;break;
+      case'team_wiped':line=`<div style="color:#ef4444;font-weight:700;">💀 The team has fallen...</div>`;break;
+      case'end':line=`<div style="color:var(--acc);font-weight:700;margin-top:4px;">🏁 Trial complete: ${ev.bossesDefeated} bosses defeated in ${ev.rounds} rounds.</div>`;break;
+    }
+    if(line){const div=document.createElement('div');div.innerHTML=line;log.appendChild(div);log.scrollTop=log.scrollHeight;}
+    // Update HP bar percentages based on this event
+    if(ev.bossHp!=null&&ev.bossMaxHp)bossPct=Math.max(0,Math.min(100,Math.floor(ev.bossHp/ev.bossMaxHp*100)));
+    if(ev.type==='new_boss'&&ev.boss)bossPct=100;
+    if(ev.teamHp!=null&&ev.teamMaxHp)teamPct=Math.max(0,Math.min(100,Math.floor(ev.teamHp/ev.teamMaxHp*100)));
+    if(ev.type==='team_wiped')teamPct=0;
+    if(ev.bossHp!=null||ev.teamHp!=null||ev.type==='new_boss'||ev.type==='team_wiped')renderBars();
+  };
+  // Step through events at a fixed pace
+  _bossTrialReplayIv=setInterval(async()=>{
+    if(idx>=events.length){
+      clearInterval(_bossTrialReplayIv);_bossTrialReplayIv=null;
+      // Grant rewards once replay finishes
+      await _grantBossTrialRewards(result,myDmg);
+      const sumEl=document.getElementById('bossTrialSummary');if(sumEl)sumEl.style.display='';
+      return;
+    }
+    renderEvent(events[idx]);idx++;
+  },700);
+}
+
+async function _getBossTrialConfig(){
+  const fallback={essencePerDamage:0.001,victoryBonusEssence:5};
+  if(!window.FB)return fallback;
+  try{
+    const {db,doc,getDoc}=window.FB;
+    const snap=await getDoc(doc(db,'server','bossTrialsConfig'));
+    if(snap.exists())return{...fallback,...snap.data()};
+  }catch(e){}
+  return fallback;
+}
+async function _grantBossTrialRewards(result,myDmg){
+  if(G._lastBossTrialReward===_bossTrialLobbyId)return; // already granted for this lobby
+  G._lastBossTrialReward=_bossTrialLobbyId;
+  const cfg=await _getBossTrialConfig();
+  const essenceEarned=Math.max(1,Math.floor(myDmg*(cfg.essencePerDamage||0.001))+(result.bossesDefeated>0?(cfg.victoryBonusEssence||5):0));
+  G._ascEssence=(G._ascEssence||0)+essenceEarned;
+  G._bossTrialLifetimeDamage=(G._bossTrialLifetimeDamage||0)+myDmg;
+  G._bossTrialLifetimeBosses=(G._bossTrialLifetimeBosses||0)+result.bossesDefeated;
+  save();updateHdr();
+  const line=document.getElementById('bossTrialRewardLine');
+  if(line)line.textContent=`💎 +${fmt(essenceEarned)} Ascension Essence earned!`;
+  _pushActivity('⚔️',`${G.playerName||fbName()||'A player'} defeated ${result.bossesDefeated} boss${result.bossesDefeated===1?'':'es'} in a Boss Trial!`,'#e879f9');
+  // Sync lifetime damage to Firestore for the leaderboard
+  if(fbReady()){
+    try{
+      const {db,doc,setDoc}=window.FB;
+      await setDoc(doc(db,'players',fbUID()),{bossTrialDamage:G._bossTrialLifetimeDamage,bossTrialBosses:G._bossTrialLifetimeBosses},{merge:true});
+    }catch(e){}
+  }
+}
+
 
 async function loadFromCloud(){
   if(!fbReady())return false;
@@ -10359,6 +11678,8 @@ async function loadFromCloud(){
 
 // Auto-sync every 5 minutes when signed in
 setInterval(()=>{if(fbReady())syncSaveToCloud();},5*60*1000);
+// Refresh moderation status (bans/mutes) every 2 minutes so GM actions apply mid-session
+setInterval(()=>{if(fbReady())checkMyModerationStatus();},2*60*1000);
 
 // ── LEADERBOARD ───────────────────────────────────────────────────────────────
 let _lbTab='power';
@@ -10420,7 +11741,7 @@ async function renderLeaderboard(){
         border:1px solid ${isMe?'rgba(245,158,11,.4)':'rgba(71,85,105,.2)'};
         border-radius:8px;margin-bottom:4px;">
         <span style="font-size:14px;min-width:24px;">${medal}</span>
-        ${p.avatar?`<img src="${p.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">`:'<span style="font-size:20px;">🐲</span>'}
+        ${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">`:'<span style="font-size:20px;">🐲</span>'}
         <div style="flex:1;min-width:0;">
           <div style="font-weight:700;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isMe?'var(--acc)':'var(--txt)'};">${isMe?'⭐ ':''} ${p.name||'Anonymous'}</div>
           <div style="font-size:9px;color:var(--txt2);">Tower ${p.towerBest||0} · Asc.${p.ascension||0}</div>
@@ -10459,14 +11780,16 @@ function openChat(){
 
 function _renderChatMsg(msg){
   const box=document.getElementById('chatMessages');if(!box)return;
+  if(isBlocked(msg.uid))return; // hide blocked players' messages
   const isMe=msg.uid===fbUID();
   const div=document.createElement('div');
   div.style.cssText=`display:flex;flex-direction:${isMe?'row-reverse':'row'};align-items:flex-end;gap:6px;`;
   const time=msg.ts?new Date(msg.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'';
+  const nameLine=isMe?escHtml(msg.name||'Anonymous'):`<span style="cursor:pointer;text-decoration:underline dotted;" onclick="showChatUserActions('${msg.uid}','${escHtml(msg.name||'Anonymous')}','${escHtml((msg.text||'').substring(0,100))}')">${escHtml(msg.name||'Anonymous')}</span>`;
   div.innerHTML=`
-    ${msg.avatar?`<img src="${msg.avatar}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;" onerror="this.style.display='none'">`:'<span style="font-size:16px;flex-shrink:0;">🐲</span>'}
+    ${msg.avatar?`<img src="${escAttr(msg.avatar)}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;" onerror="this.style.display='none'">`:'<span style="font-size:16px;flex-shrink:0;">🐲</span>'}
     <div style="max-width:75%;">
-      <div style="font-size:8px;color:var(--txt2);margin-bottom:2px;${isMe?'text-align:right;':''}">${msg.name||'Anonymous'} · ${time}</div>
+      <div style="font-size:8px;color:var(--txt2);margin-bottom:2px;${isMe?'text-align:right;':''}">${nameLine} · ${time}</div>
       <div style="background:${isMe?'rgba(245,158,11,.2)':'rgba(28,38,56,.8)'};border:1px solid ${isMe?'rgba(245,158,11,.3)':'rgba(71,85,105,.3)'};
         border-radius:${isMe?'12px 12px 4px 12px':'12px 12px 12px 4px'};padding:6px 10px;font-size:11px;word-break:break-word;">
         ${escHtml(msg.text||'')}
@@ -10475,15 +11798,42 @@ function _renderChatMsg(msg){
   box.appendChild(div);
   box.scrollTop=box.scrollHeight;
 }
+// Tapping a player's name in chat offers quick moderation actions
+function showChatUserActions(uid,name,messagePreview){
+  if(uid===fbUID())return;
+  const choice=prompt(`${name}\n\nType:\n1 = View Profile\n2 = Block\n3 = Report\n\n(or Cancel)`,'');
+  if(choice==='1')openWorldProfile(uid);
+  else if(choice==='2')blockPlayer(uid,name);
+  else if(choice==='3')reportPlayer(uid,name,`Chat message: "${messagePreview}"`);
+}
+
 
 function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// Strip HTML-significant characters from user-entered text at the point of entry
+// (display names, bios, faction names, etc.) — defense in depth alongside
+// render-time escHtml/escAttr calls, so malicious markup never enters Firestore/RTDB.
+function stripHtmlChars(s){
+  if(!s)return'';
+  return String(s).replace(/[<>&"'`]/g,'').trim();
+}
+// Safely embed a value (typically a URL) inside an HTML attribute like src="...".
+// Escapes quotes/angle-brackets AND rejects dangerous URL schemes (javascript:, data:text/html, etc.)
+function escAttr(s){
+  if(!s)return'';
+  const str=String(s);
+  // Block script-executing URL schemes outright
+  if(/^\s*(javascript|data|vbscript):/i.test(str))return'';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
 async function sendChatMsg(){
   if(!fbReady()){toast('Sign in to chat!','er');return;}
+  if(isMuted('world')){const until=getMuteUntil('world');toast(until?`🔇 You are muted from chat until ${new Date(until).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}.`:'🔇 You are muted from chat.','er');return;}
   const inp=document.getElementById('chatInput');if(!inp)return;
   const text=(inp.value||'').trim();
   if(!text)return;
   if(text.length>120){toast('Max 120 characters','er');return;}
+  if(!_chatRateLimitOk())return;
   inp.value='';
   try{
     const {rtdb,ref,push,rtServerTimestamp}=window.FB;
@@ -10587,14 +11937,16 @@ window._guildChatMsgs = [];
 
 function _appendChatMsg(feed, msg){
   if(!feed)return;
+  if(isBlocked(msg.uid))return; // hide blocked players' messages
   const isMe = msg.uid === fbUID();
   const div = document.createElement('div');
   div.style.cssText = `display:flex;align-items:flex-start;gap:5px;${isMe?'flex-direction:row-reverse;':''}`;
   const time = msg.ts ? new Date(msg.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+  const nameLine=isMe?escHtml(msg.name||'Anon'):`<span style="cursor:pointer;text-decoration:underline dotted;" onclick="showChatUserActions('${msg.uid}','${escHtml(msg.name||'Anon')}','${escHtml((msg.text||'').substring(0,100))}')">${escHtml(msg.name||'Anon')}</span>`;
   div.innerHTML = `
-    ${msg.avatar?`<img src="${msg.avatar}" style="width:20px;height:20px;border-radius:50%;flex-shrink:0;" onerror="this.style.display='none'">`:'<span style="font-size:14px;flex-shrink:0;">🐲</span>'}
+    ${msg.avatar?`<img src="${escAttr(msg.avatar)}" style="width:20px;height:20px;border-radius:50%;flex-shrink:0;" onerror="this.style.display='none'">`:'<span style="font-size:14px;flex-shrink:0;">🐲</span>'}
     <div style="max-width:80%;">
-      <div style="font-size:8px;color:var(--txt2);${isMe?'text-align:right;':''}">${escHtml(msg.name||'Anon')} · ${time}</div>
+      <div style="font-size:8px;color:var(--txt2);${isMe?'text-align:right;':''}">${nameLine} · ${time}</div>
       <div style="background:${isMe?'rgba(245,158,11,.2)':'rgba(28,38,56,.9)'};border:1px solid ${isMe?'rgba(245,158,11,.3)':'rgba(71,85,105,.3)'};
         border-radius:${isMe?'10px 10px 3px 10px':'10px 10px 10px 3px'};padding:5px 8px;font-size:11px;word-break:break-word;">
         ${escHtml(msg.text||'')}
@@ -10654,10 +12006,12 @@ function _startFactionChatListener(factionId){
 
 async function sendWorldChat(){
   if(!fbReady()){toast('Sign in to chat!','er');return;}
+  if(isMuted('world')){const until=getMuteUntil('world');toast(until?`🔇 You are muted from chat until ${new Date(until).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}.`:'🔇 You are muted from chat.','er');return;}
   const inp = document.getElementById('worldChatInput');
   const text = (inp?.value||'').trim();
   if(!text) return;
   if(text.length > 120){toast('Max 120 chars','er');return;}
+  if(!_chatRateLimitOk())return;
   if(inp) inp.value = '';
   try{
     const {rtdb,ref,push} = window.FB;
@@ -10667,9 +12021,12 @@ async function sendWorldChat(){
 
 async function sendFactionChat(){
   if(!fbReady()||!G._factionId){toast('Join a faction first!','er');return;}
+  if(isMuted('faction')){const until=getMuteUntil('faction');toast(until?`🔇 You are muted from faction chat until ${new Date(until).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}.`:'🔇 You are muted from faction chat.','er');return;}
   const inp = document.getElementById('guildChatInput');
   const text = (inp?.value||'').trim();
   if(!text) return;
+  if(text.length>120){toast('Max 120 chars','er');return;}
+  if(!_chatRateLimitOk())return;
   if(inp) inp.value = '';
   try{
     const {rtdb,ref,push} = window.FB;
@@ -10702,7 +12059,7 @@ function openOnlineMode(){
   }
   // Start listeners once signed in
   _startWorldChatListener();
-  setTimeout(()=>{_runFirestoreSetup();_checkGlobalReward();syncSaveToCloud();if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();},2000);
+  setTimeout(()=>{_runFirestoreSetup();_checkGlobalReward();syncSaveToCloud();if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();if(typeof checkSoulUnlockOverride==='function')checkSoulUnlockOverride();},2000);
   if(G._factionId) _startFactionChatListener(G._factionId);
 
   const power = calcPowerRating ? calcPowerRating() : 0;
@@ -10770,7 +12127,7 @@ async function openWorldProfile(uid){
     const guildRankName = GUILD_RANKS?.[p.guildRank||0]?.name||'Recruit';
     body.innerHTML = `
       <div style="text-align:center;padding:16px;background:linear-gradient(180deg,rgba(245,158,11,.08) 0%,transparent 100%);border-radius:12px;margin-bottom:14px;">
-        ${p.avatar?`<img src="${p.avatar}" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--acc);margin-bottom:8px;">`:'<div style="font-size:48px;margin-bottom:8px;">🐲</div>'}
+        ${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--acc);margin-bottom:8px;">`:'<div style="font-size:48px;margin-bottom:8px;">🐲</div>'}
         <div style="font-weight:900;font-size:16px;">${escHtml(p.name||'Anonymous')}</div>
         <div style="font-size:10px;color:var(--txt2);margin-bottom:6px;">${p.isAnonymous?'Guest':'Verified Player'}</div>
         <div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;">
@@ -10799,7 +12156,18 @@ async function openWorldProfile(uid){
         <button class="btn bp" style="font-size:11px;" onclick="openEditProfile()">✏️ Edit Name & Bio</button>
         <button class="btn bs bblk" style="font-size:11px;" onclick="openTitlePicker()">🏷️ Change Title</button>
         <button class="btn bs bblk" style="font-size:11px;" onclick="openReferralPanel()">🎁 Referral Code</button>
-      </div>`:`<button class="btn bs bblk" style="width:100%;font-size:11px;margin-top:4px;" onclick="showGiftPanel('${p.uid||targetUid}','${escHtml(p.name||'?')}')">🎁 Send Gift</button>`}
+        <button class="btn bs bblk" style="font-size:11px;" onclick="openBlockedList()">🔇 Blocked Players</button>
+      </div>`:`<div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;gap:6px;">
+          <button class="btn bs bblk" style="flex:1;font-size:11px;" onclick="sendFriendRequest('${p.uid||targetUid}','${escHtml(p.name||'?')}')">👋 Add Friend</button>
+          <button class="btn bs bblk" style="flex:1;font-size:11px;" onclick="openDM('${p.uid||targetUid}','${escHtml(p.name||'?')}')">💬 Message</button>
+        </div>
+        <button class="btn bs bblk" style="width:100%;font-size:11px;" onclick="showGiftPanel('${p.uid||targetUid}','${escHtml(p.name||'?')}')">🎁 Send Gift</button>
+        <div style="display:flex;gap:6px;">
+          <button class="btn bd bblk" style="flex:1;font-size:10px;" onclick="blockPlayer('${p.uid||targetUid}','${escHtml(p.name||'?')}')">🔇 Block</button>
+          <button class="btn bd bblk" style="flex:1;font-size:10px;" onclick="reportPlayer('${p.uid||targetUid}','${escHtml(p.name||'?')}','Reported from profile')">🚩 Report</button>
+        </div>
+      </div>`}
     `;
   }catch(e){
     console.error('Leaderboard error:',e.code, e.message);
@@ -10813,16 +12181,18 @@ async function openWorldProfile(uid){
 
 async function openEditProfile(){
   if(!fbReady())return;
+  if(!_onlineActionAllowed())return;
   const newName = prompt('Enter your display name (max 20 chars):');
   if(!newName||!newName.trim())return;
-  const trimmed = newName.trim().substring(0,20);
+  const trimmed = stripHtmlChars(newName).substring(0,20);
+  if(!trimmed){toast('Invalid name — please use letters, numbers, or symbols other than <>&"\'`','er');return;}
   const newBio = prompt('Enter a short bio (max 80 chars, optional):',G._playerBio||'');
   try{
     const {auth,updateProfile,db,doc,setDoc} = window.FB;
     await updateProfile(auth.currentUser,{displayName:trimmed});
     const earnedBadges = getEarnedBadges(G).map(b=>({id:b.id,emoji:b.emoji,name:b.name}));
     const activeTitle = getActiveTitle();
-    G.playerName=trimmed;if(newBio!==null)G._playerBio=newBio.trim().substring(0,80);
+    G.playerName=trimmed;if(newBio!==null)G._playerBio=stripHtmlChars(newBio).substring(0,80);
     await setDoc(doc(db,'players',fbUID()),{name:trimmed,bio:G._playerBio||'',badges:earnedBadges,activeTitle:activeTitle?.name||''},{merge:true});
     save();
     toast(`✅ Profile updated!`,'ok');
@@ -10961,7 +12331,7 @@ async function renderFactionMembers(){
       const isMe = m.id === fbUID();
       html += `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${isMe?'rgba(245,158,11,.08)':'rgba(28,38,56,.5)'};border:1px solid ${isMe?'rgba(245,158,11,.3)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:4px;cursor:pointer;" onclick="openWorldProfile('${m.id}')">
         <span style="font-size:11px;color:var(--txt2);min-width:18px;">${i+1}</span>
-        ${m.avatar?`<img src="${m.avatar}" style="width:28px;height:28px;border-radius:50%;">`:'<span style="font-size:20px;">🐲</span>'}
+        ${m.avatar?`<img src="${escAttr(m.avatar)}" style="width:28px;height:28px;border-radius:50%;">`:'<span style="font-size:20px;">🐲</span>'}
         <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${isMe?'⭐ ':''} ${escHtml(m.name||'Anon')}</div>
         <div style="font-size:9px;color:var(--txt2);">⚡${fmt(m.power||0)} · Asc.${m.ascension||0}</div></div>
         ${m.isLeader?'<span style="font-size:10px;">👑</span>':''}
@@ -11048,16 +12418,19 @@ function renderFactionCheckin(){
 
 async function createFaction(){
   if(!fbReady()){toast('Sign in first!','er');return;}
+  if(!_onlineActionAllowed())return;
   const name = prompt('Faction name (max 24 chars):');
   if(!name||!name.trim())return;
+  const cleanName=stripHtmlChars(name).substring(0,24);
+  if(!cleanName){toast('Invalid faction name!','er');return;}
   const emoji = prompt('Faction emoji (1 emoji):')||'🏰';
   const desc = prompt('Short description (max 80 chars):')||'';
   try{
     const {db,collection,addDoc,serverTimestamp} = window.FB;
     const ref = await addDoc(collection(db,'factions'),{
-      name:name.trim().substring(0,24),
+      name:cleanName,
       emoji:emoji.trim().substring(0,2)||'🏰',
-      description:desc.trim().substring(0,80),
+      description:stripHtmlChars(desc).substring(0,80),
       leaderId:fbUID(),leaderName:fbName(),
       memberCount:1,maxMembers:20,level:1,xp:0,
       open:true,bossKills:0,totalCoins:0,
@@ -11166,6 +12539,7 @@ let _pvpOpponent = null;
 
 function openPvpArena(){
   if(!fbReady()){toast('Sign in for PvP!','er');openOnlineMode();return;}
+  if(!_onlineActionAllowed())return;
   const rank = getPvpRank(G._pvpPoints||0);
   const badge = document.getElementById('pvpRankBadge');
   if(badge) badge.textContent = `${rank.emoji} ${rank.name} · ${G._pvpPoints||0} pts`;
@@ -11249,7 +12623,7 @@ async function findPvpOpponent(){
       <div style="padding:12px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:10px;margin-top:8px;">
         <div style="font-weight:700;font-size:11px;margin-bottom:8px;">Opponent Found:</div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          ${_pvpOpponent.avatar?`<img src="${_pvpOpponent.avatar}" style="width:36px;height:36px;border-radius:50%;">`:'<span style="font-size:28px;">🐲</span>'}
+          ${_pvpOpponent.avatar?`<img src="${escAttr(_pvpOpponent.avatar)}" style="width:36px;height:36px;border-radius:50%;">`:'<span style="font-size:28px;">🐲</span>'}
           <div style="flex:1;">
             <div style="font-weight:700;font-size:12px;">${escHtml(_pvpOpponent.name||'Anon')}</div>
             <div style="font-size:9px;color:${oppRank.color};">${oppRank.emoji} ${oppRank.name} · ${_pvpOpponent.pvpPoints||0} pts</div>
@@ -11362,7 +12736,7 @@ async function renderPvpRanking(){
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
       html+=`<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:${isMe?'rgba(245,158,11,.1)':'rgba(28,38,56,.5)'};border:1px solid ${isMe?'rgba(245,158,11,.4)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:3px;">
         <span style="font-size:13px;min-width:22px;">${medal}</span>
-        ${p.avatar?`<img src="${p.avatar}" style="width:26px;height:26px;border-radius:50%;">`:'<span style="font-size:18px;">🐲</span>'}
+        ${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:26px;height:26px;border-radius:50%;">`:'<span style="font-size:18px;">🐲</span>'}
         <div style="flex:1;min-width:0;">
           <div style="font-weight:700;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${isMe?'⭐ ':''} ${escHtml(p.name||'Anon')}</div>
           <div style="font-size:8px;color:${rank.color};">${rank.emoji} ${rank.name}</div>
@@ -11533,6 +12907,8 @@ const PLAYER_BADGES = [
   {id:'pvp_champion',  emoji:'🥇',  name:'PvP Champion',   desc:'Reach Gold PvP rank',            check:g=>(g._pvpPoints||0)>=300},
   {id:'faction_hero',  emoji:'🏰',  name:'Faction Hero',   desc:'Join a faction',                 check:g=>!!g._factionId},
   {id:'eternal_one',   emoji:'♾️',  name:'Eternal',        desc:'Prestige any zodiac 10 times',  check:g=>(g.prestigeCount||0)>=10},
+  {id:'soul_collector',emoji:'👻',  name:'Soul Collector', desc:'Obtain your first Soul',         check:g=>Object.values(g.soulZodiacs||{}).some(s=>(s.souls||0)>0||(s.level||0)>0)},
+  {id:'soul_master',   emoji:'💯',  name:'Soul Master',    desc:'Reach Level 100 on any Soul Zodiac', check:g=>Object.values(g.soulZodiacs||{}).some(s=>(s.level||0)>=100)},
 ];
 
 const ONLINE_TITLES = [
@@ -11546,6 +12922,8 @@ const ONLINE_TITLES = [
   {id:'eternal',    name:'Eternal',       color:'#e879f9', check:g=>(g.ascension||0)>=10},
   {id:'towersenl',  name:'Tower Sentinel',color:'#38bdf8', check:g=>(g.towerBestFloor||0)>=500},
   {id:'godmaster',  name:'God of War',    color:'#ff6b35', check:g=>(g.equipment||[]).filter(e=>e.isGodly).length>=20},
+  {id:'soulbound',  name:'Soulbound',     color:'#c4b5fd', check:g=>(g.activeSoulZodiac&&g.soulZodiacs?.[g.activeSoulZodiac]?.level>=50)},
+  {id:'soulmaster', name:'Soul Master',   color:'#e879f9', check:g=>(g.activeSoulZodiac&&g.soulZodiacs?.[g.activeSoulZodiac]?.level>=100)},
 ];
 
 function getEarnedBadges(gData){
@@ -11557,8 +12935,16 @@ function getEarnedTitles(gData){
 function getActiveTitle(){
   const earned = getEarnedTitles(G);
   const active = G._activeOnlineTitle;
-  if(active){const found=earned.find(t=>t.id===active);if(found)return found;}
-  return earned[earned.length-1]||ONLINE_TITLES[0];
+  let title=null;
+  if(active){const found=earned.find(t=>t.id===active);if(found)title=found;}
+  if(!title)title=earned[earned.length-1]||ONLINE_TITLES[0];
+  // Interpolate Soul Zodiac name into soul-themed titles
+  if((title.id==='soulbound'||title.id==='soulmaster')&&G.activeSoulZodiac){
+    const z=getZodiac(G.activeSoulZodiac);
+    const prefix=title.id==='soulmaster'?`${G.activeSoulZodiac} Master`:`${G.activeSoulZodiac} Adept`;
+    return{...title,name:`${z?.emoji||'👻'} ${prefix}`};
+  }
+  return title;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -11579,7 +12965,7 @@ async function searchPlayer(nameQuery){
       const p=d.data();
       const rank=getPvpRank(p.pvpPoints||0);
       html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.3);border-radius:8px;margin-bottom:5px;cursor:pointer;" onclick="openWorldProfile('${d.id}')">
-        ${p.avatar?`<img src="${p.avatar}" style="width:32px;height:32px;border-radius:50%;">`:'<span style="font-size:22px;">🐲</span>'}
+        ${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:32px;height:32px;border-radius:50%;">`:'<span style="font-size:22px;">🐲</span>'}
         <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${escHtml(p.name||'?')}</div>
         <div style="font-size:9px;color:var(--txt2);">${rank.emoji} ${rank.name} · ⚡${fmt(p.power||0)} · Asc.${p.ascension||0}</div></div>
         <span style="font-size:10px;color:var(--acc);">→</span>
@@ -11605,7 +12991,7 @@ async function renderHallOfFame(){
       getDocs(query(collection(db,'players'),orderBy('wins','desc'),limit(3))),
       getDocs(query(collection(db,'players'),orderBy('ascension','desc'),limit(3))),
     ]);
-    const topList = (snap,field,fmt2)=>{const r=[];snap.forEach(d=>{const p=d.data();r.push(`<div style="display:flex;align-items:center;gap:6px;padding:5px;"><span style="font-size:16px;">${r.length===0?'🥇':r.length===1?'🥈':'🥉'}</span>${p.avatar?`<img src="${p.avatar}" style="width:24px;height:24px;border-radius:50%;">`:'<span>🐲</span>'}<span style="flex:1;font-size:10px;">${escHtml(p.name||'?')}</span><span style="font-size:10px;color:var(--acc);font-weight:700;">${fmt2(p[field]||0)}</span></div>`);});return r.join('');};
+    const topList = (snap,field,fmt2)=>{const r=[];snap.forEach(d=>{const p=d.data();r.push(`<div style="display:flex;align-items:center;gap:6px;padding:5px;"><span style="font-size:16px;">${r.length===0?'🥇':r.length===1?'🥈':'🥉'}</span>${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:24px;height:24px;border-radius:50%;">`:'<span>🐲</span>'}<span style="flex:1;font-size:10px;">${escHtml(p.name||'?')}</span><span style="font-size:10px;color:var(--acc);font-weight:700;">${fmt2(p[field]||0)}</span></div>`);});return r.join('');};
     return `
       ${potw?`<div style="padding:12px;background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(251,191,36,.08));border:1px solid rgba(245,158,11,.4);border-radius:12px;margin-bottom:14px;text-align:center;">
         <div style="font-size:11px;color:var(--txt2);margin-bottom:4px;">⭐ PLAYER OF THE WEEK</div>
@@ -11744,51 +13130,501 @@ const GIFT_ITEMS = [
   {id:'gold1k',   name:'Gold Pouch',   emoji:'💰', desc:'+1,000 gold'},
   {id:'expkey',   name:'Exp Key',      emoji:'🗺️', desc:'Expedition key'},
 ];
+// Reference value: 1 Soul = 100 Ascension Essence (roughly what a single Ascension yields)
+const SOUL_GIFT_ESSENCE_COST=100;
+// Soul Market transaction fee (Ascension Essence sink). Default 5%; GM-configurable.
+const MARKET_FEE_PERCENT_DEFAULT=5;
+async function _getMarketFeePercent(){
+  if(!window.FB)return MARKET_FEE_PERCENT_DEFAULT;
+  try{
+    const {db,doc,getDoc}=window.FB;
+    const snap=await getDoc(doc(db,'server','marketConfig'));
+    if(snap.exists()&&typeof snap.data().feePercent==='number')return snap.data().feePercent;
+  }catch(e){}
+  return MARKET_FEE_PERCENT_DEFAULT;
+}
 
+// ── MAILBOX ──────────────────────────────────────────────────────────────────
+// All gifts/rewards land in players' RTDB inbox (gifts/{uid}/{key}) as before, but
+// now sit there until the player opens Mail and claims them — rather than auto-applying.
 async function sendGift(toUid, toName, itemId){
   if(!fbReady()){toast('Sign in to send gifts!','er');return;}
+  if(!_onlineActionAllowed())return;
+  if(toUid===fbUID()){toast("You can't send a gift to yourself!",'er');return;}
   const today = new Date().toDateString();
-  if(G._lastGiftSent===today){toast('Already sent a gift today! Come back tomorrow.','er');return;}
+  if(G._lastGiftSent===today){toast('You can only send 1 gift per day! Come back tomorrow.','er');return;}
   const item = GIFT_ITEMS.find(g=>g.id===itemId);
   if(!item){toast('Invalid gift','er');return;}
   try{
     const {rtdb,ref,push} = window.FB;
     await push(ref(rtdb,`gifts/${toUid}`),{
-      from:fbUID(),fromName:fbName(),itemId,itemName:item.name,itemEmoji:item.emoji,
+      from:fbUID(),fromName:G.playerName||fbName(),itemType:'item',itemId,itemName:item.name,itemEmoji:item.emoji,
       desc:item.desc,ts:Date.now(),claimed:false,
     });
     G._lastGiftSent=today;save();
-    toast(`🎁 Sent ${item.emoji} ${item.name} to ${toName}!`,'ok');
-    _pushActivity('🎁',`${fbName()||'Someone'} sent a gift to ${toName}!`,'#10b981');
+    toast(`🎁 Sent ${item.emoji} ${item.name} to ${escHtml(toName)}! They'll find it in their Mail.`,'ok');
+    _pushActivity('🎁',`${G.playerName||fbName()||'Someone'} sent a gift to ${toName}!`,'#10b981');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+// Send a Soul to another player — costs 100 Essence, 1 gift per day (shared with sendGift)
+async function sendSoulGift(toUid,toName,soulName){
+  if(!fbReady()){toast('Sign in to send gifts!','er');return;}
+  if(!_onlineActionAllowed())return;
+  if(toUid===fbUID()){toast("You can't send a gift to yourself!",'er');return;}
+  const today = new Date().toDateString();
+  if(G._lastGiftSent===today){toast('You can only send 1 gift per day! Come back tomorrow.','er');return;}
+  if(getAscEssence()<SOUL_GIFT_ESSENCE_COST){toast(`Need 💎${SOUL_GIFT_ESSENCE_COST} Essence to send a Soul gift!`,'er');return;}
+  const z=getZodiac(soulName);
+  try{
+    const {rtdb,ref,push} = window.FB;
+    await push(ref(rtdb,`gifts/${toUid}`),{
+      from:fbUID(),fromName:G.playerName||fbName(),itemType:'soul',soulType:soulName,
+      itemName:`${soulName} Soul`,itemEmoji:z?.emoji||'👻',
+      desc:`A Soul of ${soulName} — sent with 💎${SOUL_GIFT_ESSENCE_COST} Essence by ${G.playerName||fbName()}`,
+      ts:Date.now(),claimed:false,
+    });
+    G._ascEssence=(G._ascEssence||0)-SOUL_GIFT_ESSENCE_COST;
+    G._lastGiftSent=today;save();updateHdr();
+    toast(`👻 Sent a ${soulName} Soul to ${escHtml(toName)}! -💎${SOUL_GIFT_ESSENCE_COST} Essence`,'ok');
+    _pushActivity('👻',`${G.playerName||fbName()||'Someone'} sent a Soul gift to ${toName}!`,'#e879f9');
   }catch(e){toast('Failed: '+e.message,'er');}
 }
 
-async function checkIncomingGifts(){
-  if(!fbReady()) return;
+let _mailItems=[]; // cached list of {key, ...data} for the currently-open mailbox
+async function openMailbox(){
+  if(!fbReady()){toast('Sign in to check your mail!','er');return;}
+  openM('mMailbox');
+  await renderMailbox();
+}
+async function renderMailbox(){
+  const body=document.getElementById('mailboxBody');if(!body)return;
+  body.innerHTML='<div style="text-align:center;padding:20px;">Loading mail...</div>';
   try{
-    const {rtdb,ref,onValue,set} = window.FB;
-    if(!G._claimedGiftKeys)G._claimedGiftKeys={};
-    onValue(ref(rtdb,`gifts/${fbUID()}`), snap=>{
-      if(!snap.exists()) return;
-      let changed=false;
+    const {rtdb,ref,rtGet,rtQuery,limitToLast}=window.FB;
+    const snap=await rtGet(rtQuery(ref(rtdb,`gifts/${fbUID()}`),limitToLast(50)));
+    _mailItems=[];
+    if(snap.exists()){
       snap.forEach(child=>{
-        const g = child.val();
-        if(g&&!g.claimed&&!G._claimedGiftKeys[child.key]){
-          // Apply gift
-          if(g.itemId==='potion') G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});
-          else if(g.itemId==='stars5') G.stars=(G.stars||0)+5;
-          else if(g.itemId==='gold1k'){G.gold+=1000;G.totalGold+=1000;}
-          else if(g.itemId==='expkey') G.pot={...G.pot,expKey:(G.pot?.expKey||0)+1};
-          G._claimedGiftKeys[child.key]=true;changed=true;
-          toast(`🎁 Gift from ${escHtml(g.fromName||'?')}: ${g.itemEmoji} ${g.itemName}!`,'ok');
-          // Mark claimed
-          set(ref(rtdb,`gifts/${fbUID()}/${child.key}/claimed`),true);
-        }
+        const g=child.val();
+        if(g&&!g.claimed)_mailItems.push({key:child.key,...g});
       });
-      if(changed){save();updateHdr();}
-    },{onlyOnce:true});
+    }
+    _mailItems.sort((a,b)=>(b.ts||0)-(a.ts||0));
+    if(!_mailItems.length){
+      body.innerHTML=`<div style="text-align:center;padding:30px 10px;">
+        <div style="font-size:36px;margin-bottom:8px;">📭</div>
+        <div style="font-size:12px;color:var(--txt2);">Your mailbox is empty.</div>
+        <div style="font-size:9px;color:var(--txt2);margin-top:4px;">Gifts from other players, market sales, and rewards will appear here.</div>
+      </div>`;
+      return;
+    }
+    let html=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:10px;color:var(--txt2);">${_mailItems.length} item${_mailItems.length===1?'':'s'} waiting</div>
+      <button class="btn bp" style="font-size:9px;padding:4px 10px;" onclick="claimAllMail()">📬 Claim All</button>
+    </div>`;
+    _mailItems.forEach(g=>{
+      const time=new Date(g.ts||0).toLocaleDateString([],{month:'short',day:'numeric'});
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;margin-bottom:5px;">
+        <span style="font-size:22px;">${g.itemEmoji||'🎁'}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:11px;font-weight:700;">${escHtml(g.itemName||'Item')}</div>
+          <div style="font-size:9px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(g.desc||'')}</div>
+          <div style="font-size:8px;color:var(--txt2);">${g.fromName?`From ${escHtml(g.fromName)} · `:''}${time}</div>
+        </div>
+        <button class="btn bs bblk" style="font-size:9px;padding:4px 10px;flex-shrink:0;" onclick="claimMailItem('${g.key}')">Claim</button>
+      </div>`;
+    });
+    body.innerHTML=html;
+  }catch(e){
+    body.innerHTML=`<div style="color:#ef4444;font-size:10px;padding:10px;">Error loading mail: ${e.message}</div>`;
+  }
+}
+function _applyMailItem(g){
+  switch(g.itemType){
+    case'item':
+      if(g.itemId==='potion')G.party.forEach(n=>{const r=G.roster[n];if(r)r.hp=getMaxHp(n);});
+      else if(g.itemId==='stars5')G.stars=(G.stars||0)+5;
+      else if(g.itemId==='gold1k'){G.gold+=1000;G.totalGold+=1000;}
+      else if(g.itemId==='expkey')G.pot={...G.pot,expKey:(G.pot?.expKey||0)+1};
+      break;
+    case'soul':
+      if(!G.soulZodiacs[g.soulType])G.soulZodiacs[g.soulType]={level:0,souls:0};
+      G.soulZodiacs[g.soulType].souls=(G.soulZodiacs[g.soulType].souls||0)+1;
+      break;
+    case'zodiacSkin':
+      if(!G.zodiacSkinTokens[g.zodiacName])G.zodiacSkinTokens[g.zodiacName]={};
+      G.zodiacSkinTokens[g.zodiacName][g.variantId]=(G.zodiacSkinTokens[g.zodiacName][g.variantId]||0)+1;
+      break;
+    case'zodiacTitle':
+      if(!G.zodiacTitleTokens[g.zodiacName])G.zodiacTitleTokens[g.zodiacName]={};
+      G.zodiacTitleTokens[g.zodiacName][g.variantId]=(G.zodiacTitleTokens[g.zodiacName][g.variantId]||0)+1;
+      break;
+    case'essence':
+      G._ascEssence=(G._ascEssence||0)+(g.essenceAmount||0);
+      break;
+    case'gold':
+      G.gold+=(g.amount||0);G.totalGold+=(g.amount||0);
+      break;
+    case'stars':
+      G.stars=(G.stars||0)+(g.amount||0);
+      break;
+    default:
+      // Back-compat with older gift docs that used essenceAmount directly
+      if(g.essenceAmount)G._ascEssence=(G._ascEssence||0)+g.essenceAmount;
+  }
+}
+async function claimMailItem(key){
+  const idx=_mailItems.findIndex(g=>g.key===key);
+  if(idx<0)return;
+  const g=_mailItems[idx];
+  try{
+    const {rtdb,ref,set}=window.FB;
+    await set(ref(rtdb,`gifts/${fbUID()}/${key}/claimed`),true);
+    _applyMailItem(g);
+    _mailItems.splice(idx,1);
+    save();updateHdr();
+    toast(`📬 Claimed: ${g.itemEmoji||'🎁'} ${g.itemName}!`,'ok');
+    await renderMailbox();
+    _updateMailBadge();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function claimAllMail(){
+  if(!_mailItems.length)return;
+  try{
+    const {rtdb,ref,set}=window.FB;
+    for(const g of _mailItems){
+      await set(ref(rtdb,`gifts/${fbUID()}/${g.key}/claimed`),true);
+      _applyMailItem(g);
+    }
+    toast(`📬 Claimed ${_mailItems.length} item${_mailItems.length===1?'':'s'}!`,'ok');
+    _mailItems=[];
+    save();updateHdr();
+    await renderMailbox();
+    _updateMailBadge();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+// Check for unclaimed mail on sign-in and update the hub badge (doesn't auto-apply anymore)
+async function checkIncomingGifts(){
+  if(!fbReady())return;
+  try{
+    const {rtdb,ref,rtGet,rtQuery,limitToLast}=window.FB;
+    const snap=await rtGet(rtQuery(ref(rtdb,`gifts/${fbUID()}`),limitToLast(50)));
+    let count=0;
+    if(snap.exists())snap.forEach(child=>{const g=child.val();if(g&&!g.claimed)count++;});
+    _updateMailBadge(count);
   }catch(e){}
 }
+function _updateMailBadge(count){
+  const badge=document.getElementById('hubMailSub');
+  if(!badge)return;
+  if(count===undefined){
+    // Re-derive from cached _mailItems if no count given
+    count=_mailItems.length;
+  }
+  if(count>0){badge.textContent=`📬 ${count} new!`;badge.style.color='#fbbf24';}
+  else{badge.textContent='Check mail';badge.style.color='';}
+}
+
+// ── FRIENDS & DIRECT MESSAGES ────────────────────────────────────────────────────
+const MAX_FRIENDS=50;
+function _dmPairId(uidA,uidB){return[uidA,uidB].sort().join('_');}
+async function checkFriendRequests(){
+  if(!fbReady())return;
+  try{
+    const {db,collection,getDocs}=window.FB;
+    const snap=await getDocs(collection(db,'friendRequests',fbUID(),'requests'));
+    const badge=document.getElementById('hubFriendsSub');
+    if(badge){
+      if(!snap.empty){badge.textContent=`👋 ${snap.size} request${snap.size===1?'':'s'}!`;badge.style.color='#fbbf24';}
+      else{badge.textContent='Add friends';badge.style.color='';}
+    }
+  }catch(e){}
+}
+
+async function sendFriendRequest(toUid,toName){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  if(!_onlineActionAllowed())return;
+  if(toUid===fbUID()){toast("You can't friend yourself!",'er');return;}
+  try{
+    const {db,doc,getDoc,setDoc}=window.FB;
+    // Already friends?
+    const mySnap=await getDoc(doc(db,'players',fbUID()));
+    const myFriends=(mySnap.exists()&&mySnap.data().friends)||[];
+    if(myFriends.includes(toUid)){toast(`You're already friends with ${escHtml(toName)}!`,'er');return;}
+    if(myFriends.length>=MAX_FRIENDS){toast(`Friend list full (max ${MAX_FRIENDS})!`,'er');return;}
+    await setDoc(doc(db,'friendRequests',toUid,'requests',fbUID()),{
+      fromName:G.playerName||fbName(),fromAvatar:fbAvatar()||'',ts:Date.now(),
+    });
+    toast(`👋 Friend request sent to ${escHtml(toName)}!`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function acceptFriendRequest(fromUid,fromName){
+  if(!fbReady())return;
+  try{
+    const {db,doc,getDoc,setDoc,deleteDoc,updateDoc,arrayUnion}=window.FB;
+    await Promise.all([
+      updateDoc(doc(db,'players',fbUID()),{friends:arrayUnion(fromUid)}).catch(async()=>{
+        // doc might not have a friends field yet
+        await setDoc(doc(db,'players',fbUID()),{friends:[fromUid]},{merge:true});
+      }),
+      updateDoc(doc(db,'players',fromUid),{friends:arrayUnion(fbUID())}).catch(async()=>{
+        await setDoc(doc(db,'players',fromUid),{friends:[fbUID()]},{merge:true});
+      }),
+    ]);
+    await deleteDoc(doc(db,'friendRequests',fbUID(),'requests',fromUid));
+    toast(`✅ You're now friends with ${escHtml(fromName)}!`,'ok');
+    openFriendsList();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function declineFriendRequest(fromUid){
+  if(!fbReady())return;
+  try{
+    const {db,doc,deleteDoc}=window.FB;
+    await deleteDoc(doc(db,'friendRequests',fbUID(),'requests',fromUid));
+    openFriendsList();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function removeFriend(uid,name){
+  if(!fbReady())return;
+  if(!confirm(`Remove ${name} from your friends?`))return;
+  try{
+    const {db,doc,updateDoc,arrayRemove}=window.FB;
+    await Promise.all([
+      updateDoc(doc(db,'players',fbUID()),{friends:arrayRemove(uid)}),
+      updateDoc(doc(db,'players',uid),{friends:arrayRemove(fbUID())}).catch(()=>{}),
+    ]);
+    toast(`Removed ${escHtml(name)} from friends.`,'ok');
+    openFriendsList();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+async function openFriendsList(){
+  if(!fbReady()){toast('Sign in to see friends!','er');return;}
+  openM('mFriends');
+  const body=document.getElementById('friendsBody');if(!body)return;
+  body.innerHTML='<div style="text-align:center;padding:20px;">Loading...</div>';
+  try{
+    const {db,doc,getDoc,getDocs,collection}=window.FB;
+    const [mySnap,reqSnap]=await Promise.all([
+      getDoc(doc(db,'players',fbUID())),
+      getDocs(collection(db,'friendRequests',fbUID(),'requests')),
+    ]);
+    const friendUids=(mySnap.exists()&&mySnap.data().friends)||[];
+    let html='';
+    // Pending requests
+    if(!reqSnap.empty){
+      html+=`<div style="font-size:10px;font-weight:700;margin-bottom:6px;">👋 Friend Requests</div>`;
+      reqSnap.forEach(d=>{
+        const r=d.data();
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:5px;">
+          ${r.fromAvatar?`<img src="${escAttr(r.fromAvatar)}" style="width:28px;height:28px;border-radius:50%;">`:'<span style="font-size:20px;">🐲</span>'}
+          <div style="flex:1;font-size:11px;font-weight:700;">${escHtml(r.fromName||'?')}</div>
+          <button class="btn bp" style="font-size:9px;padding:4px 8px;" onclick="acceptFriendRequest('${d.id}','${escHtml(r.fromName||'?')}')">✅</button>
+          <button class="btn bs bblk" style="font-size:9px;padding:4px 8px;" onclick="declineFriendRequest('${d.id}')">✕</button>
+        </div>`;
+      });
+    }
+    html+=`<div style="display:flex;gap:4px;margin:8px 0;">
+      <input id="friendSearchInput" type="text" placeholder="Search players to add..." style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')friendSearch()">
+      <button class="btn bp" style="font-size:10px;padding:6px 10px;" onclick="friendSearch()">🔍</button>
+    </div>
+    <div id="friendSearchResults"></div>
+    <div style="font-size:10px;font-weight:700;margin:8px 0 6px;">👥 Friends (${friendUids.length}/${MAX_FRIENDS})</div>`;
+    if(!friendUids.length){
+      html+='<div style="text-align:center;color:var(--txt2);padding:14px;font-size:10px;">No friends yet. Search for players above to add them!</div>';
+    }else{
+      // Fetch friend profiles (batched, simple loop is fine for <=50)
+      const profiles=await Promise.all(friendUids.map(uid=>getDoc(doc(db,'players',uid)).catch(()=>null)));
+      profiles.forEach((snap,i)=>{
+        const uid=friendUids[i];
+        const p=snap&&snap.exists()?snap.data():{name:'Unknown Player'};
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:5px;">
+          ${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:28px;height:28px;border-radius:50%;cursor:pointer;" onclick="openWorldProfile('${uid}')">`:'<span style="font-size:20px;">🐲</span>'}
+          <div style="flex:1;min-width:0;cursor:pointer;" onclick="openWorldProfile('${uid}')">
+            <div style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.name||'?')}</div>
+            <div style="font-size:8px;color:var(--txt2);">⚡${fmt(p.power||0)}</div>
+          </div>
+          <button class="btn bs bblk" style="font-size:9px;padding:4px 8px;" onclick="openDM('${uid}','${escHtml(p.name||'?')}')">💬</button>
+          <button class="btn bd bblk" style="font-size:9px;padding:4px 8px;" onclick="removeFriend('${uid}','${escHtml(p.name||'?')}')">✕</button>
+        </div>`;
+      });
+    }
+    body.innerHTML=html;
+  }catch(e){body.innerHTML=`<div style="color:#ef4444;font-size:10px;padding:10px;">Error: ${e.message}</div>`;}
+}
+async function friendSearch(){
+  const term=(document.getElementById('friendSearchInput')?.value||'').trim();
+  const results=document.getElementById('friendSearchResults');
+  if(!term||!results)return;
+  results.innerHTML='<div style="text-align:center;padding:10px;font-size:10px;">Searching...</div>';
+  try{
+    const {db,collection,query,where,limit,getDocs,doc,getDoc}=window.FB;
+    const snap=await getDocs(query(collection(db,'players'),where('name','>=',term),where('name','<=',term+'\uf8ff'),limit(10)));
+    if(snap.empty){results.innerHTML='<div style="text-align:center;color:var(--txt2);padding:10px;font-size:10px;">No players found.</div>';return;}
+    const mySnap=await getDoc(doc(db,'players',fbUID()));
+    const myFriends=(mySnap.exists()&&mySnap.data().friends)||[];
+    let html='';
+    snap.forEach(d=>{
+      if(d.id===fbUID())return;
+      const p=d.data();
+      const isFriend=myFriends.includes(d.id);
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;margin-bottom:4px;">
+        ${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:24px;height:24px;border-radius:50%;">`:'<span style="font-size:18px;">🐲</span>'}
+        <div style="flex:1;font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.name||'?')}</div>
+        ${isFriend?'<span style="font-size:9px;color:var(--txt2);">Friends</span>':`<button class="btn bp" style="font-size:9px;padding:4px 8px;" onclick="sendFriendRequest('${d.id}','${escHtml(p.name||'?')}')">+ Add</button>`}
+      </div>`;
+    });
+    results.innerHTML=html||'<div style="text-align:center;color:var(--txt2);padding:10px;font-size:10px;">No players found.</div>';
+  }catch(e){results.innerHTML=`<div style="color:#ef4444;font-size:10px;padding:10px;">${e.message}</div>`;}
+}
+
+// ── DIRECT MESSAGES ──────────────────────────────────────────────────────────────
+let _dmTargetUid=null,_dmTargetName=null,_dmListenerUnsub=null;
+async function openDM(uid,name){
+  if(!fbReady())return;
+  if(!_onlineActionAllowed())return;
+  _dmTargetUid=uid;_dmTargetName=name;
+  const title=document.getElementById('dmTitle');if(title)title.textContent=`💬 ${name}`;
+  openM('mDM');
+  await renderDM();
+  _startDMListener();
+}
+function _startDMListener(){
+  if(_dmListenerUnsub){_dmListenerUnsub();_dmListenerUnsub=null;}
+  if(!_dmTargetUid)return;
+  try{
+    const {rtdb,ref,onValue,rtQuery,limitToLast}=window.FB;
+    const pairId=_dmPairId(fbUID(),_dmTargetUid);
+    _dmListenerUnsub=onValue(rtQuery(ref(rtdb,`dms/${pairId}`),limitToLast(50)),snap=>{
+      const m=document.getElementById('mDM');
+      if(m&&m.style.display!=='none')renderDM(snap);
+    });
+  }catch(e){}
+}
+async function renderDM(snapArg){
+  const body=document.getElementById('dmBody');if(!body||!_dmTargetUid)return;
+  try{
+    const {rtdb,ref,rtGet,rtQuery,limitToLast}=window.FB;
+    const pairId=_dmPairId(fbUID(),_dmTargetUid);
+    const snap=snapArg||await rtGet(rtQuery(ref(rtdb,`dms/${pairId}`),limitToLast(50)));
+    let html='<div id="dmMessages" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;margin-bottom:8px;padding:4px;">';
+    const msgs=[];
+    if(snap.exists())snap.forEach(child=>msgs.push(child.val()));
+    msgs.sort((a,b)=>(a.ts||0)-(b.ts||0));
+    if(!msgs.length)html+='<div style="text-align:center;color:var(--txt2);font-size:10px;padding:10px;">No messages yet. Say hi!</div>';
+    msgs.forEach(m=>{
+      const isMe=m.from===fbUID();
+      const time=new Date(m.ts||0).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      html+=`<div style="align-self:${isMe?'flex-end':'flex-start'};max-width:75%;">
+        <div style="background:${isMe?'rgba(245,158,11,.15)':'rgba(28,38,56,.7)'};border-radius:8px;padding:6px 10px;font-size:11px;">${escHtml(m.text||'')}</div>
+        <div style="font-size:8px;color:var(--txt2);margin-top:2px;${isMe?'text-align:right;':''}">${time}</div>
+      </div>`;
+    });
+    html+='</div>';
+    html+=`<div style="display:flex;gap:4px;">
+      <input id="dmInput" type="text" maxlength="200" placeholder="Message ${escHtml(_dmTargetName||'')}..." style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:8px;color:var(--txt);font-size:11px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')sendDM()">
+      <button class="btn bp" style="font-size:11px;padding:8px 14px;" onclick="sendDM()">Send</button>
+    </div>`;
+    body.innerHTML=html;
+    const msgsDiv=document.getElementById('dmMessages');
+    if(msgsDiv)msgsDiv.scrollTop=msgsDiv.scrollHeight;
+  }catch(e){body.innerHTML=`<div style="color:#ef4444;font-size:10px;padding:10px;">Error: ${e.message}</div>`;}
+}
+async function sendDM(){
+  if(!fbReady()||!_dmTargetUid)return;
+  if(!_onlineActionAllowed())return;
+  if(isMuted('world')){const until=getMuteUntil('world');toast(until?`🔇 You are muted from chat until ${new Date(until).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}.`:'🔇 You are muted from chat.','er');return;}
+  const inp=document.getElementById('dmInput');
+  const text=(inp?.value||'').trim();
+  if(!text)return;
+  if(text.length>200){toast('Max 200 chars','er');return;}
+  if(!_chatRateLimitOk())return;
+  if(inp)inp.value='';
+  try{
+    const {rtdb,ref,push}=window.FB;
+    const pairId=_dmPairId(fbUID(),_dmTargetUid);
+    await push(ref(rtdb,`dms/${pairId}`),{from:fbUID(),text,ts:Date.now()});
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+function closeDM(){
+  if(_dmListenerUnsub){_dmListenerUnsub();_dmListenerUnsub=null;}
+  _dmTargetUid=null;_dmTargetName=null;
+  closeM('mDM');
+}
+
+// ── BLOCK & REPORT ───────────────────────────────────────────────────────────────
+// Blocking is a personal, local filter: blocked players' chat messages are hidden
+// from you specifically (stored in G._blockedUids, synced to your own player doc
+// so it persists across devices — does not affect what others see).
+function isBlocked(uid){return!!(G._blockedUids&&G._blockedUids[uid]);}
+async function _loadBlockedUids(){
+  if(!fbReady())return;
+  try{
+    const {db,doc,getDoc}=window.FB;
+    const snap=await getDoc(doc(db,'players',fbUID()));
+    if(snap.exists()&&snap.data().blockedUids){
+      G._blockedUids={...(snap.data().blockedUids||{}),...(G._blockedUids||{})};
+      save();
+    }
+  }catch(e){}
+}
+async function blockPlayer(uid,name){
+  if(!fbReady())return;
+  if(uid===fbUID()){toast("You can't block yourself!",'er');return;}
+  if(!confirm(`Block ${name}? You won't see their messages anymore. You can unblock them later from Settings.`))return;
+  if(!G._blockedUids)G._blockedUids={};
+  G._blockedUids[uid]=name;
+  save();
+  // Best-effort sync so the block follows the player across devices
+  try{
+    const {db,doc,setDoc}=window.FB;
+    await setDoc(doc(db,'players',fbUID()),{blockedUids:G._blockedUids},{merge:true});
+  }catch(e){}
+  toast(`🔇 Blocked ${escHtml(name)}.`,'ok');
+  // Re-render any open chat views so blocked messages disappear immediately
+  if(typeof renderLogTab==='function'&&document.getElementById('logPanel')?.style.display!=='none')renderLogTab(G._activeLogTab||'battle');
+}
+async function unblockPlayer(uid){
+  if(!G._blockedUids||!G._blockedUids[uid])return;
+  const name=G._blockedUids[uid];
+  delete G._blockedUids[uid];
+  save();
+  try{
+    const {db,doc,setDoc}=window.FB;
+    await setDoc(doc(db,'players',fbUID()),{blockedUids:G._blockedUids},{merge:true});
+  }catch(e){}
+  toast(`🔊 Unblocked ${escHtml(name)}.`,'ok');
+  openBlockedList();
+}
+function openBlockedList(){
+  openM('mBlockedList');
+  const body=document.getElementById('blockedListBody');if(!body)return;
+  const blocked=Object.entries(G._blockedUids||{});
+  if(!blocked.length){body.innerHTML='<div style="text-align:center;color:var(--txt2);padding:20px;font-size:11px;">You haven\'t blocked anyone.</div>';return;}
+  body.innerHTML=blocked.map(([uid,name])=>`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;margin-bottom:5px;">
+    <div style="flex:1;font-size:11px;font-weight:700;">${escHtml(name)}</div>
+    <button class="btn bs bblk" style="font-size:9px;padding:4px 8px;" onclick="unblockPlayer('${uid}')">Unblock</button>
+  </div>`).join('');
+}
+// Report a player/message to GMs for review
+async function reportPlayer(uid,name,context){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  if(uid===fbUID()){toast("You can't report yourself!",'er');return;}
+  const reason=prompt(`Report ${name} to the moderators. Briefly describe what happened (max 200 chars):`);
+  if(!reason||!reason.trim())return;
+  try{
+    const {db,collection,addDoc,serverTimestamp}=window.FB;
+    await addDoc(collection(db,'reports'),{
+      reportedUid:uid,reportedName:name,
+      reporterUid:fbUID(),reporterName:G.playerName||fbName(),
+      reason:stripHtmlChars(reason).substring(0,200),
+      context:context||'',
+      ts:Date.now(),resolved:false,createdAt:serverTimestamp(),
+    });
+    toast(`🚩 Report submitted. Thank you for helping keep the community safe.`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FACTION ROLES (#19) + FACTION ANNOUNCEMENTS (#20) + HISTORY LOG (#21) + EMBLEMS (#22)
@@ -11927,7 +13763,12 @@ function openTitlePicker(){
   let html = `<div style="font-size:11px;margin-bottom:10px;">Choose your displayed title:</div>`;
   earned.forEach(t=>{
     const isActive = G._activeOnlineTitle===t.id;
-    html+=`<button class="btn ${isActive?'bp':'bs bblk'} mb2" style="width:100%;text-align:left;color:${t.color};" onclick="G._activeOnlineTitle='${t.id}';save();closeM('mTitlePicker');toast('Title set: ${t.name}','ok')">${isActive?'✅ ':''} ${t.name}</button>`;
+    let displayName=t.name;
+    if((t.id==='soulbound'||t.id==='soulmaster')&&G.activeSoulZodiac){
+      const z=getZodiac(G.activeSoulZodiac);
+      displayName=`${z?.emoji||'👻'} ${G.activeSoulZodiac} ${t.id==='soulmaster'?'Master':'Adept'}`;
+    }
+    html+=`<button class="btn ${isActive?'bp':'bs bblk'} mb2" style="width:100%;text-align:left;color:${t.color};" onclick="G._activeOnlineTitle='${t.id}';save();closeM('mTitlePicker');toast('Title set: ${escHtml(displayName)}','ok')">${isActive?'✅ ':''} ${displayName}</button>`;
   });
   const b=document.getElementById('titlePickerBody');if(b)b.innerHTML=html;
   openM('mTitlePicker');
@@ -11938,7 +13779,16 @@ function showGiftPanel(uid, name){
   GIFT_ITEMS.forEach(item=>{
     html+=`<button class="btn bs bblk mb2" style="width:100%;text-align:left;" onclick="sendGift('${uid}','${escHtml(name)}','${item.id}');closeM('mGiftPanel');">${item.emoji} <b>${item.name}</b> — ${item.desc}</button>`;
   });
-  html+=`<div style="font-size:9px;color:var(--txt2);margin-top:6px;">One gift per day. No cost to send.</div>`;
+  // Soul gift option, if the player has any surplus souls
+  const surplus=Object.entries(G.soulZodiacs||{}).filter(([n,sd])=>(sd.souls||0)>0);
+  if(surplus.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:#e879f9;margin:10px 0 4px;">👻 Or send a Soul (💎${SOUL_GIFT_ESSENCE_COST} Essence):</div>`;
+    surplus.forEach(([sName,sd])=>{
+      const z=getZodiac(sName);
+      html+=`<button class="btn bs bblk mb2" style="width:100%;text-align:left;" onclick="sendSoulGift('${uid}','${escHtml(name)}','${sName}');closeM('mGiftPanel');" ${getAscEssence()<SOUL_GIFT_ESSENCE_COST?'disabled':''}>${z?.emoji||'👻'} <b>${sName} Soul</b> <span style="color:var(--txt2);">(×${sd.souls} surplus)</span></button>`;
+    });
+  }
+  html+=`<div style="font-size:9px;color:var(--txt2);margin-top:6px;">One gift per day (item or Soul, whichever you choose).</div>`;
   const b=document.getElementById('giftPanelBody');if(b)b.innerHTML=html;
   openM('mGiftPanel');
 }
@@ -12081,7 +13931,7 @@ async function renderFriendsList(){
       friendData.forEach(f=>{
         const rank=getPvpRank(f.pvpPoints||0);
         html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:4px;cursor:pointer;" onclick="openWorldProfile('${f.id}')">
-          ${f.avatar?`<img src="${f.avatar}" style="width:32px;height:32px;border-radius:50%;">`:'<span style="font-size:22px;">🐲</span>'}
+          ${f.avatar?`<img src="${escAttr(f.avatar)}" style="width:32px;height:32px;border-radius:50%;">`:'<span style="font-size:22px;">🐲</span>'}
           <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${escHtml(f.name||'?')}</div>
           <div style="font-size:9px;color:var(--txt2);">${rank.emoji} ${rank.name} · ⚡${fmt(f.power||0)} · Asc.${f.ascension||0}</div></div>
           <button class="btn bs bblk" style="font-size:9px;padding:3px 8px;" onclick="event.stopPropagation();showGiftPanel('${f.id}','${escHtml(f.name||'?')}')">🎁</button>
@@ -12120,7 +13970,7 @@ async function renderRecentVisitors(){
       const v=d.data();
       const time=new Date(v.ts).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
       html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,38,56,.5);border-radius:8px;margin-bottom:3px;cursor:pointer;" onclick="openWorldProfile('${d.id}')">
-        ${v.avatar?`<img src="${v.avatar}" style="width:26px;height:26px;border-radius:50%;">`:'<span style="font-size:18px;">🐲</span>'}
+        ${v.avatar?`<img src="${escAttr(v.avatar)}" style="width:26px;height:26px;border-radius:50%;">`:'<span style="font-size:18px;">🐲</span>'}
         <span style="flex:1;font-size:10px;">${escHtml(v.name||'?')}</span>
         <span style="font-size:8px;color:var(--txt2);">${time}</span>
       </div>`;
@@ -12475,7 +14325,14 @@ async function renderServerBoss(){
     const killTag=(bossData.killCount||0); // increments each respawn
     if(G._serverBossLastReward!==killTag){
       G._serverBossLastReward=killTag;
-      const bonusGold=50000;const bonusStars=10;
+      let bonusGold=50000,bonusStars=10;
+      if(window.FB){
+        try{
+          const {db,doc,getDoc}=window.FB;
+          const cfgSnap=await getDoc(doc(db,'server','bossRewardConfig'));
+          if(cfgSnap.exists()){bonusGold=cfgSnap.data().gold??bonusGold;bonusStars=cfgSnap.data().stars??bonusStars;}
+        }catch(e){}
+      }
       G.gold+=bonusGold;G.totalGold+=bonusGold;G.stars=(G.stars||0)+bonusStars;
       G._serverBossDmg=0;
       updateHdr();save();
@@ -12507,9 +14364,10 @@ async function renderServerBoss(){
       <div style="font-size:9px;color:var(--txt2);margin-top:4px;">Your damage dealt: ${fmt(myDmg)}</div>
     </div>
     <div style="font-size:10px;color:var(--txt2);margin-bottom:10px;">Every player chips away at this boss together. When HP reaches 0, ALL players receive a massive reward!</div>
+    ${G.activeSoulZodiac?`<div style="font-size:9px;color:#e879f9;margin-bottom:6px;text-align:center;">👻 ${G.activeSoulZodiac} Soul Zodiac is adding +${fmt(getSoulZodiacBonusPower())} power to your attacks!</div>`:''}
     ${(()=>{const t=new Date().toDateString();const h=(G._serverBossAttacks||{})[t]||0;const left=Math.max(0,10-h);return `<div style="font-size:10px;margin-bottom:6px;text-align:center;color:${left>0?'var(--ok)':'#ef4444'};">Daily attacks: ${h}/10 used · ${left} remaining</div>`;})()}
     <button class="btn bp" style="width:100%;margin-bottom:6px;" onclick="attackServerBoss()">⚔️ Attack Server Boss!</button>
-    <div style="font-size:9px;color:var(--txt2);">Attacks cost 0 stamina. Deal damage based on your current power. Boss resets weekly.</div>`;
+    <div style="font-size:9px;color:var(--txt2);">Attacks cost 0 stamina. Deal damage based on your current power plus your active Soul Zodiac's stats. Boss resets weekly.</div>`;
 }
 
 async function attackServerBoss(){
@@ -12519,7 +14377,7 @@ async function attackServerBoss(){
   const MAX_DAILY=10;
   if(todayHits>=MAX_DAILY){toast(`Daily limit reached! ${MAX_DAILY} attacks per day. Come back tomorrow!`,'er');return;}
   G._serverBossAttacks[today]=todayHits+1;
-  const power=calcPowerRating?calcPowerRating():1000;
+  const power=(calcPowerRating?calcPowerRating():1000)+getSoulZodiacBonusPower();
   const dmg=Math.floor(power*(0.5+Math.random()));
   G._serverBossDmg=(G._serverBossDmg||0)+dmg;
   save();
@@ -12697,7 +14555,7 @@ async function renderAuctionHouse(){
   let html=`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(232,121,249,.1);border:1px solid rgba(232,121,249,.2);border-radius:8px;margin-bottom:12px;">
       <span style="font-size:11px;color:#e879f9;font-weight:700;">💎 Your Essence: ${fmt(essence)}</span>
-      <button class="btn bs bblk" style="font-size:9px;padding:3px 8px;" onclick="openListingPanel()">+ List Item</button>
+      <button class="btn bs bblk" style="font-size:9px;padding:3px 8px;" onclick="openListingPanel()">+ List Soul</button>
     </div>`;
   if(!window.FB){body.innerHTML=html+'<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">Sign in to use the Auction House</div>';return;}
   try{
@@ -12728,58 +14586,199 @@ async function renderAuctionHouse(){
 
 async function buyAuction(auctionId, price, name){
   if(!fbReady()){toast('Sign in first!','er');return;}
+  if(isMuted('trade')){const until=getMuteUntil('trade');toast(until?`🚫 Trading is disabled for you until ${new Date(until).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}.`:'🚫 Trading is disabled for you.','er');return;}
   if(getAscEssence()<price){toast(`Need 💎${fmt(price)} Ascension Essence!`,'er');return;}
   try{
-    const {db,doc,getDoc,updateDoc,deleteDoc,setDoc,serverTimestamp}=window.FB;
-    const snap=await getDoc(doc(db,'auctions',auctionId));
-    if(!snap.exists()||!snap.data().active){toast('Auction no longer available','er');return;}
-    const a=snap.data();
+    const {db,doc,runTransaction,setDoc,serverTimestamp}=window.FB;
+    let a;
+    // Atomically check-and-claim the listing to prevent two buyers winning the same auction
+    await runTransaction(db,async(tx)=>{
+      const ref=doc(db,'auctions',auctionId);
+      const snap=await tx.get(ref);
+      if(!snap.exists()||!snap.data().active)throw new Error('Auction no longer available');
+      a=snap.data();
+      tx.update(ref,{active:false,buyerUid:fbUID(),buyerName:fbName(),soldAt:serverTimestamp()});
+    });
     G._ascEssence=(G._ascEssence||0)-price;
+    // Deliver the purchased item to the buyer
+    if(a.soulType){
+      if(!G.soulZodiacs[a.soulType])G.soulZodiacs[a.soulType]={level:0,souls:0};
+      G.soulZodiacs[a.soulType].souls=(G.soulZodiacs[a.soulType].souls||0)+1;
+    }else if(a.cosmeticType==='skin'){
+      if(!G.zodiacSkinTokens[a.zodiacName])G.zodiacSkinTokens[a.zodiacName]={};
+      G.zodiacSkinTokens[a.zodiacName][a.variantId]=(G.zodiacSkinTokens[a.zodiacName][a.variantId]||0)+1;
+    }else if(a.cosmeticType==='title'){
+      if(!G.zodiacTitleTokens[a.zodiacName])G.zodiacTitleTokens[a.zodiacName]={};
+      G.zodiacTitleTokens[a.zodiacName][a.variantId]=(G.zodiacTitleTokens[a.zodiacName][a.variantId]||0)+1;
+    }
     save();updateHdr();
-    // Mark sold, notify seller
-    await updateDoc(doc(db,'auctions',auctionId),{active:false,buyerUid:fbUID(),buyerName:fbName(),soldAt:serverTimestamp()});
+    // Market fee: seller receives price minus a % fee (Essence sink — the fee simply
+    // isn't paid out to anyone, removing it from circulation)
+    const feePercent=await _getMarketFeePercent();
+    const fee=Math.floor(price*feePercent/100);
+    const sellerPayout=price-fee;
     // Add sold price to history
-    await setDoc(doc(db,`marketHistory/${auctionId}`),{name:a.name,price,soldAt:Date.now(),sellerName:a.sellerName,buyerName:fbName()});
-    // Notify seller
-    try{const {rtdb,ref,push}=window.FB;push(ref(rtdb,`gifts/${a.sellerUid}`),{from:fbUID(),fromName:fbName(),itemId:'essence',itemName:`${fmt(price)} Essence from sale of ${a.name}`,itemEmoji:'💎',desc:`Your listing sold!`,ts:Date.now(),claimed:false,essenceAmount:price});}catch(e){}
+    await setDoc(doc(db,`marketHistory/${auctionId}`),{name:a.name,price,fee,sellerPayout,soldAt:Date.now(),sellerName:a.sellerName,buyerName:fbName()});
+    // Notify seller (payout after fee)
+    try{const {rtdb,ref,push}=window.FB;push(ref(rtdb,`gifts/${a.sellerUid}`),{from:fbUID(),fromName:fbName(),itemType:'essence',essenceAmount:sellerPayout,itemName:`💎${fmt(sellerPayout)} Essence`,itemEmoji:'💎',desc:`Your listing "${a.name}" sold to ${fbName()||'a player'}! (${fmt(price)} − ${feePercent}% market fee)`,ts:Date.now(),claimed:false});}catch(e){}
     toast(`✅ Purchased: ${name} for 💎${fmt(price)} Essence!`,'ok');
     _pushActivity('💎',`${fbName()||'A player'} bought ${name} for ${fmt(price)} Essence!`,'#e879f9');
     renderAuctionHouse();
   }catch(e){toast('Purchase failed: '+e.message,'er');}
 }
 
-function openListingPanel(){
-  // Show equippable skins/cosmetics to list
-  const skins=Object.keys(G.unlockedSkins||{}).filter(s=>s!=='default');
+async function openListingPanel(){
   const body=document.getElementById('auctionListBody');
-  if(!body){toast('Open Auction House first','er');return;}
-  if(!skins.length){body.innerHTML='<div style="text-align:center;color:var(--txt2);padding:16px;font-size:10px;">No tradeable items. Earn skins to list them!</div>';return;}
-  let html='<div style="font-size:10px;margin-bottom:8px;">Choose item to list. Set price in 💎 Ascension Essence:</div>';
-  skins.forEach(s=>{
+  if(!body){toast('Open Soul Market first','er');return;}
+  body.innerHTML='<div style="text-align:center;padding:16px;">Loading...</div>';
+  let myListingsHtml='';
+  if(window.FB&&fbReady()){
+    try{
+      const {db,collection,query,where,getDocs}=window.FB;
+      const snap=await getDocs(query(collection(db,'auctions'),where('sellerUid','==',fbUID()),where('active','==',true)));
+      if(!snap.empty){
+        myListingsHtml='<div style="font-size:10px;font-weight:700;margin-bottom:6px;">📦 My Active Listings</div>';
+        snap.forEach(d=>{
+          const a=d.data();
+          myListingsHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:8px;margin-bottom:5px;">
+            <span style="font-size:18px;">${a.icon||'👻'}</span>
+            <span style="flex:1;font-size:11px;">${escHtml(a.name||'?')}</span>
+            <span style="font-size:10px;color:#e879f9;font-weight:700;">💎${fmt(a.price||0)}</span>
+            <button class="btn bd bblk" style="font-size:9px;padding:4px 8px;" onclick="cancelListing('${d.id}')">Cancel</button>
+          </div>`;
+        });
+        myListingsHtml+='<div style="border-top:1px solid rgba(71,85,105,.2);margin:10px 0;"></div>';
+      }
+    }catch(e){}
+  }
+  // Show surplus Souls (unconsumed souls of any type) to list
+  const soulEntries=Object.entries(G.soulZodiacs||{}).filter(([name,sd])=>(sd.souls||0)>0);
+  // Show skin/title tokens (unconsumed) to list
+  const skinEntries=[];
+  Object.entries(G.zodiacSkinTokens||{}).forEach(([zName,variants])=>{
+    Object.entries(variants||{}).forEach(([vId,count])=>{if(count>0)skinEntries.push({zName,vId,count});});
+  });
+  const titleEntries=[];
+  Object.entries(G.zodiacTitleTokens||{}).forEach(([zName,variants])=>{
+    Object.entries(variants||{}).forEach(([vId,count])=>{if(count>0)titleEntries.push({zName,vId,count});});
+  });
+  if(!soulEntries.length&&!skinEntries.length&&!titleEntries.length&&!myListingsHtml){body.innerHTML='<div style="text-align:center;color:var(--txt2);padding:16px;font-size:10px;">No surplus items to list. Souls come from Tower floors 5000+; Skins & Titles come from leaderboard events!</div>';return;}
+  let html=myListingsHtml;
+  if(soulEntries.length||skinEntries.length||titleEntries.length){
+    html+='<div style="font-size:10px;margin-bottom:8px;">Choose an item to list. Set price in 💎 Ascension Essence:</div>';
+  }
+  soulEntries.forEach(([name,sd])=>{
+    const z=getZodiac(name);
     html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;margin-bottom:5px;">
-      <span style="font-size:18px;">🎨</span>
-      <span style="flex:1;font-size:11px;">${escHtml(s)}</span>
-      <input type="number" id="listPrice_${s}" placeholder="Price" min="1" max="99999" style="width:70px;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:4px;color:var(--txt);font-size:10px;">
-      <button class="btn bp" style="font-size:9px;padding:4px 8px;" onclick="listItem('${s}')">List</button>
+      <span style="font-size:18px;">${z?.emoji||'👻'}</span>
+      <span style="flex:1;font-size:11px;">${name} Soul <span style="color:var(--txt2);">×${sd.souls}</span></span>
+      <input type="number" id="listPrice_${name}" placeholder="Price" min="1" max="99999" style="width:70px;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:4px;color:var(--txt);font-size:10px;">
+      <button class="btn bp" style="font-size:9px;padding:4px 8px;" onclick="listItem('${name}')">List</button>
     </div>`;
   });
+  skinEntries.forEach(({zName,vId,count})=>{
+    const z=getZodiac(zName);const info=ZODIAC_SKINS[zName]?.[vId];
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;margin-bottom:5px;">
+      <span style="font-size:18px;">${z?.emoji||'👕'}</span>
+      <span style="flex:1;font-size:11px;">${escHtml(info?.name||vId)} ${zName} Skin <span style="color:var(--txt2);">×${count}</span></span>
+      <input type="number" id="listPriceSkin_${zName}_${vId}" placeholder="Price" min="1" max="99999" style="width:70px;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:4px;color:var(--txt);font-size:10px;">
+      <button class="btn bp" style="font-size:9px;padding:4px 8px;" onclick="listSkinOrTitle('skin','${zName}','${vId}')">List</button>
+    </div>`;
+  });
+  titleEntries.forEach(({zName,vId,count})=>{
+    const z=getZodiac(zName);const info=ZODIAC_TITLES[vId];
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;margin-bottom:5px;">
+      <span style="font-size:18px;">${z?.emoji||'🏷️'}</span>
+      <span style="flex:1;font-size:11px;">"${escHtml(info?.name||vId)}" ${zName} Title <span style="color:var(--txt2);">×${count}</span></span>
+      <input type="number" id="listPriceTitle_${zName}_${vId}" placeholder="Price" min="1" max="99999" style="width:70px;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:4px;color:var(--txt);font-size:10px;">
+      <button class="btn bp" style="font-size:9px;padding:4px 8px;" onclick="listSkinOrTitle('title','${zName}','${vId}')">List</button>
+    </div>`;
+  });
+  if(!soulEntries.length&&!skinEntries.length&&!titleEntries.length&&myListingsHtml){
+    html+='<div style="text-align:center;color:var(--txt2);padding:10px;font-size:10px;">No more surplus items to list right now.</div>';
+  }
   body.innerHTML=html;
 }
+async function cancelListing(auctionId){
+  if(!fbReady())return;
+  try{
+    const {db,doc,runTransaction}=window.FB;
+    const ref=doc(db,'auctions',auctionId);
+    let listingData=null;
+    await runTransaction(db,async(tx)=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists()||!snap.data().active||snap.data().sellerUid!==fbUID())throw new Error('Listing not found or already sold');
+      listingData=snap.data();
+      tx.update(ref,{active:false,cancelledAt:Date.now()});
+    });
+    // Return the item to the seller's inventory
+    if(listingData.soulType){
+      if(!G.soulZodiacs[listingData.soulType])G.soulZodiacs[listingData.soulType]={level:0,souls:0};
+      G.soulZodiacs[listingData.soulType].souls=(G.soulZodiacs[listingData.soulType].souls||0)+1;
+      save();updateHdr();
+    }else if(listingData.cosmeticType==='skin'){
+      if(!G.zodiacSkinTokens[listingData.zodiacName])G.zodiacSkinTokens[listingData.zodiacName]={};
+      G.zodiacSkinTokens[listingData.zodiacName][listingData.variantId]=(G.zodiacSkinTokens[listingData.zodiacName][listingData.variantId]||0)+1;
+      save();updateHdr();
+    }else if(listingData.cosmeticType==='title'){
+      if(!G.zodiacTitleTokens[listingData.zodiacName])G.zodiacTitleTokens[listingData.zodiacName]={};
+      G.zodiacTitleTokens[listingData.zodiacName][listingData.variantId]=(G.zodiacTitleTokens[listingData.zodiacName][listingData.variantId]||0)+1;
+      save();updateHdr();
+    }
+    toast('📦 Listing cancelled — item returned to your inventory.','ok');
+    openListingPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
 
-async function listItem(skinId){
+
+async function listItem(soulName){
   if(!fbReady()){toast('Sign in first!','er');return;}
-  const priceEl=document.getElementById(`listPrice_${skinId}`);
+  if(isMuted('trade')){const until=getMuteUntil('trade');toast(until?`🚫 Trading is disabled for you until ${new Date(until).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}.`:'🚫 Trading is disabled for you.','er');return;}
+  const sd=G.soulZodiacs[soulName];
+  if(!sd||!(sd.souls>0)){toast('No surplus Soul of this type to list!','er');return;}
+  const priceEl=document.getElementById(`listPrice_${soulName}`);
   const price=parseInt(priceEl?.value||0);
   if(!price||price<1){toast('Enter a valid price!','er');return;}
+  const z=getZodiac(soulName);
   try{
     const {db,collection,addDoc,serverTimestamp}=window.FB;
     await addDoc(collection(db,'auctions'),{
-      name:`${skinId} Skin`,icon:'🎨',rarity:'Skin',
+      name:`${soulName} Soul`,icon:z?.emoji||'👻',rarity:'Soul',soulType:soulName,
       sellerUid:fbUID(),sellerName:fbName(),
       price,active:true,listedAt:serverTimestamp(),
-      desc:`${skinId} cosmetic skin — tradeable`,
+      desc:`A Soul of ${soulName}. Consume to permanently level up your ${soulName} Soul Zodiac.`,
     });
-    toast(`🎨 ${skinId} listed for 💎${fmt(price)} Essence!`,'ok');
+    // Reserve the soul immediately so it can't be double-listed or used while listed
+    sd.souls--;save();updateHdr();
+    toast(`👻 ${soulName} Soul listed for 💎${fmt(price)} Essence!`,'ok');
+    renderAuctionHouse();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+// List a Skin or Title token on the Soul Market
+async function listSkinOrTitle(itemType,zodiacName,variantId){
+  if(!fbReady()){toast('Sign in first!','er');return;}
+  if(isMuted('trade')){const until=getMuteUntil('trade');toast(until?`🚫 Trading is disabled for you until ${new Date(until).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}.`:'🚫 Trading is disabled for you.','er');return;}
+  const store=itemType==='skin'?G.zodiacSkinTokens:G.zodiacTitleTokens;
+  const count=store?.[zodiacName]?.[variantId]||0;
+  if(count<=0){toast('No tokens of this item to list!','er');return;}
+  const priceId=itemType==='skin'?`listPriceSkin_${zodiacName}_${variantId}`:`listPriceTitle_${zodiacName}_${variantId}`;
+  const price=parseInt(document.getElementById(priceId)?.value||0);
+  if(!price||price<1){toast('Enter a valid price!','er');return;}
+  const z=getZodiac(zodiacName);
+  const info=itemType==='skin'?ZODIAC_SKINS[zodiacName]?.[variantId]:ZODIAC_TITLES[variantId];
+  const itemName=itemType==='skin'?`${info?.name||variantId} ${zodiacName} Skin`:`"${info?.name||variantId}" ${zodiacName} Title`;
+  try{
+    const {db,collection,addDoc,serverTimestamp}=window.FB;
+    await addDoc(collection(db,'auctions'),{
+      name:itemName,icon:z?.emoji||(itemType==='skin'?'👕':'🏷️'),rarity:itemType==='skin'?'Skin':'Title',
+      cosmeticType:itemType,zodiacName,variantId,
+      sellerUid:fbUID(),sellerName:fbName(),
+      price,active:true,listedAt:serverTimestamp(),
+      desc:itemType==='skin'?`A ${info?.name||variantId} skin token for ${zodiacName}. Consume to permanently level up this skin.`:`A "${info?.name||variantId}" title token for ${zodiacName}. Consume to permanently level up this title.`,
+    });
+    // Reserve the token immediately so it can't be double-listed
+    store[zodiacName][variantId]--;save();updateHdr();
+    toast(`${z?.emoji||''} ${itemName} listed for 💎${fmt(price)} Essence!`,'ok');
     renderAuctionHouse();
   }catch(e){toast('Failed: '+e.message,'er');}
 }
@@ -12810,8 +14809,11 @@ async function renderMarketHistory(){
       const h=d.data();
       const time=new Date(h.soldAt).toLocaleString([],{month:'short',day:'numeric'});
       html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,38,56,.5);border-radius:6px;margin-bottom:3px;">
-        <span style="font-size:14px;">🎨</span>
-        <span style="flex:1;font-size:10px;">${escHtml(h.name||'?')}</span>
+        <span style="font-size:14px;">👻</span>
+        <div style="flex:1;">
+          <div style="font-size:10px;">${escHtml(h.name||'?')}</div>
+          ${h.fee?`<div style="font-size:8px;color:var(--txt2);">Seller received 💎${fmt(h.sellerPayout||0)} (−${fmt(h.fee)} fee)</div>`:''}
+        </div>
         <span style="font-size:10px;color:#e879f9;font-weight:700;">💎${fmt(h.price||0)}</span>
         <span style="font-size:8px;color:var(--txt2);">${time}</span>
       </div>`;
@@ -12851,6 +14853,11 @@ async function _runFirestoreSetup(){
       ['server','boss',{name:'Ancient Void Dragon',emoji:'🐉',maxHp:10000000,currentHp:10000000,level:500,type:'dark',weak:'light'}],
       ['server','announcement',{id:'',title:'',text:'',emoji:'📢',date:''}],
       ['server','hallOfFame',{playerOfTheWeek:{name:'',reason:''}}],
+      ['server','bossTrialsConfig',{essencePerDamage:0.001,victoryBonusEssence:5,maxOpenLobbies:10,lobbyStaleMs:90000}],
+      ['server','soulUnlockConfig',{floor:0,expiresAt:0}],
+      ['server','bossRewardConfig',{gold:50000,stars:10}],
+      ['server','globalMute',{chatMutedUntil:0}],
+      ['server','marketConfig',{feePercent:MARKET_FEE_PERCENT_DEFAULT}],
     ];
     for(const [col,docId,data] of batch){
       await setDoc(doc(db,col,docId), data);
@@ -12908,10 +14915,12 @@ async function renderGMPanel(){
   if(!body||!isGM()) return;
   if(_gmTab==='events')      body.innerHTML = renderGMEvents();
   else if(_gmTab==='boss')   body.innerHTML = await renderGMBoss();
+  else if(_gmTab==='trials') body.innerHTML = await renderGMTrials();
   else if(_gmTab==='announce') body.innerHTML = renderGMAnnounce();
   else if(_gmTab==='players')  body.innerHTML = await renderGMPlayers();
+  else if(_gmTab==='reports')  body.innerHTML = await renderGMReports();
   else if(_gmTab==='server')   body.innerHTML = await renderGMServer();
-  else if(_gmTab==='world')    body.innerHTML = renderGMWorld();
+  else if(_gmTab==='world')    body.innerHTML = await renderGMWorld();
 }
 
 // ── EVENTS TAB ───────────────────────────────────────────────────────────────
@@ -13101,27 +15110,231 @@ async function gmBroadcast(){
 async function renderGMPlayers(){
   if(!window.FB) return '<div style="color:var(--txt2);padding:12px;">Not connected</div>';
   try{
-    const {db,collection,query,orderBy,limit,getDocs} = window.FB;
-    const snap = await getDocs(query(collection(db,'players'),limit(20)));
-    let html=`<div style="font-size:10px;font-weight:700;margin-bottom:8px;">👥 Recent Players (${snap.size})</div>`;
+    const {db,collection,query,where,orderBy,limit,getDocs} = window.FB;
+    let snap;
+    const searchTerm=(_gmPlayerSearch||'').trim();
+    if(searchTerm){
+      snap = await getDocs(query(collection(db,'players'),where('name','>=',searchTerm),where('name','<=',searchTerm+'\uf8ff'),limit(20)));
+    }else{
+      snap = await getDocs(query(collection(db,'players'),limit(20)));
+    }
+    let html=`
+      <div style="display:flex;gap:4px;margin-bottom:8px;">
+        <input id="gmPlayerSearchInput" type="text" placeholder="Search player name..." value="${escHtml(_gmPlayerSearch||'')}" style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')gmPlayerSearch()">
+        <button class="btn bp" style="font-size:10px;padding:6px 10px;" onclick="gmPlayerSearch()">🔍</button>
+      </div>
+      <div style="font-size:10px;font-weight:700;margin-bottom:8px;">👥 ${searchTerm?`Results for "${escHtml(searchTerm)}"`:'Recent Players'} (${snap.size})</div>`;
+    if(snap.empty)html+='<div style="text-align:center;color:var(--txt2);padding:14px;font-size:10px;">No players found.</div>';
     snap.forEach(d=>{
       const p=d.data();
+      const uid=d.id;
       const lastSeen=p.lastSeen?.toDate?new Date(p.lastSeen.toDate()).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'?';
-      html+=`<div style="padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:4px;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          ${p.avatar?`<img src="${p.avatar}" style="width:24px;height:24px;border-radius:50%;">`:'<span style="font-size:16px;">🐲</span>'}
+      const mod=p.moderation||{};
+      const banned=mod.banned||(mod.bannedUntil&&Date.now()<mod.bannedUntil);
+      const isExpanded=_gmExpandedPlayer===uid;
+      let statusBadges='';
+      if(mod.banned)statusBadges+='<span style="color:#ef4444;font-size:8px;font-weight:700;">🚫 BANNED</span> ';
+      else if(mod.bannedUntil&&Date.now()<mod.bannedUntil)statusBadges+=`<span style="color:#f87171;font-size:8px;font-weight:700;">⏱️ Timeout until ${new Date(mod.bannedUntil).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span> `;
+      if(mod.muteWorldChatUntil&&Date.now()<mod.muteWorldChatUntil)statusBadges+='<span style="color:#fbbf24;font-size:8px;">🔇 World-muted</span> ';
+      if(mod.muteFactionChatUntil&&Date.now()<mod.muteFactionChatUntil)statusBadges+='<span style="color:#fbbf24;font-size:8px;">🔇 Faction-muted</span> ';
+      if(mod.muteTradeUntil&&Date.now()<mod.muteTradeUntil)statusBadges+='<span style="color:#fbbf24;font-size:8px;">🚫 Trade-banned</span> ';
+      html+=`<div style="padding:8px;background:rgba(28,38,56,.6);border:1px solid ${banned?'rgba(239,68,68,.4)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:6px;cursor:pointer;" onclick="gmTogglePlayerExpand('${uid}')">
+          ${p.avatar?`<img src="${escAttr(p.avatar)}" style="width:24px;height:24px;border-radius:50%;">`:'<span style="font-size:16px;">🐲</span>'}
           <div style="flex:1;min-width:0;">
             <div style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.name||'?')}</div>
             <div style="font-size:8px;color:var(--txt2);">⚡${fmt(p.power||0)} · 🏆${fmt(p.wins||0)} · Asc.${p.ascension||0} · ${lastSeen}</div>
+            <div style="font-size:8px;color:${(p.ascEssence||0)>100000?'#ef4444':'var(--txt2)'};">💎${fmt(p.ascEssence||0)} Essence${(p.ascEssence||0)>100000?' ⚠️ unusually high':''}</div>
+            ${statusBadges?`<div style="margin-top:2px;">${statusBadges}</div>`:''}
           </div>
+          <span style="font-size:10px;color:var(--txt2);">${isExpanded?'▲':'▼'}</span>
+        </div>
+        ${isExpanded?`
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(71,85,105,.2);display:flex;flex-direction:column;gap:6px;">
+          <div style="font-size:9px;font-weight:700;color:var(--txt2);">⏱️ Timeout (block all online features)</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn bd bblk" style="font-size:9px;flex:1;" onclick="gmTimeoutPlayer('${uid}','${escHtml(p.name||'?')}',1)">1 hour</button>
+            <button class="btn bd bblk" style="font-size:9px;flex:1;" onclick="gmTimeoutPlayer('${uid}','${escHtml(p.name||'?')}',3)">3 hours</button>
+            <button class="btn bd bblk" style="font-size:9px;flex:1;" onclick="gmTimeoutPlayer('${uid}','${escHtml(p.name||'?')}',24)">24 hours</button>
+          </div>
+          <div style="display:flex;gap:4px;">
+            <button class="btn bd bblk" style="font-size:9px;flex:1;background:rgba(239,68,68,.2);" onclick="if(confirm('Permanently ban ${escHtml(p.name||'this player')}? This is severe.'))gmBanPlayer('${uid}','${escHtml(p.name||'?')}')">🚫 Permanent Ban</button>
+            ${(banned||mod.bannedUntil)?`<button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmUnbanPlayer('${uid}','${escHtml(p.name||'?')}')">✅ Remove Ban/Timeout</button>`:''}
+          </div>
+          <div style="font-size:9px;font-weight:700;color:var(--txt2);margin-top:4px;">🔇 Mute (24 hours)</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmMutePlayer('${uid}','${escHtml(p.name||'?')}','world')">World Chat</button>
+            <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmMutePlayer('${uid}','${escHtml(p.name||'?')}','faction')">Faction Chat</button>
+            <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmMutePlayer('${uid}','${escHtml(p.name||'?')}','trade')">Trading</button>
+          </div>
+          ${(mod.muteWorldChatUntil||mod.muteFactionChatUntil||mod.muteTradeUntil)?`<button class="btn bs bblk" style="font-size:9px;" onclick="gmUnmutePlayer('${uid}','${escHtml(p.name||'?')}')">✅ Clear All Mutes</button>`:''}
+          <div style="font-size:9px;font-weight:700;color:var(--txt2);margin-top:4px;">🎁 Grant Cosmetics</div>
+          <div style="display:flex;gap:4px;">
+            <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmGrantRandomCosmetic('${uid}','${escHtml(p.name||'?')}','skin')">👕 Random Skin</button>
+            <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmGrantRandomCosmetic('${uid}','${escHtml(p.name||'?')}','title')">🏷️ Random Title</button>
+          </div>
+        </div>`:''}
+      </div>`;
+    });
+    return html;
+  }catch(e){return `<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
+}
+let _gmPlayerSearch='';
+let _gmExpandedPlayer=null;
+function gmPlayerSearch(){
+  _gmPlayerSearch=document.getElementById('gmPlayerSearchInput')?.value||'';
+  renderGMPanel();
+}
+function gmTogglePlayerExpand(uid){
+  _gmExpandedPlayer=_gmExpandedPlayer===uid?null:uid;
+  renderGMPanel();
+}
+async function gmTimeoutPlayer(uid,name,hours){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    const bannedUntil=Date.now()+hours*3600000;
+    await setDoc(doc(db,'players',uid),{moderation:{bannedUntil,banned:false}},{merge:true});
+    toast(`⏱️ ${name} timed out for ${hours} hour${hours===1?'':'s'}.`,'ok');
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function gmBanPlayer(uid,name){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    await setDoc(doc(db,'players',uid),{moderation:{banned:true,bannedUntil:null}},{merge:true});
+    toast(`🚫 ${name} permanently banned.`,'ok');
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function gmUnbanPlayer(uid,name){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    await setDoc(doc(db,'players',uid),{moderation:{banned:false,bannedUntil:null}},{merge:true});
+    toast(`✅ ${name}'s ban/timeout removed.`,'ok');
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function gmMutePlayer(uid,name,scope){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    const until=Date.now()+24*3600000;
+    const field={world:'muteWorldChatUntil',faction:'muteFactionChatUntil',trade:'muteTradeUntil'}[scope];
+    const label={world:'world chat',faction:'faction chat',trade:'trading'}[scope];
+    await setDoc(doc(db,'players',uid),{moderation:{[field]:until}},{merge:true});
+    toast(`🔇 ${name} muted from ${label} for 24 hours.`,'ok');
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function gmUnmutePlayer(uid,name){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    await setDoc(doc(db,'players',uid),{moderation:{muteWorldChatUntil:null,muteFactionChatUntil:null,muteTradeUntil:null}},{merge:true});
+    toast(`✅ ${name}'s mutes cleared.`,'ok');
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+// Grant a random Skin or Title token to another player via their mailbox.
+async function gmGrantRandomCosmetic(uid,name,type){
+  if(!window.FB||!isGM())return;
+  const zodiacNames=ZODIACS.map(z=>z.name);
+  const eligibleZodiacs=type==='skin'?zodiacNames.filter(n=>ZODIAC_SKINS[n]&&Object.keys(ZODIAC_SKINS[n]).length):zodiacNames;
+  if(!eligibleZodiacs.length){toast(`No ${type} variants defined yet!`,'er');return;}
+  const zodiacName=eligibleZodiacs[Math.floor(Math.random()*eligibleZodiacs.length)];
+  const variantIds=type==='skin'?Object.keys(ZODIAC_SKINS[zodiacName]):Object.keys(ZODIAC_TITLES);
+  const variantId=variantIds[Math.floor(Math.random()*variantIds.length)];
+  const variantName=type==='skin'?ZODIAC_SKINS[zodiacName][variantId].name:ZODIAC_TITLES[variantId].name;
+  const z=getZodiac(zodiacName);
+  try{
+    const {rtdb,ref,push}=window.FB;
+    await push(ref(rtdb,`gifts/${uid}`),{
+      from:'GM',fromName:'🛡️ Game Master',
+      itemType:type==='skin'?'zodiacSkin':'zodiacTitle',
+      zodiacName,variantId,
+      itemName:type==='skin'?`${variantName} ${zodiacName} Skin`:`"${variantName}" ${zodiacName} Title`,
+      itemEmoji:z?.emoji||(type==='skin'?'👕':'🏷️'),
+      desc:`A gift from the Game Master!`,
+      ts:Date.now(),claimed:false,
+    });
+    toast(`🎁 Sent ${z?.emoji||''} ${variantName} ${zodiacName} ${type==='skin'?'Skin':'Title'} to ${name}!`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// ── REPORTS TAB ──────────────────────────────────────────────────────────────
+async function renderGMReports(){
+  if(!window.FB) return '<div style="color:var(--txt2);padding:12px;">Not connected</div>';
+  try{
+    const {db,collection,query,where,orderBy,limit,getDocs}=window.FB;
+    const snap=await getDocs(query(collection(db,'reports'),where('resolved','==',false),orderBy('ts','desc'),limit(30)));
+    if(snap.empty)return '<div style="text-align:center;color:var(--txt2);padding:20px;font-size:11px;">🎉 No open reports.</div>';
+    let html=`<div style="font-size:10px;font-weight:700;margin-bottom:8px;">🚩 Open Reports (${snap.size})</div>`;
+    snap.forEach(d=>{
+      const r=d.data();
+      const time=new Date(r.ts||0).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      html+=`<div style="padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(239,68,68,.2);border-radius:8px;margin-bottom:6px;">
+        <div style="font-size:10px;font-weight:700;margin-bottom:2px;">🚩 ${escHtml(r.reportedName||'?')}</div>
+        <div style="font-size:9px;color:var(--txt2);margin-bottom:4px;">Reported by ${escHtml(r.reporterName||'?')} · ${time}</div>
+        <div style="font-size:10px;margin-bottom:6px;">${escHtml(r.reason||'')}</div>
+        ${r.context?`<div style="font-size:9px;color:var(--txt2);font-style:italic;margin-bottom:6px;">${escHtml(r.context)}</div>`:''}
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="_gmPlayerSearch='${escHtml(r.reportedName||'')}';_gmTab='players';renderGMPanel();switchGMTab('players')">👤 View Player</button>
+          <button class="btn bd bblk" style="font-size:9px;flex:1;" onclick="gmTimeoutPlayer('${r.reportedUid}','${escHtml(r.reportedName||'?')}',1);gmResolveReport('${d.id}')">⏱️ Timeout 1h</button>
+          <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmResolveReport('${d.id}')">✅ Dismiss</button>
         </div>
       </div>`;
     });
     return html;
   }catch(e){return `<div style="color:#ef4444;font-size:10px;">${e.message}</div>`;}
 }
+async function gmResolveReport(reportId){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    await setDoc(doc(db,'reports',reportId),{resolved:true,resolvedAt:Date.now()},{merge:true});
+    toast('✅ Report resolved.','ok');
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
 
 // ── SERVER TAB ────────────────────────────────────────────────────────────────
+// ── BOSS TRIALS TAB ─────────────────────────────────────────────────────────
+async function renderGMTrials(){
+  if(!window.FB) return '<div style="color:var(--txt2);padding:12px;">Not connected</div>';
+  const cfg=await _getBossTrialConfig();
+  return `
+    <div style="font-size:10px;font-weight:700;margin-bottom:8px;">⚔️ Boss Trials Reward Config</div>
+    <div style="font-size:9px;color:var(--txt2);margin-bottom:10px;">Changes apply to all players immediately. Base boss: 50/10/5/10 (HP/ATK/DEF/SPD), doubling each defeat.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+      <label style="font-size:10px;">💎 Essence per damage dealt
+        <input type="number" id="gmTrialsEssencePerDmg" value="${cfg.essencePerDamage}" step="0.0001" min="0" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px;color:var(--txt);font-size:11px;margin-top:2px;">
+      </label>
+      <label style="font-size:10px;">💎 Bonus essence for defeating at least 1 boss
+        <input type="number" id="gmTrialsVictoryBonus" value="${cfg.victoryBonusEssence}" step="1" min="0" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px;color:var(--txt);font-size:11px;margin-top:2px;">
+      </label>
+      <label style="font-size:10px;">🔢 Max simultaneous open lobbies
+        <input type="number" id="gmTrialsMaxLobbies" value="${cfg.maxOpenLobbies}" step="1" min="1" style="width:100%;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px;color:var(--txt);font-size:11px;margin-top:2px;">
+      </label>
+    </div>
+    <button class="btn bp" style="width:100%;" onclick="gmSaveTrialsConfig()">💾 Save Config</button>
+  `;
+}
+async function gmSaveTrialsConfig(){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    const essencePerDamage=parseFloat(document.getElementById('gmTrialsEssencePerDmg')?.value)||0;
+    const victoryBonusEssence=parseInt(document.getElementById('gmTrialsVictoryBonus')?.value)||0;
+    const maxOpenLobbies=parseInt(document.getElementById('gmTrialsMaxLobbies')?.value)||10;
+    await setDoc(doc(db,'server','bossTrialsConfig'),{essencePerDamage,victoryBonusEssence,maxOpenLobbies},{merge:true});
+    toast('✅ Boss Trials config saved!','ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
 async function renderGMServer(){
   if(!window.FB) return '<div style="color:var(--txt2);padding:12px;">Not connected</div>';
   try{
@@ -13173,7 +15386,13 @@ async function gmResetStats(){
 }
 
 // ── WORLD TAB ────────────────────────────────────────────────────────────────
-function renderGMWorld(){
+async function renderGMWorld(){
+  const soulCfg=window.FB?await (async()=>{try{const{db,doc,getDoc}=window.FB;const s=await getDoc(doc(db,'server','soulUnlockConfig'));return s.exists()?s.data():{};}catch(e){return{};}})():{};
+  const bossCfg=window.FB?await (async()=>{try{const{db,doc,getDoc}=window.FB;const s=await getDoc(doc(db,'server','bossRewardConfig'));return s.exists()?s.data():{};}catch(e){return{};}})():{};
+  const muteCfg=window.FB?await (async()=>{try{const{db,doc,getDoc}=window.FB;const s=await getDoc(doc(db,'server','globalMute'));return s.exists()?s.data():{};}catch(e){return{};}})():{};
+  const marketCfg=window.FB?await (async()=>{try{const{db,doc,getDoc}=window.FB;const s=await getDoc(doc(db,'server','marketConfig'));return s.exists()?s.data():{};}catch(e){return{};}})():{};
+  const soulOverrideActive=soulCfg.floor&&soulCfg.expiresAt&&Date.now()<soulCfg.expiresAt;
+  const globalMuteActive=muteCfg.chatMutedUntil&&Date.now()<muteCfg.chatMutedUntil;
   return `
     <div style="font-size:10px;font-weight:700;margin-bottom:10px;">🌍 World Controls</div>
     <div style="display:flex;flex-direction:column;gap:8px;">
@@ -13183,13 +15402,61 @@ function renderGMWorld(){
         <button class="btn bp" style="width:100%;font-size:10px;" onclick="gmSendTicker()">📡 Send Ticker</button>
       </div>
       <div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;margin-bottom:6px;">🔇 Mute All Players (World/Faction Chat)</div>
+        <div style="font-size:9px;color:var(--txt2);margin-bottom:6px;">${globalMuteActive?`🟢 Active until ${new Date(muteCfg.chatMutedUntil).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}`:'⚫ Not active'}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn bd bblk" style="font-size:9px;flex:1;" onclick="gmMuteAll(0.5)">30 min</button>
+          <button class="btn bd bblk" style="font-size:9px;flex:1;" onclick="gmMuteAll(1)">1 hour</button>
+          <button class="btn bd bblk" style="font-size:9px;flex:1;" onclick="gmMuteAll(24)">24 hours</button>
+          ${globalMuteActive?`<button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmMuteAll(0)">✅ Clear</button>`:''}
+        </div>
+      </div>
+      <div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;">
         <div style="font-size:10px;font-weight:700;margin-bottom:6px;">🎁 Give Reward to All</div>
         <div style="font-size:9px;color:var(--txt2);margin-bottom:6px;">Next time each player signs in:</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
           <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('stars',10)">⭐×10</button>
           <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('gold',100000)">💰×100K</button>
           <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('stars',50)">⭐×50</button>
         </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+          <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('essence',50)">💎×50</button>
+          <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('essence',200)">💎×200</button>
+          <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('soul',1)">👻×1 Soul</button>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmSetGlobalReward('soul',3)">👻×3 Souls</button>
+          <button class="btn bd bblk" style="font-size:9px;flex:1;" onclick="if(confirm('Grant +1 Ascension level to every player? This is powerful — use sparingly.'))gmSetGlobalReward('ascension',1)">⬆️ +1 Ascension</button>
+        </div>
+      </div>
+      <div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;margin-bottom:6px;">👻 Soul Zodiac Unlock (Tower Floor)</div>
+        <div style="font-size:9px;color:var(--txt2);margin-bottom:6px;">${soulOverrideActive?`🟢 Override ACTIVE: unlocked at Fl.${soulCfg.floor} until ${new Date(soulCfg.expiresAt).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}`:`⚫ Default: Fl.${SOUL_UNLOCK_FLOOR}`}</div>
+        <div style="display:flex;gap:4px;margin-bottom:6px;">
+          <input id="gmSoulFloor" type="number" min="1" max="${SOUL_UNLOCK_FLOOR}" value="${soulOverrideActive?soulCfg.floor:2000}" placeholder="Floor" style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+          <input id="gmSoulHours" type="number" min="1" max="720" value="48" placeholder="Hours" style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button class="btn bp" style="flex:1;font-size:10px;" onclick="gmSetSoulUnlockOverride()">▶ Activate</button>
+          ${soulOverrideActive?`<button class="btn bd bblk" style="flex:1;font-size:10px;" onclick="gmClearSoulUnlockOverride()">⏹ Clear</button>`:''}
+        </div>
+      </div>
+      <div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;margin-bottom:6px;">🐉 Server Boss Defeat Reward</div>
+        <div style="font-size:9px;color:var(--txt2);margin-bottom:6px;">Granted to each player when the Server Boss reaches 0 HP.</div>
+        <div style="display:flex;gap:4px;margin-bottom:6px;">
+          <input id="gmBossGold" type="number" min="0" value="${bossCfg.gold??50000}" placeholder="Gold" style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+          <input id="gmBossStars" type="number" min="0" value="${bossCfg.stars??10}" placeholder="Stars" style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+        </div>
+        <button class="btn bp" style="width:100%;font-size:10px;" onclick="gmSaveBossRewardConfig()">💾 Save</button>
+      </div>
+      <div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;margin-bottom:6px;">👻 Soul Market Fee</div>
+        <div style="font-size:9px;color:var(--txt2);margin-bottom:6px;">% of each sale removed as an Essence sink. Buyer pays full price; seller receives price minus this fee.</div>
+        <div style="display:flex;gap:4px;margin-bottom:6px;">
+          <input id="gmMarketFee" type="number" min="0" max="50" step="0.5" value="${marketCfg.feePercent??MARKET_FEE_PERCENT_DEFAULT}" placeholder="Fee %" style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+        </div>
+        <button class="btn bp" style="width:100%;font-size:10px;" onclick="gmSaveMarketFee()">💾 Save</button>
       </div>
       <div style="padding:10px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;">
         <div style="font-size:10px;font-weight:700;margin-bottom:6px;">🏆 Set Player of the Week</div>
@@ -13217,6 +15484,72 @@ async function gmSetGlobalReward(type, amount){
   }catch(e){toast('Failed: '+e.message,'er');}
 }
 
+async function gmSetSoulUnlockOverride(){
+  if(!window.FB||!isGM())return;
+  const floor=parseInt(document.getElementById('gmSoulFloor')?.value);
+  const hours=parseFloat(document.getElementById('gmSoulHours')?.value);
+  if(!floor||floor<1||floor>SOUL_UNLOCK_FLOOR){toast(`Floor must be between 1 and ${SOUL_UNLOCK_FLOOR}!`,'er');return;}
+  if(!hours||hours<=0){toast('Enter a valid duration in hours!','er');return;}
+  try{
+    const {db,doc,setDoc}=window.FB;
+    const expiresAt=Date.now()+hours*3600000;
+    await setDoc(doc(db,'server','soulUnlockConfig'),{floor,expiresAt});
+    _soulUnlockOverride={floor,expiresAt};
+    toast(`👻 Soul Zodiacs now unlock at Tower Floor ${floor} for ${hours}h!`,'ok');
+    _pushTicker(`👻 LIMITED TIME: Soul Zodiacs now unlock at Tower Floor ${floor}!`);
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function gmClearSoulUnlockOverride(){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    await setDoc(doc(db,'server','soulUnlockConfig'),{floor:0,expiresAt:0});
+    _soulUnlockOverride=null;
+    toast('👻 Soul Zodiac unlock override cleared.','ok');
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function gmSaveBossRewardConfig(){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    const gold=parseInt(document.getElementById('gmBossGold')?.value)||0;
+    const stars=parseInt(document.getElementById('gmBossStars')?.value)||0;
+    await setDoc(doc(db,'server','bossRewardConfig'),{gold,stars},{merge:true});
+    toast('✅ Server Boss reward config saved!','ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function gmSaveMarketFee(){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    let feePercent=parseFloat(document.getElementById('gmMarketFee')?.value);
+    if(isNaN(feePercent)||feePercent<0)feePercent=0;
+    if(feePercent>50)feePercent=50;
+    await setDoc(doc(db,'server','marketConfig'),{feePercent},{merge:true});
+    toast(`✅ Soul Market fee set to ${feePercent}%!`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+async function gmMuteAll(hours){
+  if(!window.FB||!isGM())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    if(hours<=0){
+      await setDoc(doc(db,'server','globalMute'),{chatMutedUntil:0});
+      _globalMute={chatMutedUntil:0};
+      toast('✅ Global chat mute cleared.','ok');
+    }else{
+      const chatMutedUntil=Date.now()+hours*3600000;
+      await setDoc(doc(db,'server','globalMute'),{chatMutedUntil});
+      _globalMute={chatMutedUntil};
+      toast(`🔇 All players muted from World/Faction chat for ${hours<1?Math.round(hours*60)+' min':hours+'h'}.`,'ok');
+      _pushTicker(`🔇 World & Faction chat have been temporarily muted by a GM.`);
+    }
+    renderGMPanel();
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
 async function gmSetPOTW(){
   if(!window.FB||!isGM()) return;
   const name=document.getElementById('gmPotwName')?.value?.trim();
@@ -13238,15 +15571,25 @@ async function _checkGlobalReward(){
     const snap = await getDoc(doc(db,'server','globalReward'));
     if(!snap.exists()) return;
     const r = snap.data();
-    if(!r.id||!r.type||!r.amount) return;
+    if(!r.id||!r.type) return;
     const claimed = G._claimedGlobalRewards||[];
     if(claimed.includes(r.id)) return;
     if(!G._claimedGlobalRewards) G._claimedGlobalRewards=[];
     G._claimedGlobalRewards.push(r.id);
-    if(r.type==='stars') G.stars=(G.stars||0)+r.amount;
-    else if(r.type==='gold'){G.gold+=r.amount;G.totalGold+=r.amount;}
+    let msg='';
+    if(r.type==='stars'){G.stars=(G.stars||0)+r.amount;msg=`+${fmt(r.amount)} ⭐`;}
+    else if(r.type==='gold'){G.gold+=r.amount;G.totalGold+=r.amount;msg=`+${fmt(r.amount)} 💰`;}
+    else if(r.type==='essence'){G._ascEssence=(G._ascEssence||0)+r.amount;msg=`+${fmt(r.amount)} 💎 Essence`;}
+    else if(r.type==='ascension'){G.ascension=(G.ascension||0)+r.amount;msg=`+${r.amount} Ascension level${r.amount===1?'':'s'}`;}
+    else if(r.type==='soul'){
+      // Grant `amount` random Souls (only if Soul Zodiacs are unlocked for this player)
+      if(isSoulZodiacsUnlocked()){
+        for(let i=0;i<(r.amount||1);i++)awardRandomSoul();
+      }
+      msg=null; // awardRandomSoul already toasts per-soul; avoid a redundant combined toast
+    }
     save();updateHdr();
-    toast(`🎁 GM Gift: +${fmt(r.amount)} ${r.type==='stars'?'⭐':'💰'}! Enjoy!`,'ok');
+    if(msg)toast(`🎁 GM Gift: ${msg}! Enjoy!`,'ok');
   }catch(e){}
 }
 
@@ -13336,6 +15679,15 @@ function triggerPWAInstall(){
 
 
 <div class="modal" id="mOnlineMode"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🌐 Online Mode</span><button class="xbtn" onclick="closeM('mOnlineMode')">✕</button></div><div class="pb" id="onlineModeBody"></div></div></div>
+<div class="modal" id="mSoulZodiacs"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">👻 Soul Zodiacs</span><button class="xbtn" onclick="closeM('mSoulZodiacs')">✕</button></div><div class="pb" id="soulZodiacsBody"></div></div></div>
+<div class="modal" id="mZodiacCosmetics"><div class="panel"><div class="ph"><span id="zodiacCosmeticsTitle" style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🎨 Skins & Titles</span><button class="xbtn" onclick="closeM('mZodiacCosmetics')">✕</button></div><div class="pb" id="zodiacCosmeticsBody"></div></div></div>
+<div class="modal" id="mSoulSanctuary"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">⏳ Soul Sanctuary</span><button class="xbtn" onclick="closeM('mSoulSanctuary')">✕</button></div><div class="pb" id="soulSanctuaryBody"></div></div></div>
+<div class="modal" id="mSoulZodiacLB"><div class="panel"><div class="ph"><span id="soulZodiacLBTitle" style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏆 Rankings</span><button class="xbtn" onclick="closeM('mSoulZodiacLB')">✕</button></div><div class="pb" id="soulZodiacLBBody"></div></div></div>
+<div class="modal" id="mBossTrials"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">⚔️ Boss Trials</span><button class="xbtn" onclick="leaveBossTrialLobby();closeM('mBossTrials')">✕</button></div><div class="pb" id="bossTrialsBody"></div></div></div>
+<div class="modal" id="mMailbox"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">📬 Mail</span><button class="xbtn" onclick="closeM('mMailbox')">✕</button></div><div class="pb" id="mailboxBody"></div></div></div>
+<div class="modal" id="mFriends"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">👥 Friends</span><button class="xbtn" onclick="closeM('mFriends')">✕</button></div><div class="pb" id="friendsBody"></div></div></div>
+<div class="modal" id="mDM"><div class="panel"><div class="ph"><span id="dmTitle" style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">💬 Chat</span><button class="xbtn" onclick="closeDM()">✕</button></div><div class="pb" id="dmBody"></div></div></div>
+<div class="modal" id="mBlockedList"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🔇 Blocked Players</span><button class="xbtn" onclick="closeM('mBlockedList')">✕</button></div><div class="pb" id="blockedListBody"></div></div></div>
 
 <div class="modal" id="mWorldProfile"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">👤 World Profile</span><button class="xbtn" onclick="closeM('mWorldProfile')">✕</button></div><div class="pb" id="worldProfileBody"></div></div></div>
 
@@ -13373,7 +15725,7 @@ function triggerPWAInstall(){
 <!-- ═══ SERVER BOSS ═══ -->
 <div class="modal" id="mServerBoss"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🐉 Server Boss</span><button class="xbtn" onclick="closeM('mServerBoss')">✕</button></div><div class="pb" id="serverBossBody"></div></div></div>
 
-<div class="modal" id="mAuctionHouse"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏪 Market</span><span id="essenceBadge" style="font-size:10px;color:#e879f9;font-weight:700;margin-left:auto;margin-right:8px;">💎 0</span><button class="xbtn" onclick="closeM('mAuctionHouse')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;margin-bottom:8px;"><button class="log-tab on" id="mktab-buy" onclick="switchMarketTab('buy')">🛒 Buy</button><button class="log-tab" id="mktab-sell" onclick="switchMarketTab('sell')">📦 Sell</button><button class="log-tab" id="mktab-history" onclick="switchMarketTab('history')">📈 History</button></div><div id="auctionBody"></div><div id="auctionListBody" style="display:none;"></div></div></div></div>
+<div class="modal" id="mAuctionHouse"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">👻 Soul Market</span><span id="essenceBadge" style="font-size:10px;color:#e879f9;font-weight:700;margin-left:auto;margin-right:8px;">💎 0</span><button class="xbtn" onclick="closeM('mAuctionHouse')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;margin-bottom:8px;"><button class="log-tab on" id="mktab-buy" onclick="switchMarketTab('buy')">🛒 Buy</button><button class="log-tab" id="mktab-sell" onclick="switchMarketTab('sell')">📦 Sell</button><button class="log-tab" id="mktab-history" onclick="switchMarketTab('history')">📈 History</button></div><div id="auctionBody"></div><div id="auctionListBody" style="display:none;"></div></div></div></div>
 <!-- ═══ BOUNTY BOARD ═══ -->
 <div class="modal" id="mBountyBoard"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">💀 Bounty Board</span><button class="xbtn" onclick="closeM('mBountyBoard')">✕</button></div><div class="pb" id="bountyBody"></div></div></div>
 
@@ -13388,7 +15740,7 @@ function triggerPWAInstall(){
 
 
 <!-- ═══ GM PANEL ═══ -->
-<div class="modal" id="mGMPanel"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:#a855f7;font-size:14px;">🛡️ GM Panel</span><button class="xbtn" onclick="closeM('mGMPanel')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="gmtab-events" onclick="switchGMTab('events')">🌍 Events</button><button class="log-tab" id="gmtab-boss" onclick="switchGMTab('boss')">🐉 Boss</button><button class="log-tab" id="gmtab-announce" onclick="switchGMTab('announce')">📢 Announce</button><button class="log-tab" id="gmtab-players" onclick="switchGMTab('players')">👥 Players</button><button class="log-tab" id="gmtab-server" onclick="switchGMTab('server')">📊 Server</button><button class="log-tab" id="gmtab-world" onclick="switchGMTab('world')">🌍 World</button></div><div id="gmPanelBody"></div></div></div></div>
+<div class="modal" id="mGMPanel"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:#a855f7;font-size:14px;">🛡️ GM Panel</span><button class="xbtn" onclick="closeM('mGMPanel')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="gmtab-events" onclick="switchGMTab('events')">🌍 Events</button><button class="log-tab" id="gmtab-boss" onclick="switchGMTab('boss')">🐉 Boss</button><button class="log-tab" id="gmtab-trials" onclick="switchGMTab('trials')">⚔️ Trials</button><button class="log-tab" id="gmtab-announce" onclick="switchGMTab('announce')">📢 Announce</button><button class="log-tab" id="gmtab-players" onclick="switchGMTab('players')">👥 Players</button><button class="log-tab" id="gmtab-reports" onclick="switchGMTab('reports')">🚩 Reports</button><button class="log-tab" id="gmtab-server" onclick="switchGMTab('server')">📊 Server</button><button class="log-tab" id="gmtab-world" onclick="switchGMTab('world')">🌍 World</button></div><div id="gmPanelBody"></div></div></div></div>
 
 <!-- ═══ OFFLINE REWARDS ═══ -->
 <div class="modal" id="mOfflineRewards"><div class="panel" style="max-width:340px;"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">💤 Offline Rewards</span></div><div class="pb" id="offlineRewardsBody"></div></div></div>
@@ -13940,11 +16292,11 @@ const GUIDE_DATA = [
         <p style="margin-top:8px;">World Bosses rotate on a schedule. Defeating one earns stars, special equipment, and exclusive cosmetics.</p>
         <p style="margin-top:8px;">Defeating all World Bosses 5 times each is required for one of the Godly Equipment pieces.</p>
       `},
-      { name: '🏪 Market', id: 'on_market', content: `
-        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🏪 Auction Market</h3>
-        <p>Buy and sell equipment with other players. List your unwanted gear for gold, or browse listings from others.</p>
-        <p style="margin-top:8px;"><b>Tabs:</b> 🛒 Buy (browse listings) · 📦 Sell (list your items) · 📈 History (recent sales)</p>
-        <p style="margin-top:8px;">Use the market to offload duplicate high-rarity items, or hunt for specific set pieces you need.</p>
+      { name: '👻 Soul Market', id: 'on_market', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">👻 Soul Market</h3>
+        <p>Trade Soul Zodiac Souls with other players using 💎 Ascension Essence. List surplus Souls you don't need, or buy the ones you're missing for your favorite Soul Zodiac.</p>
+        <p style="margin-top:8px;"><b>Tabs:</b> 🛒 Buy (browse listings) · 📦 Sell (list your surplus Souls) · 📈 History (recent sales)</p>
+        <p style="margin-top:8px;">Souls are obtained from Tower floors 5000+. Only one Soul Zodiac can be active for events, so trade away the other 11 types for the ones you actually want!</p>
       `},
     ]
   },
