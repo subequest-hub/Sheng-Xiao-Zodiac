@@ -10721,6 +10721,21 @@ function fbReady(){return !!(window.FB&&window.FB.auth&&(window.FB.auth.currentU
 function fbUID(){return (window.FB?.auth?.currentUser?.uid)||(window._fbUser?.uid)||null;}
 function fbName(){const u=window.FB?.auth?.currentUser||window._fbUser;return u?.displayName||u?.email||'Anonymous';}
 function fbAvatar(){const u=window.FB?.auth?.currentUser||window._fbUser;return u?.photoURL||null;}
+// Display the signed-in player's Firebase UID — used for one-time GM setup
+// (paste into GM_UIDS in the code and into Firestore security rules).
+function showMyUID(){
+  const uid=fbUID();
+  if(!uid){toast('Sign in first!','er');return;}
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(uid).then(()=>{
+      toast(`📋 UID copied to clipboard!\n${uid}`,'ok');
+    }).catch(()=>{
+      prompt('Your Firebase UID (copy this):',uid);
+    });
+  }else{
+    prompt('Your Firebase UID (copy this):',uid);
+  }
+}
 
 // ── MODERATION (bans, mutes) ────────────────────────────────────────────────────
 let _myModeration=null; // cached from players/{uid}.moderation
@@ -12157,6 +12172,7 @@ async function openWorldProfile(uid){
         <button class="btn bs bblk" style="font-size:11px;" onclick="openTitlePicker()">🏷️ Change Title</button>
         <button class="btn bs bblk" style="font-size:11px;" onclick="openReferralPanel()">🎁 Referral Code</button>
         <button class="btn bs bblk" style="font-size:11px;" onclick="openBlockedList()">🔇 Blocked Players</button>
+        <button class="btn bs bblk" style="font-size:11px;" onclick="showMyUID()">🆔 Show My UID (for GM setup)</button>
       </div>`:`<div style="display:flex;flex-direction:column;gap:6px;">
         <div style="display:flex;gap:6px;">
           <button class="btn bs bblk" style="flex:1;font-size:11px;" onclick="sendFriendRequest('${p.uid||targetUid}','${escHtml(p.name||'?')}')">👋 Add Friend</button>
