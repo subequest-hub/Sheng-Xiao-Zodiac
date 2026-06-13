@@ -2716,6 +2716,14 @@ function load(){
     G.playerStatus={};G.enemyStatus={};G.playerBuffs={};G.enemyArmor=0;
     G.enemySkillQueue=null;G.fightDmg={};G.damageTakenFight=0;
     G.enemyPhase=0;G.enemyShield=false;G.enemyImmune=null;
+    // One-time cleanup for saves created before the equipment cap existed —
+    // if G.equipment is still oversized from before, prune it now rather
+    // than waiting for the next drop (which could be a while for idle players).
+    if(Array.isArray(G.equipment)&&G.equipment.length>500){
+      const before=G.equipment.length;
+      _pruneEquipment(500);
+      setTimeout(()=>toast(`🗑️ Trimmed ${before-G.equipment.length} old equipment items to keep your save size healthy.`,'ok'),1000);
+    }
     return true;
   }catch(e){return false;}
 }
