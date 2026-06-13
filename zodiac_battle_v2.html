@@ -939,8 +939,8 @@ onAuthStateChanged(auth, user => {
         <span class="hub-sub" id="hubThemeName">Default</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');openGameGuide()">
-        <span class="hub-icon">📖</span><span class="hub-label">Codex</span>
-        <span class="hub-sub">Lore & enemies</span>
+        <span class="hub-icon">📖</span><span class="hub-label">Game Guide</span>
+        <span class="hub-sub">Help & info</span>
       </button>
     </div>
   </div>
@@ -6808,6 +6808,12 @@ function onWin(sMult=1){
   G._lastOverkillDmg=0;
   G.wins++;G.streak++;
   if(G.wins>=5000)checkGodlyPieceUnlock('wins_10k');
+  // Faction Wars: accumulate a war point locally on each win during war day.
+  // Flushed to Firestore periodically by flushFactionWarPoints() to avoid
+  // hammering the DB at high auto-battle speeds.
+  if(G._factionId&&FACTION_WAR_SCHEDULE.isWarDay()){
+    G._pendingWarPoints=(G._pendingWarPoints||0)+1;
+  }
   // Sanity guard: never let a single reward push gold to NaN/Infinity
   if(!isFinite(gold)||isNaN(gold))gold=0;
   G.gold+=gold;G.totalGold+=gold;
@@ -8184,19 +8190,6 @@ function renderDmgMeter(){
   let html=`<div class="t2 ts mb3">Damage this fight — Total: <span class="ta tb">${total.toLocaleString()}</span></div>`;
   entries.forEach(([name,dmg])=>{const pct=Math.floor((dmg/total)*100);const m=liveM(name)||{emoji:'❓'};html+=`<div class="dmg-row"><span style="font-size:13px;">${m.emoji}</span><span style="font-size:11px;font-weight:700;width:55px;">${name}</span><div class="dmg-bar"><div class="dmg-barf" style="width:${pct}%"></div></div><span class="ts">${dmg.toLocaleString()} (${pct}%)</span></div>`;});
   document.getElementById('dmgMeterBody').innerHTML=html;
-}
-
-// ══ CODEX ══
-function renderCodex(){
-  const unlocked=Object.keys(G.codexUnlocked||{}).filter(k=>!k.startsWith('ach_')).length;
-  let html=`<div class="t2 ts mb3">Enemies Encountered: ${unlocked}/${ENEMIES.length}</div>`;
-  html+=`<div class="sec-t mb2">⚗️ Elements</div>`;
-  CODEX_ELEMENTS.forEach(e=>{html+=`<div style="background:rgba(28,38,56,.5);border-radius:8px;padding:8px;margin-bottom:6px;"><div class="row mb1"><span style="font-size:16px;">${e.emoji}</span><span style="font-weight:700;font-size:12px;text-transform:capitalize;">${e.el}</span></div><div class="t2 ts">${e.desc}</div><div class="t2 ts">Strong vs: ${e.strong.join(', ')} · Weak to: ${e.weak.join(', ')}</div></div>`;});
-  html+=`<div class="sec-t mb2" style="margin-top:10px;">👾 Enemies</div>`;
-  ENEMIES.forEach(e=>{const seen=G.codexUnlocked&&G.codexUnlocked[e.name];html+=`<div style="background:rgba(28,38,56,.5);border-radius:8px;padding:8px;margin-bottom:6px;opacity:${seen?1:.3};display:flex;align-items:center;gap:8px;"><span style="font-size:22px;">${e.emoji}</span><div><div style="font-weight:700;font-size:12px;">${e.name}${e.boss?' 👑':''}</div><div class="t2 ts">Lv.${e.level} · ${EI[e.type]||''}${e.type} · Weak: ${EI[e.weak]||''}${e.weak}</div></div></div>`;});
-  html+=`<div class="sec-t mb2" style="margin-top:10px;">⚡ Elemental Reactions</div>`;
-  Object.entries(EL_REACTIONS).forEach(([k,r])=>{html+=`<div style="background:rgba(28,38,56,.5);border-radius:8px;padding:8px;margin-bottom:6px;border-left:3px solid ${r.emoji?'var(--acc)':'transparent'};"><div style="font-weight:700;font-size:12px;">${r.emoji} ${r.name} (${k})</div><div class="t2 ts">${r.mult}× dmg${r.status?` · inflicts ${r.status}`:''}</div></div>`;});
-  document.getElementById('codexBody').innerHTML=html;
 }
 
 // ══ COLLECTION ══
@@ -12095,10 +12088,35 @@ function _renderChatMsg(msg){
 // Tapping a player's name in chat offers quick moderation actions
 function showChatUserActions(uid,name,messagePreview){
   if(uid===fbUID())return;
-  const choice=prompt(`${name}\n\nType:\n1 = View Profile\n2 = Block\n3 = Report\n\n(or Cancel)`,'');
-  if(choice==='1')openWorldProfile(uid);
-  else if(choice==='2')blockPlayer(uid,name);
-  else if(choice==='3')reportPlayer(uid,name,`Chat message: "${messagePreview}"`);
+  G._chatActionTarget={uid,name,messagePreview};
+  const title=document.getElementById('chatActionTitle');
+  if(title)title.textContent=name;
+  openM('mChatActions');
+}
+function _chatActionViewProfile(){
+  const t=G._chatActionTarget;if(!t)return;
+  closeM('mChatActions');
+  openWorldProfile(t.uid);
+}
+function _chatActionBlock(){
+  const t=G._chatActionTarget;if(!t)return;
+  closeM('mChatActions');
+  blockPlayer(t.uid,t.name);
+}
+function _chatActionReport(){
+  const t=G._chatActionTarget;if(!t)return;
+  closeM('mChatActions');
+  reportPlayer(t.uid,t.name,`Chat message: "${t.messagePreview}"`);
+}
+function _chatActionMessage(){
+  const t=G._chatActionTarget;if(!t)return;
+  closeM('mChatActions');
+  openDM(t.uid,t.name);
+}
+function _chatActionAddFriend(){
+  const t=G._chatActionTarget;if(!t)return;
+  closeM('mChatActions');
+  sendFriendRequest(t.uid,t.name);
 }
 
 
@@ -12558,7 +12576,7 @@ async function renderFactionTab(tab){
   else if(tab==='boss') body.innerHTML = renderFactionBoss();
   else if(tab==='quests') body.innerHTML = renderFactionQuests();
   else if(tab==='treasury') body.innerHTML = renderFactionTreasury();
-  else if(tab==='wars') body.innerHTML = renderFactionWars();
+  else if(tab==='wars') body.innerHTML = await renderFactionWars();
   else if(tab==='upgrades') body.innerHTML = renderFactionUpgrades();
   else if(tab==='checkin') body.innerHTML = renderFactionCheckin();
 }
@@ -12736,6 +12754,7 @@ async function createFaction(){
       leaderId:fbUID(),leaderName:fbName(),
       memberCount:1,maxMembers:20,level:1,xp:0,
       open:true,bossKills:0,totalCoins:0,
+      warPoints:0,warPointsWeekId:0,lastWarRewardWeekId:0,
       upgrades:{},createdAt:serverTimestamp(),
     });
     G._factionId = ref.id;
@@ -12751,6 +12770,37 @@ async function createFaction(){
     switchFactionTab('overview');
   }catch(e){toast('Failed: '+e.message,'er');}
 }
+
+// Faction Wars: flush locally-accumulated war points to Firestore.
+// Uses a transaction so concurrent flushes from multiple members don't
+// clobber each other, and so the weekly reset (warPointsWeekId mismatch)
+// is handled atomically by whichever client flushes first each week.
+async function flushFactionWarPoints(){
+  const pts=G._pendingWarPoints||0;
+  if(pts<=0||!fbReady()||!G._factionId)return;
+  try{
+    const {db,doc,runTransaction}=window.FB;
+    const ref=doc(db,'factions',G._factionId);
+    const weekId=FACTION_WAR_SCHEDULE.getWeekId();
+    await runTransaction(db,async(tx)=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists())return;
+      const f=snap.data();
+      const curWeek=f.warPointsWeekId;
+      const curPoints=(curWeek===weekId)?(f.warPoints||0):0;
+      tx.update(ref,{warPoints:curPoints+pts,warPointsWeekId:weekId});
+    });
+    G._pendingWarPoints=0;
+  }catch(e){
+    // Leave _pendingWarPoints intact — next flush will retry with the
+    // accumulated total. Don't spam errors for this background task.
+    console.warn('War point flush failed:',e.message);
+  }
+}
+// Flush war points periodically (every 30s) — frequent enough to feel
+// live on war day, infrequent enough to avoid hammering Firestore at
+// high auto-battle speeds.
+setInterval(()=>{if(fbReady())flushFactionWarPoints();},30*1000);
 
 async function joinFaction(factionId){
   if(!fbReady())return;
@@ -14340,22 +14390,121 @@ const FACTION_WAR_SCHEDULE = {
   getWeekId: ()=>Math.floor(Date.now()/(7*24*60*60*1000)),
 };
 
-function renderFactionWars(){
+async function renderFactionWars(){
   const isWarDay=FACTION_WAR_SCHEDULE.isWarDay();
   const daysUntilWar=(7-new Date().getDay())%7||7;
+  const weekId=FACTION_WAR_SCHEDULE.getWeekId();
+  let myWarPoints=0;
+  let leaderboardHtml='';
+  let claimHtml='';
+  if(window.FB&&G._factionId){
+    try{
+      const {db,doc,getDoc,collection,query,orderBy,limit,getDocs,runTransaction}=window.FB;
+      // My faction's current war points (account for any not-yet-flushed local points)
+      const mySnap=await getDoc(doc(db,'factions',G._factionId));
+      if(mySnap.exists()){
+        const f=mySnap.data();
+        myWarPoints=(f.warPointsWeekId===weekId)?(f.warPoints||0):0;
+        myWarPoints+=(G._pendingWarPoints||0);
+        // Check for unclaimed reward from a PREVIOUS week where this faction was #1
+        if((f.lastWarRewardWeekId||0)<(weekId-1)&&(f.warPointsWeekId||0)===(weekId-1)&&(f.warPoints||0)>0){
+          // Was this faction #1 last week? Pool top factions by raw warPoints,
+          // then filter to ones whose warPointsWeekId matches last week and
+          // compare — avoids missing the true #1 due to stale higher values
+          // from factions that haven't flushed yet this week.
+          const lastWeekQ=query(collection(db,'factions'),orderBy('warPoints','desc'),limit(20));
+          const lastWeekSnap=await getDocs(lastWeekQ);
+          const lastWeekRows=[];
+          lastWeekSnap.forEach(d=>{
+            const fd=d.data();
+            if((fd.warPointsWeekId||0)===(weekId-1))lastWeekRows.push({id:d.id,pts:fd.warPoints||0});
+          });
+          lastWeekRows.sort((a,b)=>b.pts-a.pts);
+          if(lastWeekRows.length&&lastWeekRows[0].id===G._factionId){
+            claimHtml=`<button class="btn bp mb2" style="width:100%;" onclick="claimFactionWarReward()">🏆 Your faction won last week's war! Claim +2000 Faction Coins</button>`;
+          }
+        }
+      }
+      // Top factions leaderboard for the current week
+      // Fetch a larger pool than needed - factions that haven't flushed yet
+      // this week may still have a high stale warPoints from last week, which
+      // would otherwise occupy top-10 slots ahead of factions with real
+      // current-week points. We filter to current-week points below, then
+      // take the top 10 of THOSE.
+      const lbQ=query(collection(db,'factions'),orderBy('warPoints','desc'),limit(30));
+      const lbSnap=await getDocs(lbQ);
+      const rows=[];
+      lbSnap.forEach(d=>{
+        const f=d.data();
+        const pts=(f.warPointsWeekId===weekId)?(f.warPoints||0):0;
+        rows.push({id:d.id,name:f.name||'?',emoji:f.emoji||'🏰',pts});
+      });
+      rows.sort((a,b)=>b.pts-a.pts);
+      if(rows.length&&rows.some(r=>r.pts>0)){
+        leaderboardHtml=`<div style="font-size:10px;font-weight:700;margin:10px 0 6px;">🏆 This Week's War Leaderboard</div>`;
+        rows.slice(0,10).forEach((r,i)=>{
+          const isMine=r.id===G._factionId;
+          const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`;
+          leaderboardHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${isMine?'rgba(245,158,11,.12)':'rgba(28,38,56,.6)'};border:1px solid ${isMine?'rgba(245,158,11,.3)':'rgba(71,85,105,.2)'};border-radius:8px;margin-bottom:4px;">
+            <span style="font-size:13px;min-width:24px;">${medal}</span>
+            <span style="font-size:16px;">${r.emoji}</span>
+            <span style="flex:1;font-size:11px;font-weight:${isMine?'700':'400'};">${escHtml(r.name)}${isMine?' (you)':''}</span>
+            <span style="font-size:11px;color:#f87171;font-weight:700;">⚔️${fmt(r.pts)}</span>
+          </div>`;
+        });
+      }
+    }catch(e){
+      leaderboardHtml=`<div style="color:#ef4444;font-size:10px;margin-top:8px;">Leaderboard error: ${e.message}</div>`;
+    }
+  }
   return `
     <div style="text-align:center;padding:16px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:12px;margin-bottom:12px;">
       <div style="font-size:32px;">${isWarDay?'⚔️':'🛡️'}</div>
       <div style="font-weight:900;font-size:14px;color:#f87171;">${isWarDay?'WAR DAY!':'Faction Wars'}</div>
       <div style="font-size:10px;color:var(--txt2);margin-top:4px;">${isWarDay?'Fight enemy factions for territory!':'Next war in '+daysUntilWar+' day'+(daysUntilWar!==1?'s':'')}</div>
+      ${G._factionId?`<div style="font-size:18px;font-weight:900;color:#f87171;margin-top:8px;">⚔️ ${fmt(myWarPoints)} war points</div>`:''}
     </div>
+    ${claimHtml}
     <div style="font-size:10px;color:var(--txt2);line-height:1.6;padding:10px;background:rgba(28,38,56,.5);border-radius:8px;margin-bottom:10px;">
       Every Sunday, factions compete for territory. Win battles and contribute to your faction's war score. The faction with the most war points each week earns bonus coins and a territory title.<br><br>
       <b>Your contribution:</b> Each win during war day = +1 war point for your faction.
     </div>
-    ${isWarDay?`<button class="btn bp" style="width:100%;" onclick="toast('Fight battles today to earn war points for your faction!','ok')">⚔️ Fight for Your Faction!</button>`:''}
+    ${isWarDay?`<button class="btn bp" style="width:100%;" onclick="toast('Every battle win contributes a war point — keep fighting!','ok')">⚔️ Fight for Your Faction!</button>`:''}
+    ${leaderboardHtml}
     <div style="font-size:9px;color:var(--txt2);margin-top:8px;">War points reset each week. Top faction gets 2000 bonus coins.</div>`;
 }
+
+// Claim the 2000 faction coin bonus for being #1 in last week's faction war.
+// Guarded by lastWarRewardWeekId to ensure the lifetime-stat increment happens
+// only once. Faction Coins (G._factionCoins) are a per-member local balance in
+// this game (not a pooled faction treasury), so the claiming member receives
+// the spendable reward — but the faction's lifetime "Total Coins Earned" stat
+// is incremented for everyone to see as a shared trophy.
+async function claimFactionWarReward(){
+  if(!fbReady()||!G._factionId)return;
+  try{
+    const {db,doc,runTransaction}=window.FB;
+    const weekId=FACTION_WAR_SCHEDULE.getWeekId();
+    const ref=doc(db,'factions',G._factionId);
+    let granted=false;
+    await runTransaction(db,async(tx)=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists())return;
+      const f=snap.data();
+      if((f.lastWarRewardWeekId||0)>=(weekId-1))return; // already claimed
+      tx.update(ref,{totalCoins:(f.totalCoins||0)+2000,lastWarRewardWeekId:weekId-1});
+      granted=true;
+    });
+    if(granted){
+      G._factionCoins=(G._factionCoins||0)+2000;save();
+      toast('🏆 Victory! +2000 Faction Coins added to your balance!','ok');
+    }else{
+      toast('Reward already claimed by another member.','er');
+    }
+    switchFactionTab('wars');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
 
 // FACTION RECRUITMENT BOARD (#23)
 async function renderRecruitmentBoard(){
@@ -15905,6 +16054,13 @@ function triggerPWAInstall(){
 <div class="modal" id="mFriends"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">👥 Friends</span><button class="xbtn" onclick="closeM('mFriends')">✕</button></div><div class="pb" id="friendsBody"></div></div></div>
 <div class="modal" id="mDM"><div class="panel"><div class="ph"><span id="dmTitle" style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">💬 Chat</span><button class="xbtn" onclick="closeDM()">✕</button></div><div class="pb" id="dmBody"></div></div></div>
 <div class="modal" id="mBlockedList"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🔇 Blocked Players</span><button class="xbtn" onclick="closeM('mBlockedList')">✕</button></div><div class="pb" id="blockedListBody"></div></div></div>
+<div class="modal" id="mChatActions"><div class="panel" style="max-width:280px;"><div class="ph"><span id="chatActionTitle" style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">Player</span><button class="xbtn" onclick="closeM('mChatActions')">✕</button></div><div class="pb" style="display:flex;flex-direction:column;gap:6px;">
+  <button class="btn bp" style="width:100%;text-align:left;font-size:11px;" onclick="_chatActionViewProfile()">👤 View Profile</button>
+  <button class="btn bs bblk" style="width:100%;text-align:left;font-size:11px;" onclick="_chatActionMessage()">💬 Message</button>
+  <button class="btn bs bblk" style="width:100%;text-align:left;font-size:11px;" onclick="_chatActionAddFriend()">👋 Add Friend</button>
+  <button class="btn bd bblk" style="width:100%;text-align:left;font-size:11px;" onclick="_chatActionBlock()">🔇 Block</button>
+  <button class="btn bd bblk" style="width:100%;text-align:left;font-size:11px;" onclick="_chatActionReport()">🚩 Report</button>
+</div></div></div>
 
 <div class="modal" id="mWorldProfile"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">👤 World Profile</span><button class="xbtn" onclick="closeM('mWorldProfile')">✕</button></div><div class="pb" id="worldProfileBody"></div></div></div>
 
@@ -16495,6 +16651,10 @@ const GUIDE_DATA = [
           <div style="background:rgba(28,38,56,.6);padding:5px 8px;border-radius:5px;">📅 Check-in — Daily streak rewards</div>
         </div>
         <p style="margin-top:8px;"><b>Faction Boss:</b> Cooperatively fight a shared boss. Rewards (coins + stars) are split among all participants who attack it.</p>
+        <div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:#f87171;font-weight:700;margin-bottom:4px;">⚔️ Faction Wars</div>
+          Every Sunday is War Day — each battle you win earns your faction +1 war point. At the end of the week, the faction with the most war points is shown at #1 on the Wars leaderboard, and any member can claim a +2000 Faction Coin bonus on their behalf starting the following week. War points reset to 0 each week.
+        </div>
       `},
       { name: '💬 Global Chat', id: 'on_chat', content: `
         <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">💬 Global Chat</h3>
@@ -16510,9 +16670,83 @@ const GUIDE_DATA = [
       `},
       { name: '👻 Soul Market', id: 'on_market', content: `
         <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">👻 Soul Market</h3>
-        <p>Trade Soul Zodiac Souls with other players using 💎 Ascension Essence. List surplus Souls you don't need, or buy the ones you're missing for your favorite Soul Zodiac.</p>
-        <p style="margin-top:8px;"><b>Tabs:</b> 🛒 Buy (browse listings) · 📦 Sell (list your surplus Souls) · 📈 History (recent sales)</p>
-        <p style="margin-top:8px;">Souls are obtained from Tower floors 5000+. Only one Soul Zodiac can be active for events, so trade away the other 11 types for the ones you actually want!</p>
+        <p>Trade Souls, Zodiac Skins, and Zodiac Titles with other players using 💎 Ascension Essence.</p>
+        <p style="margin-top:8px;"><b>Tabs:</b> 🛒 Buy (browse all listings) · 📦 Sell (list your surplus Souls/Skins/Titles, or cancel an active listing) · 📈 History (recent sales)</p>
+        <p style="margin-top:8px;">Souls are obtained one-per-Ascension by reaching Tower Floor 5000 (see 👻 Soul Zodiacs). Only one Soul Zodiac can be active for online events, so trade away types you don't use!</p>
+        <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:#ef4444;font-weight:700;margin-bottom:4px;">💎 Market Fee</div>
+          A small percentage (default 5%, set by GMs) is taken from every sale as an Essence sink. If you sell something for 100 Essence, you receive 95 — the buyer still pays the full 100. This fee doesn't go to anyone; it's removed from circulation to keep Essence valuable.
+        </div>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;margin-top:8px;">
+          <div style="color:var(--acc);font-weight:700;margin-bottom:4px;">💡 Reference rate</div>
+          1 Soul ≈ 💎100 Essence — this is also the cost to gift a Soul directly to a friend via Mail (see 📬 Mail & Gifting).
+        </div>
+      `},
+      { name: '👻 Soul Zodiacs', id: 'on_soulzodiacs', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">👻 Soul Zodiacs</h3>
+        <p>An endgame system unlocked permanently once you reach <b>Tower Floor 5000</b> (any Tower variant counts, and it's a one-time lifetime unlock — it stays unlocked even after Ascending).</p>
+        <p style="margin-top:8px;"><b>Earning Souls:</b> Each Ascension, the <i>first time</i> your Tower climb reaches Floor 5000, you receive 1 random Soul. To earn another, Ascend again and climb back to Floor 5000 — there's no other way to get Souls, and no extra Souls for climbing past 5000 in the same Ascension.</p>
+        <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px;margin-top:8px;">
+          <div style="color:#ef4444;font-weight:700;margin-bottom:4px;">⚠️ Level 0 = Unusable</div>
+          A Soul Zodiac at Level 0 (no Souls consumed yet) cannot be selected as your active Soul Zodiac. Consume at least 1 Soul of that type to reach Level 1 and unlock it for online events.
+        </div>
+        <p style="margin-top:8px;"><b>Consuming Souls:</b> Open 👻 Soul Zodiacs from the Endgame hub, pick a type, and tap "Use Soul" — each Soul permanently raises that Zodiac's Level by 1, increasing its HP/ATK/DEF/SPD on a flat linear scale.</p>
+        <p style="margin-top:8px;"><b>Passives:</b> Each of the 12 Soul Zodiacs has a unique passive that activates during Boss Trials and contributes to your Server Boss damage. Passives stack if multiple players bring the same Soul Zodiac to a Boss Trial — e.g. three players with a Dragon Soul Zodiac each get +20% ATK, for +60% total.</p>
+        <p style="margin-top:8px;"><b>Selecting an active Soul Zodiac:</b> Only one can be active at a time. Its stats add to your Server Boss damage, and its passive applies in Boss Trials.</p>
+      `},
+      { name: '⏳ Soul Sanctuary', id: 'on_sanctuary', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⏳ Soul Sanctuary</h3>
+        <p>A passive Soul-income building, unlocked alongside the rest of the Soul Zodiac system at Tower Floor 5000.</p>
+        <p style="margin-top:8px;">The Sanctuary fills at a rate of <b>1 Soul per hour</b>, up to a maximum of <b>12 Souls (12 hours)</b> banked at once. Open the Sanctuary and tap "Claim" to collect banked Souls.</p>
+        <p style="margin-top:8px;"><b>Speeding it up:</b> Spend 💎 Ascension Essence (10 per hour) to instantly fill remaining Sanctuary time — useful if you're about to log off and want a full bank waiting when you return.</p>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:var(--acc);font-weight:700;margin-bottom:4px;">💡 Tip</div>
+          The Sanctuary is a separate Soul source from the 1-per-Ascension Tower reward — it runs continuously in the background regardless of Ascension or Tower progress.
+        </div>
+      `},
+      { name: '🎨 Skins & Titles', id: 'on_cosmetics', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🎨 Soul Zodiac Skins & Titles</h3>
+        <p>Cosmetic upgrades for your Soul Zodiacs — each Zodiac has 2 unique Skins (alternate appearances with accessory overlays) and can equip any of 3 zodiac-agnostic Titles.</p>
+        <p style="margin-top:8px;"><b>Obtaining:</b> Skins and Titles are awarded as <i>random</i> tokens — you won't know which Zodiac or variant you'll get. They come from leaderboard event rewards and occasional GM gifts, delivered to your 📬 Mail.</p>
+        <p style="margin-top:8px;"><b>Consuming tokens:</b> Open 🎨 Skins & Titles from a Soul Zodiac's card. Each token you consume raises that specific Skin or Title's Level by 1 — duplicates make your cosmetic stronger/more impressive to show off, they don't unlock new variants.</p>
+        <p style="margin-top:8px;"><b>Equipping:</b> Tap "Equip" on any Skin or Title you own (Level 1+) to display it. Your Soul Zodiac's name changes to reflect both: e.g. an equipped "Ultimate" Title at Level 11 and "Police" Skin at Level 5 on a Rat displays as <b>"Ultimate Rat (11)(5)"</b>.</p>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:var(--acc);font-weight:700;margin-bottom:4px;">💡 Tradeable</div>
+          Unconsumed Skin/Title tokens can be listed on the 👻 Soul Market just like Souls. If you get a token for a Zodiac you don't use, sell it for Essence!
+        </div>
+      `},
+      { name: '⚔️ Boss Trials', id: 'on_bosstrials', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">⚔️ Boss Trials</h3>
+        <p>A 1-3 player co-op mode, unlocked alongside the rest of the Soul Zodiac system at Tower Floor 5000. Teams face a chain of bosses that double in strength each round.</p>
+        <p style="margin-top:8px;"><b>Joining:</b> Tap "Find / Create Lobby" to auto-match into an open lobby or start a new one. The lobby leader can start with 1-2 players, or it auto-starts at 3/3.</p>
+        <p style="margin-top:8px;"><b>The fight:</b> Your active Soul Zodiac's stats and passive contribute to the team's performance — passives stack across teammates who share the same Soul Zodiac. The boss always eventually outpaces the team (it doubles every round), so the goal is <b>bosses defeated + total damage dealt</b>, not a "win."</p>
+        <p style="margin-top:8px;"><b>Rewards:</b> Essence based on your damage dealt, plus a bonus if your team defeats at least 1 boss. Your lifetime damage and bosses-defeated counts feed the Boss Trials Leaderboard.</p>
+        <p style="margin-top:8px;"><b>Leaderboard:</b> Tap "🏆 Leaderboard" from the lobby browser to see top lifetime damage dealers across all Boss Trials.</p>
+      `},
+      { name: '📬 Mail & Gifting', id: 'on_mail', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">📬 Mail & Gifting</h3>
+        <p>Your Mailbox (Hub → Social → Mail) holds items waiting to be claimed — from gifts other players send you, Soul Market sale payouts, and occasional GM rewards. Tap "Claim" on each item, or "Claim All" to collect everything at once. Unclaimed mail shows a badge on the Mail tile.</p>
+        <p style="margin-top:8px;"><b>Sending gifts:</b> Visit another player's profile and tap "🎁 Send Gift." You can send either a free in-game item (potion, gold, stars, expedition key), or — if you have surplus Souls — a Soul itself for 💎100 Essence.</p>
+        <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:#ef4444;font-weight:700;margin-bottom:4px;">⚠️ One Gift Per Day</div>
+          You can send only one gift (item OR Soul) to one player per day. This limit resets daily and is shared across both gift types.
+        </div>
+      `},
+      { name: '👥 Friends & Messages', id: 'on_friends', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">👥 Friends & Direct Messages</h3>
+        <p>Add other players as friends from their World Profile (tap "👋 Add Friend") or by searching for their name in Hub → Social → Friends. They'll see a request under their Friends tab with Accept/Decline options.</p>
+        <p style="margin-top:8px;"><b>Friends list:</b> Shows up to 50 friends with their current Power. Tap any friend to view their profile, send a 💬 message, or remove them.</p>
+        <p style="margin-top:8px;"><b>Direct Messages:</b> Tap 💬 on a friend (or from their profile) to open a private 1-on-1 chat. Messages are limited to 200 characters with the same anti-spam cooldown as other chats.</p>
+      `},
+      { name: '🛡️ Block & Report', id: 'on_moderation', content: `
+        <h3 style="color:#a78bfa;font-family:Cinzel,serif;margin-bottom:8px;">🛡️ Block & Report</h3>
+        <p>In World Chat or Faction Chat, tap any other player's name to open a quick menu: <b>View Profile</b>, <b>Block</b>, or <b>Report</b>.</p>
+        <p style="margin-top:8px;"><b>Block:</b> Hides all of that player's chat messages from you, everywhere. This is personal — it doesn't affect what others see, and follows your account across devices. Manage your blocked list from your World Profile.</p>
+        <p style="margin-top:8px;"><b>Report:</b> Sends a brief description of the issue to the Game Masters for review. Reports don't take any immediate action — a GM will review and respond as needed.</p>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;margin-top:10px;">
+          <div style="color:var(--acc);font-weight:700;margin-bottom:4px;">💡 Tip</div>
+          Blocking is the fastest way to clean up your own chat experience. Reporting helps the wider community — use both as needed, they're not mutually exclusive.
+        </div>
       `},
     ]
   },
