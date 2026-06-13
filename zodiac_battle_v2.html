@@ -3483,7 +3483,7 @@ function getGodlyDmgMult(){
 // ══ GODLY PIECE ACQUISITION SYSTEM ══
 // Each of the 24 pieces has exactly one unlock condition.
 // rollSpecificPieceGodly(pieceId) — grant a specific piece
-function rollSpecificPieceGodly(pieceId){
+function rollSpecificPieceGodly(pieceId,silent){
   const owned=getOwnedGodlyIds();
   if(owned.has(pieceId)){toast('You already own this Godly piece!','ok');return null;}
   // Find which set and slot this piece belongs to
@@ -3526,11 +3526,13 @@ function rollSpecificPieceGodly(pieceId){
   if(G.autoEquip)autoEquipAll();
   const completion=getGodlySetCompletion();
   const setKey=Object.keys(GODLY_SETS).find(k=>Object.values(GODLY_SETS[k].pieces).some(p=>p.id===pieceId));
-  if(setKey&&completion[setKey]?.complete)
+  if(!silent&&setKey&&completion[setKey]?.complete)
     setTimeout(()=>toast(`🌟🌟 ${setData.emoji} ${setData.name} SET COMPLETE! ${setData.setBonusDesc}`,'ok'),600);
   save();
-  vib([100,50,200,50,300]);
-  toast(`${chosenPiece.icon} GODLY PIECE: ${chosenPiece.name} (${chosenPiece.setName})!`,'ok');
+  if(!silent){
+    vib([100,50,200,50,300]);
+    toast(`${chosenPiece.icon} GODLY PIECE: ${chosenPiece.name} (${chosenPiece.setName})!`,'ok');
+  }
   addLog('rewards',`✨ GODLY: ${chosenPiece.icon} ${chosenPiece.name}`,'New godly piece unlocked!');
   return item;
 }
@@ -7717,7 +7719,7 @@ function renderRoster(){
       if(pStars>0)html+=`<div class="zmast">${pStars}⭐</div>`;
     }
     const _lm=r?liveM(z.name):null;const zPower=_lm?Math.floor((_lm.atk+_lm.def+_lm.spd+_lm.maxHp*.1)*({Normal:1,Shiny:1.2,Omega:1.4,Mythical:1.8}[_lm.rarity]||1)):0;
-    html+=`<div class="ze" style="display:flex;align-items:center;justify-content:center;">${r?(getPixelSprite(z.name,getEvoStage(z.name),36)||`<span style='font-size:28px'>${evo?evo.emoji:z.emoji}</span>`):('<span style="font-size:28px;">'+z.emoji+'</span>')}</div>`;
+    html+=`<div class="ze" style="display:flex;align-items:center;justify-content:center;">${r?(getPixelSprite(z.name,getEvoStage(z.name),36)||`<span style='font-size:28px'>${evo?evo.emoji:z.emoji}</span>`):(getPixelSprite(z.name,0,36)||`<span style="font-size:28px;">${z.emoji}</span>`)}</div>`;
     html+=`<div class="zn" style="color:${r?z.color:'var(--txt2)'}">${z.name}</div>`;
     if(r&&zPower>0){const _pt2=getPowerTier(zPower);html+=`<div style="font-size:7px;color:${_pt2.color};">${_pt2.emoji} ${fmt(zPower)}</div>`;}
     if(r){
@@ -9357,6 +9359,7 @@ function renderPartyList(){
     const hpPct=_plmax>0?Math.max(0,Math.floor(r.hp/_plmax*100)):0;
     const hpColor=hpPct>50?'#22c55e':hpPct>25?'#f59e0b':'#ef4444';
     const z=ZODIACS.find(function(z2){return z2.name===name;})||{emoji:'⚔️'};
+    const pSpr=getPixelSprite(name,getEvoStage(name),15);
     const st=G.playerStatus&&G.playerStatus[name]?Object.entries(G.playerStatus[name]).filter(([_,v])=>v>0).map(([s,v])=>{const d=STATUS_DATA[s];return d?`<span style="font-size:7px;background:${d.color}33;color:${d.color};border:1px solid ${d.color}55;padding:1px 3px;border-radius:3px;font-weight:700;margin-left:2px;">${d.emoji}${v}</span>`:''}).join(''):'';
     const row=document.createElement('div');
     row.style.cssText='display:flex;align-items:center;gap:5px;padding:4px 7px;'
@@ -9364,7 +9367,7 @@ function renderPartyList(){
       +'background:'+(isActive?'rgba(245,158,11,.1)':'rgba(15,23,42,.6)')+';'
       +'border:1px solid '+(isActive?'var(--acc)':'rgba(71,85,105,.25)')+';'
       +'opacity:'+(fainted?0.35:1)+';cursor:'+(isActive?'default':'pointer')+';';
-    row.innerHTML='<span style="font-size:15px;flex-shrink:0;">'+z.emoji+'</span>'
+    row.innerHTML='<span style="width:15px;height:15px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;">'+(pSpr||z.emoji)+'</span>'
       +'<span style="font-size:10px;font-weight:'+(isActive?'700':'500')+';flex-shrink:0;color:'+(isActive?'var(--acc)':'var(--txt)')+';">'
       +(isActive?'▶ ':'')+name+'</span>'
       +st
@@ -9389,7 +9392,8 @@ function renderEnemyPartyList(){
     const curHpPct=cur.maxHp>0?Math.max(0,Math.floor(cur.hp/cur.maxHp*100)):0;
     const curHpColor=curHpPct>50?'#22c55e':curHpPct>25?'#f59e0b':'#ef4444';
     curRow.style.cssText='display:flex;align-items:center;gap:5px;padding:4px 7px;border-radius:8px;margin-bottom:2px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);';
-    curRow.innerHTML='<span style="font-size:14px;flex-shrink:0;">'+(cur.emoji||'👾')+'</span>'
+    const curSpr=getEnemySprite(cur,16);
+    curRow.innerHTML='<span style="width:16px;height:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;">'+(curSpr&&curSpr.startsWith('<')?curSpr:(cur.emoji||'👾'))+'</span>'
       +'<span style="font-size:10px;font-weight:700;color:#f87171;flex-shrink:0;">▶ '+cur.name+'</span>'
       +'<div style="flex:1;height:3px;background:rgba(51,65,85,.4);border-radius:2px;overflow:hidden;">'
       +'<div style="height:100%;width:'+curHpPct+'%;background:'+curHpColor+';border-radius:2px;"></div></div>'
@@ -9399,7 +9403,8 @@ function renderEnemyPartyList(){
     queue.forEach(function(e,i){
       const row=document.createElement('div');
       row.style.cssText='display:flex;align-items:center;gap:5px;padding:4px 7px;border-radius:8px;margin-bottom:2px;background:rgba(15,23,42,.6);border:1px solid rgba(71,85,105,.25);';
-      row.innerHTML='<span style="font-size:13px;flex-shrink:0;opacity:.7;">'+(e.emoji||'👾')+'</span>'
+      const qSpr=getEnemySprite(e,15);
+      row.innerHTML='<span style="width:15px;height:15px;flex-shrink:0;opacity:.7;display:flex;align-items:center;justify-content:center;font-size:13px;">'+(qSpr&&qSpr.startsWith('<')?qSpr:(e.emoji||'👾'))+'</span>'
         +'<span style="font-size:10px;font-weight:500;color:var(--txt2);flex-shrink:0;">'+(i+2)+'. '+e.name+'</span>'
         +'<div style="flex:1;height:3px;background:rgba(51,65,85,.4);border-radius:2px;overflow:hidden;">'
         +'<div style="height:100%;width:100%;background:rgba(239,68,68,.35);border-radius:2px;"></div></div>'
@@ -11167,7 +11172,8 @@ function getSoulUnlockFloor(){
   if(_soulUnlockOverride&&Date.now()<_soulUnlockOverride.expiresAt)return _soulUnlockOverride.floor;
   return SOUL_UNLOCK_FLOOR;
 }
-async function checkSoulUnlockOverride(){
+async function checkSoulUnlockOverride(retriesLeft){
+  retriesLeft=retriesLeft===undefined?2:retriesLeft;
   if(!window.FB)return;
   try{
     const {db,doc,getDoc}=window.FB;
@@ -11180,7 +11186,13 @@ async function checkSoulUnlockOverride(){
     }else{
       _soulUnlockOverride=null;
     }
-  }catch(e){}
+  }catch(e){
+    console.warn('checkSoulUnlockOverride failed:',e.message);
+    // Retry once or twice with a short delay — a failed read here previously
+    // left the GM's override permanently un-applied for the whole session
+    // even though the Firestore timer kept counting down correctly.
+    if(retriesLeft>0)setTimeout(()=>checkSoulUnlockOverride(retriesLeft-1),3000);
+  }
 }
 function isSoulZodiacsUnlocked(){return(G.towerBestFloor||0)>=getSoulUnlockFloor();}
 function openSoulZodiacs(){
@@ -11211,7 +11223,7 @@ function renderSoulZodiacs(){
           ||Object.values(G.zodiacSkinTokens?.[z.name]||{}).some(c=>c>0)||Object.values(G.zodiacTitleTokens?.[z.name]||{}).some(c=>c>0);
         return `<div style="background:${isActive?'rgba(245,158,11,.12)':'rgba(28,38,56,.6)'};border:1px solid ${isActive?'var(--acc)':'rgba(71,85,105,.3)'};border-radius:10px;padding:10px;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-            <span style="font-size:22px;">${z.emoji}</span>
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex-shrink:0;">${getSoulZodiacSpriteWithSkin(z.name,28)}</span>
             <div style="flex:1;">
               <div style="font-weight:700;font-size:12px;">${escHtml(displayName)}${isActive?' <span style="color:var(--acc);">★</span>':''}</div>
               <div style="font-size:9px;color:var(--txt2);">${hasAny?`Lv.${lv}`:'Not obtained'}</div>
@@ -11720,8 +11732,8 @@ async function renderBossTrialLobby(){
         <div class="t2 ts" style="font-size:10px;">${fresh.length}/3 players · waiting for ${isLeader?'more players, or start the fight':'the leader to start'}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-        ${fresh.map(m=>{const z=getZodiac(m.soulZodiac);return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;">
-          <span style="font-size:20px;">${z?.emoji||'👻'}</span>
+        ${fresh.map(m=>{const z=getZodiac(m.soulZodiac);const sprite=m.soulZodiac&&ZODIAC_SVG_SHAPES[m.soulZodiac]?`<span style="display:inline-flex;width:20px;height:20px;">${`<span class="zsvg zt0 z-${m.soulZodiac.toLowerCase()}" style="width:20px;height:20px;"><svg viewBox="0 0 100 100">${ZODIAC_SVG_SHAPES[m.soulZodiac]}</svg></span>`}</span>`:`<span style="font-size:20px;">${z?.emoji||'👻'}</span>`;return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;">
+          ${sprite}
           <div style="flex:1;font-size:11px;">${escHtml(m.name)}${m.uid===data.leaderUid?' <span style="color:var(--acc);">★ Leader</span>':''}</div>
           <div style="font-size:10px;color:var(--txt2);">${m.soulZodiac} Lv.${m.soulZodiacLevel}</div>
         </div>`;}).join('')}
@@ -11995,6 +12007,12 @@ async function loadFromCloud(){
 setInterval(()=>{if(fbReady())syncSaveToCloud();},5*60*1000);
 // Refresh moderation status (bans/mutes) every 2 minutes so GM actions apply mid-session
 setInterval(()=>{if(fbReady())checkMyModerationStatus();},2*60*1000);
+// Refresh Soul Zodiac unlock override every 5 minutes — self-healing if the
+// initial startup check failed, and picks up GM changes made mid-session.
+setInterval(()=>{if(fbReady()&&typeof checkSoulUnlockOverride==='function')checkSoulUnlockOverride();},5*60*1000);
+// Refresh active world event every 5 minutes — same rationale, plus picks up
+// events a GM starts/ends mid-session for already-connected players.
+setInterval(()=>{if(fbReady()&&typeof checkWorldEvent==='function')checkWorldEvent();},5*60*1000);
 
 // ── LEADERBOARD ───────────────────────────────────────────────────────────────
 let _lbTab='power';
@@ -12399,7 +12417,7 @@ function openOnlineMode(){
   }
   // Start listeners once signed in
   _startWorldChatListener();
-  setTimeout(()=>{_runFirestoreSetup();_checkGlobalReward();syncSaveToCloud();if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();if(typeof checkSoulUnlockOverride==='function')checkSoulUnlockOverride();},2000);
+  setTimeout(async()=>{await _runFirestoreSetup();_checkGlobalReward();syncSaveToCloud();if(typeof checkServerAnnouncements==='function')checkServerAnnouncements();if(typeof checkWorldEvent==='function')checkWorldEvent();if(typeof checkCommunityMilestones==='function')checkCommunityMilestones();if(typeof checkIncomingGifts==='function')checkIncomingGifts();if(typeof checkSoulUnlockOverride==='function')checkSoulUnlockOverride();},2000);
   if(G._factionId) _startFactionChatListener(G._factionId);
 
   const power = calcPowerRating ? calcPowerRating() : 0;
@@ -13206,7 +13224,8 @@ const COMMUNITY_MILESTONES = [
 
 let _activeWorldEvent = null;
 
-async function checkWorldEvent(){
+async function checkWorldEvent(retriesLeft){
+  retriesLeft=retriesLeft===undefined?2:retriesLeft;
   if(!window.FB) return;
   try{
     const {db,doc,getDoc} = window.FB;
@@ -13221,7 +13240,10 @@ async function checkWorldEvent(){
     } else {
       _activeWorldEvent = null;
     }
-  }catch(e){}
+  }catch(e){
+    console.warn('checkWorldEvent failed:',e.message);
+    if(retriesLeft>0)setTimeout(()=>checkWorldEvent(retriesLeft-1),3000);
+  }
 }
 
 function _applyWorldEventBonuses(ev){
@@ -13642,6 +13664,23 @@ function _applyMailItem(g){
     case'essence':
       G._ascEssence=(G._ascEssence||0)+(g.essenceAmount||0);
       break;
+    case'ascension':
+      G.ascension=(G.ascension||0)+(g.amount||0);
+      // Recompute the ascension gold/XP multiplier to match the new level,
+      // mirroring _doAscend's multiplier formula.
+      G.ascensionMult=1+((G.ascension||0)*0.5);
+      break;
+    case'allGodlies':{
+      // GM testing aid: roll every Godly piece that isn't already owned.
+      const allIds=Object.values(GODLY_SETS).flatMap(s=>Object.values(s.pieces).map(p=>p.id));
+      const owned=getOwnedGodlyIds();
+      let granted=0;
+      allIds.forEach(pieceId=>{
+        if(!owned.has(pieceId)){rollSpecificPieceGodly(pieceId,true);granted++;}
+      });
+      setTimeout(()=>toast(`✨ ${granted} new Godly piece${granted===1?'':'s'} unlocked!${granted<allIds.length?` (${allIds.length-granted} already owned)`:''}`,'ok'),400);
+      break;
+    }
     case'gold':
       G.gold+=(g.amount||0);G.totalGold+=(g.amount||0);
       break;
@@ -15254,7 +15293,12 @@ async function _runFirestoreSetup(){
       ['server','marketConfig',{feePercent:MARKET_FEE_PERCENT_DEFAULT}],
     ];
     for(const [col,docId,data] of batch){
-      await setDoc(doc(db,col,docId), data);
+      // Defense in depth: only write if this doc doesn't exist yet, so a
+      // re-run of this "first-time" setup (e.g. if server/stats itself
+      // failed to write previously) can't stomp docs that a GM has since
+      // configured (like soulUnlockConfig's active override).
+      const existing=await getDoc(doc(db,col,docId));
+      if(!existing.exists())await setDoc(doc(db,col,docId), data);
     }
     console.log('Firestore setup complete!');
     toast('✅ Server database initialized!','ok');
@@ -15567,6 +15611,18 @@ async function renderGMPlayers(){
             <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmGrantRandomCosmetic('${uid}','${escHtml(p.name||'?')}','skin')">👕 Random Skin</button>
             <button class="btn bs bblk" style="font-size:9px;flex:1;" onclick="gmGrantRandomCosmetic('${uid}','${escHtml(p.name||'?')}','title')">🏷️ Random Title</button>
           </div>
+          <div style="font-size:9px;font-weight:700;color:var(--txt2);margin-top:4px;">💎 Grant Ascension Essence</div>
+          <div style="display:flex;gap:4px;">
+            <input id="gmEssenceAmt_${uid}" type="number" min="1" value="100" style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+            <button class="btn bs bblk" style="font-size:9px;flex:0 0 auto;padding:6px 10px;" onclick="gmGrantEssence('${uid}','${escHtml(p.name||'?')}')">Send</button>
+          </div>
+          <div style="font-size:9px;font-weight:700;color:var(--txt2);margin-top:4px;">⬆️ Grant Ascension Levels</div>
+          <div style="display:flex;gap:4px;">
+            <input id="gmAscAmt_${uid}" type="number" min="1" value="1" style="flex:1;background:var(--bg2);border:1px solid rgba(71,85,105,.4);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:11px;">
+            <button class="btn bs bblk" style="font-size:9px;flex:0 0 auto;padding:6px 10px;" onclick="gmGrantAscension('${uid}','${escHtml(p.name||'?')}')">Send</button>
+          </div>
+          <div style="font-size:9px;font-weight:700;color:var(--txt2);margin-top:4px;">✨ Endgame Testing</div>
+          <button class="btn bd bblk" style="font-size:9px;width:100%;" onclick="if(confirm('Unlock ALL 24 Godly equipment pieces for ${escHtml(p.name||'this player')}? This is a testing aid — items are sent via Mail.'))gmGrantAllGodlies('${uid}','${escHtml(p.name||'?')}')">✨ Unlock All Godly Gear (24 pieces)</button>
         </div>`:''}
       </div>`;
     });
@@ -15655,6 +15711,62 @@ async function gmGrantRandomCosmetic(uid,name,type){
       ts:Date.now(),claimed:false,
     });
     toast(`🎁 Sent ${z?.emoji||''} ${variantName} ${zodiacName} ${type==='skin'?'Skin':'Title'} to ${name}!`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// Grant a chosen amount of Ascension Essence to a specific player via Mail.
+async function gmGrantEssence(uid,name){
+  if(!window.FB||!isGM())return;
+  const amt=parseInt(document.getElementById(`gmEssenceAmt_${uid}`)?.value);
+  if(!amt||amt<=0){toast('Enter a valid amount!','er');return;}
+  try{
+    const {rtdb,ref,push}=window.FB;
+    await push(ref(rtdb,`gifts/${uid}`),{
+      from:'GM',fromName:'🛡️ Game Master',
+      itemType:'essence',essenceAmount:amt,
+      itemName:`💎${fmt(amt)} Essence`,itemEmoji:'💎',
+      desc:`A gift from the Game Master!`,
+      ts:Date.now(),claimed:false,
+    });
+    toast(`🎁 Sent 💎${fmt(amt)} Essence to ${name}!`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// Grant a chosen number of Ascension levels to a specific player via Mail.
+// Applied on claim by _applyMailItem (G.ascension += amount, recomputes
+// G.ascensionMult to match _doAscend's formula).
+async function gmGrantAscension(uid,name){
+  if(!window.FB||!isGM())return;
+  const amt=parseInt(document.getElementById(`gmAscAmt_${uid}`)?.value);
+  if(!amt||amt<=0){toast('Enter a valid amount!','er');return;}
+  try{
+    const {rtdb,ref,push}=window.FB;
+    await push(ref(rtdb,`gifts/${uid}`),{
+      from:'GM',fromName:'🛡️ Game Master',
+      itemType:'ascension',amount:amt,
+      itemName:`⬆️ +${amt} Ascension Level${amt===1?'':'s'}`,itemEmoji:'⬆️',
+      desc:`A gift from the Game Master! Note: this does not reset your gold/equipment/roster like a normal Ascension does — only the level and reward multiplier are granted.`,
+      ts:Date.now(),claimed:false,
+    });
+    toast(`🎁 Sent +${amt} Ascension level${amt===1?'':'s'} to ${name}!`,'ok');
+  }catch(e){toast('Failed: '+e.message,'er');}
+}
+
+// Endgame testing aid: unlock all 24 Godly equipment pieces for a player via
+// Mail. Applied on claim by _applyMailItem, which rolls each not-yet-owned
+// piece via rollSpecificPieceGodly (silent mode, to avoid 24 toasts).
+async function gmGrantAllGodlies(uid,name){
+  if(!window.FB||!isGM())return;
+  try{
+    const {rtdb,ref,push}=window.FB;
+    await push(ref(rtdb,`gifts/${uid}`),{
+      from:'GM',fromName:'🛡️ Game Master',
+      itemType:'allGodlies',
+      itemName:`✨ All Godly Equipment (24 pieces)`,itemEmoji:'✨',
+      desc:`A testing gift from the Game Master — unlocks every Godly equipment piece not already owned.`,
+      ts:Date.now(),claimed:false,
+    });
+    toast(`🎁 Sent "Unlock All Godly Gear" to ${name}!`,'ok');
   }catch(e){toast('Failed: '+e.message,'er');}
 }
 
@@ -15974,7 +16086,7 @@ async function _checkGlobalReward(){
     if(r.type==='stars'){G.stars=(G.stars||0)+r.amount;msg=`+${fmt(r.amount)} ⭐`;}
     else if(r.type==='gold'){G.gold+=r.amount;G.totalGold+=r.amount;msg=`+${fmt(r.amount)} 💰`;}
     else if(r.type==='essence'){G._ascEssence=(G._ascEssence||0)+r.amount;msg=`+${fmt(r.amount)} 💎 Essence`;}
-    else if(r.type==='ascension'){G.ascension=(G.ascension||0)+r.amount;msg=`+${r.amount} Ascension level${r.amount===1?'':'s'}`;}
+    else if(r.type==='ascension'){G.ascension=(G.ascension||0)+r.amount;G.ascensionMult=1+((G.ascension||0)*0.5);msg=`+${r.amount} Ascension level${r.amount===1?'':'s'}`;}
     else if(r.type==='soul'){
       // Grant `amount` random Souls (only if Soul Zodiacs are unlocked for this player)
       if(isSoulZodiacsUnlocked()){
