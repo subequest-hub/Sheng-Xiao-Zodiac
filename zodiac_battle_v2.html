@@ -73,7 +73,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);}
 .sand-grain{position:absolute;width:3px;height:3px;border-radius:50%;background:#d97706;animation:sandDrift linear infinite;pointer-events:none;}
 .snow-flake{position:absolute;font-size:10px;animation:snowFall linear infinite;pointer-events:none;}
 @keyframes rainFall{0%{transform:translateY(-20px);opacity:0;}10%{opacity:.7;}90%{opacity:.7;}100%{transform:translateY(100vh);opacity:0;}}
-@keyframes sandDrift{0%{transform:translate(0,0);opacity:0;}10%{opacity:.8;}90%{opacity:.8;}100%{transform:translate(50vw,30px);opacity:0;}}
+@keyframes sandDrift{0%{transform:translate(0,0);opacity:0;}10%{opacity:.8;}90%{opacity:.8;}100%{transform:translate(110vw,30px);opacity:0;}}
 @keyframes snowFall{0%{transform:translateY(-20px) translateX(0);opacity:0;}10%{opacity:.9;}90%{opacity:.9;}100%{transform:translateY(100vh) translateX(30px);opacity:0;}}
 @keyframes shimmer{0%{left:-100%;}100%{left:100%;}}
 .esw-title{font-family:'Cinzel',serif;color:#fbbf24;font-size:12px;font-weight:700;}
@@ -949,20 +949,8 @@ onAuthStateChanged(auth, user => {
 
   <!-- ONLINE -->
   <div class="hub-section">
-    <div class="hub-title">🌐 Online</div>
+    <div class="hub-title">🌐 Social</div>
     <div class="hub-grid">
-      <button class="hub-btn" onclick="closeM('mMore');openSoulZodiacs()">
-        <span class="hub-icon">👻</span><span class="hub-label">Soul Zodiacs</span>
-        <span class="hub-sub" id="hubSoulZodiacsSub">Tower Fl.5000+</span>
-      </button>
-      <button class="hub-btn" onclick="closeM('mMore');openSoulSanctuary()">
-        <span class="hub-icon">⏳</span><span class="hub-label">Soul Sanctuary</span>
-        <span class="hub-sub" id="hubSanctuarySub">Tower Fl.5000+</span>
-      </button>
-      <button class="hub-btn" onclick="closeM('mMore');openBossTrials()">
-        <span class="hub-icon">⚔️</span><span class="hub-label">Boss Trials</span>
-        <span class="hub-sub" id="hubBossTrialsSub">Tower Fl.5000+</span>
-      </button>
       <button class="hub-btn" onclick="closeM('mMore');openOnlineMode()">
         <span class="hub-icon">🔑</span><span class="hub-label">Sign In</span>
         <span class="hub-sub" id="hubMPSub">Sign in</span>
@@ -991,17 +979,9 @@ onAuthStateChanged(auth, user => {
         <span class="hub-icon">🏆</span><span class="hub-label">Leaderboard</span>
         <span class="hub-sub">Global ranks</span>
       </button>
-      <button class="hub-btn" onclick="closeM('mMore');document.getElementById('dailyChallengeBody').innerHTML=renderDailyChallengePanel();openM('mDailyChallenge')">
-        <span class="hub-icon">🎯</span><span class="hub-label">Daily Challenge</span>
-        <span class="hub-sub" id="hubDailyCh">Today's goal</span>
-      </button>
       <button class="hub-btn" onclick="closeM('mMore');renderActivityFeed().then(h=>{document.getElementById('activityFeedBody').innerHTML=h;openM('mActivityFeed')})">
         <span class="hub-icon">📢</span><span class="hub-label">Activity</span>
         <span class="hub-sub">Community feed</span>
-      </button>
-      <button class="hub-btn" onclick="closeM('mMore');renderFriendsList();openM('mFriends')">
-        <span class="hub-icon">👥</span><span class="hub-label">Friends</span>
-        <span class="hub-sub">Friend list</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');renderServerBoss();openM('mServerBoss')">
         <span class="hub-icon">🐉</span><span class="hub-label">Server Boss</span>
@@ -1010,6 +990,24 @@ onAuthStateChanged(auth, user => {
       <button class="hub-btn" onclick="closeM('mMore');switchMarketTab('buy');openM('mAuctionHouse')">
         <span class="hub-icon">🏪</span><span class="hub-label">Soul Market</span>
         <span class="hub-sub" id="essenceBadge2">💎 0 Essence</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="hub-section">
+    <div class="hub-title">👻 Endgame</div>
+    <div class="hub-grid">
+      <button class="hub-btn" onclick="closeM('mMore');openSoulZodiacs()">
+        <span class="hub-icon">👻</span><span class="hub-label">Soul Zodiacs</span>
+        <span class="hub-sub" id="hubSoulZodiacsSub">Tower Fl.5000+</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openSoulSanctuary()">
+        <span class="hub-icon">⏳</span><span class="hub-label">Soul Sanctuary</span>
+        <span class="hub-sub" id="hubSanctuarySub">Tower Fl.5000+</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');openBossTrials()">
+        <span class="hub-icon">⚔️</span><span class="hub-label">Boss Trials</span>
+        <span class="hub-sub" id="hubBossTrialsSub">Tower Fl.5000+</span>
       </button>
       <button class="hub-btn" onclick="closeM('mMore');renderBountyBoard().then(h=>{document.getElementById('bountyBody').innerHTML=h;openM('mBountyBoard')})">
         <span class="hub-icon">💀</span><span class="hub-label">Bounties</span>
@@ -1026,6 +1024,10 @@ onAuthStateChanged(auth, user => {
       <button class="hub-btn" onclick="closeM('mMore');renderRecruitmentBoard().then(h=>{document.getElementById('recruitmentBody').innerHTML=h;openM('mRecruitment')})">
         <span class="hub-icon">🏰</span><span class="hub-label">Recruit</span>
         <span class="hub-sub">Find factions</span>
+      </button>
+      <button class="hub-btn" onclick="closeM('mMore');document.getElementById('dailyChallengeBody').innerHTML=renderDailyChallengePanel();openM('mDailyChallenge')">
+        <span class="hub-icon">🎯</span><span class="hub-label">Daily Challenge</span>
+        <span class="hub-sub" id="hubDailyCh">Today's goal</span>
       </button>
     </div>
   </div>
@@ -1142,7 +1144,9 @@ onAuthStateChanged(auth, user => {
   <div class="setting-row"><span>Auto-Salvage Below</span><select id="setSalvageRarity" onchange="SET.salvageRarity=this.value;saveSET();autoSalvageLowRarity()" style="background:var(--bg3);color:var(--txt);border:none;border-radius:6px;padding:4px 8px;font-size:11px;"><option value="">Off</option><option value="Common">Keep Uncommon+</option><option value="Uncommon">Keep Rare+</option><option value="Rare">Keep Epic+</option><option value="Epic">Keep Legendary+</option><option value="Legendary">Keep Mythical+</option><option value="Mythical">Keep Godly only</option></select></div>
 
   <div class="sec-t mb2" style="margin-top:14px;">🔊 Audio & Feel</div>
-  <div class="setting-row"><span>Sound Effects</span><label class="sw"><input type="checkbox" id="setSound" onchange="SET.sound=this.checked;saveSET()"><span class="swt"></span></label></div>
+  <div class="setting-row"><span>Sound Effects</span><label class="sw"><input type="checkbox" id="setSound" onchange="SET.sound=this.checked;saveSET();if(!SET.sound)stopAmbient();else if(SET.ambient)startAmbient();"><span class="swt"></span></label></div>
+  <div class="setting-row"><span>🎵 Background Music</span><label class="sw"><input type="checkbox" id="setAmbient" onchange="toggleAmbient(this.checked)"><span class="swt"></span></label></div>
+  <div class="t2 ts" style="margin:-4px 0 8px;padding-left:2px;">Soft ambient pad. Requires Sound Effects to be enabled.</div>
   <div class="setting-row"><span>🔔 Show Toast Popups</span><label class="sw"><input type="checkbox" id="setToasts" checked onchange="SET.toasts=this.checked;saveSET()"><span class="swt"></span></label></div>
   <div class="setting-row"><span>🔄 Auto-Reset Completed Quests</span><label class="sw"><input type="checkbox" id="setAutoResetQuests" onchange="SET.autoResetQuests=this.checked;saveSET()"><span class="swt"></span></label></div>
   <div class="t2 ts" style="margin:-4px 0 8px;padding-left:2px;">Automatically rerolls completed quests for a new one. Still costs ⭐ (Daily 500 / Weekly 5000 / Monthly 20000) — only triggers if you can afford it.</div>
@@ -2597,7 +2601,7 @@ const DEF=()=>({
 });
 let G=DEF();
 let _uid=Date.now();const uid=()=>(_uid++).toString(36);
-let SET={sound:false,vibrate:true,reduceMotion:false,autoDelay:1200,smartAuto:false,autoPot:false,showDmgNums:true,showHealNums:true,showStatus:true,showCombo:true,salvageRarity:'',perfMode:false,dmgSize:'medium',dmgTheme:'default',autoHarvest:true,autoReplant:true,toasts:true,orientation:'auto',autoResetQuests:false};
+let SET={sound:false,ambient:false,vibrate:true,reduceMotion:false,autoDelay:1200,smartAuto:false,autoPot:false,showDmgNums:true,showHealNums:true,showStatus:true,showCombo:true,salvageRarity:'',perfMode:false,dmgSize:'medium',dmgTheme:'default',autoHarvest:true,autoReplant:true,toasts:true,orientation:'auto',autoResetQuests:false};
 function saveSET(){try{localStorage.setItem('zb_set',JSON.stringify(SET));}catch(e){}}
 function loadSET(){try{const r=localStorage.getItem('zb_set');if(r)Object.assign(SET,JSON.parse(r));}catch(e){}}
 let currentWeather=WEATHERS[0];
@@ -2673,10 +2677,26 @@ function _onSaveFailed(e){
   }
 }
 function load(){
+  let raw=null;
   try{
-    const raw=localStorage.getItem('zb5')||localStorage.getItem('zb4')||localStorage.getItem('zb3');
+    raw=localStorage.getItem('zb5')||localStorage.getItem('zb4')||localStorage.getItem('zb3');
     if(!raw)return false;
-    const saved=JSON.parse(raw);
+  }catch(e){return false;}
+  let saved;
+  try{
+    saved=JSON.parse(raw);
+  }catch(parseErr){
+    // The save exists but is corrupted (e.g. a write was interrupted mid-write).
+    // Don't silently discard it — back it up under a recovery key so it's not
+    // lost forever, and warn the player loudly.
+    try{localStorage.setItem('zb5_corrupted_'+Date.now(),raw);}catch(e){}
+    console.error('Save data corrupted:',parseErr);
+    setTimeout(()=>{
+      toast('⚠️ Your save file was corrupted and could not be loaded — starting fresh. A backup of the corrupted data was kept in your browser storage in case it can be recovered manually.','er');
+    },1500);
+    return false;
+  }
+  try{
     // Deep merge nested objects to preserve new default fields (Fix 18)
     const defaults=DEF();
     Object.assign(G,defaults,saved);
@@ -5320,7 +5340,7 @@ function goatRage(e,f){doArmorBreak();doArmorBreak();const dmg=Math.floor(f.atk*
 function monkeyTrick(e,f){applyEnemyStatus('stun',1);const dmg=Math.floor(f.atk*1.5);e.hp=Math.max(0,e.hp-dmg);setMsg(`${f.emoji} Confusion! Stunned! ${fmt(dmg)}!`,'','crit');spawnDmg(dmg,'cr',document.getElementById('eCube'));checkKillWithUlt(dmg,f);}
 function roosterCry(f){if(!G.playerBuffs)G.playerBuffs={};G.party.forEach(n=>{if(!G.playerBuffs[n])G.playerBuffs[n]={};G.playerBuffs[n].atkUp=2;});setMsg(`${f.emoji} War Cry! All allies ATK+20%!`,'','heal');advTurn();}
 function dogGuard(f){if(!G.playerBuffs)G.playerBuffs={};G.party.forEach(n=>{if(!G.playerBuffs[n])G.playerBuffs[n]={};G.playerBuffs[n].shield=true;});setMsg(`${f.emoji} Loyal Guard! All allies shielded!`,'','heal');advTurn();}
-function pigFeast(f){G.party.forEach(n=>{const r=G.roster[n];if(r&&r.hp>0){const mx=getMaxHp(n);const h=Math.floor(mx*.4);r.hp=Math.min(mx,r.hp+h);}});setMsg(`${f.emoji} Fortune Feast! All allies healed 40%!`,'','heal');renderSquad();advTurn();}
+function pigFeast(f){G.party.forEach(n=>{const r=G.roster[n];if(r&&r.hp>0){const mx=getMaxHp(n);const h=Math.floor(mx*.4);r.hp=Math.min(mx,r.hp+h);}});setMsg(`${f.emoji} Fortune Feast! All allies healed 40%!`,'','heal');snd('heal');renderSquad();advTurn();}
 function checkKillWithUlt(dmg,f){updEHp();applyStatusVisuals();recordFightDmg(f.zodiac,dmg);if(G.enemy&&G.enemy.hp<=0)onWin(1+Math.min(G.streak,100)*B.STREAK_BONUS);else advTurn();}
 
 // ══ ENEMY SKILLS ══
@@ -5959,8 +5979,129 @@ function updateUltBar(pct){
   const bcard=document.getElementById('bcardPlayerUlt');if(bcard)bcard.style.width=pct+'%';
   const bpct=document.getElementById('bcardPlayerUltPct');if(bpct)bpct.textContent=pct+'%';
 }
+// ── AUDIO ──────────────────────────────────────────────────────────────────
+// Lazily-initialized AudioContext (created on first user interaction to avoid
+// autoplay-policy blocks). All sounds are synthesized via oscillators/noise —
+// no audio files needed.
+let _actx=null;
+function _getAudioCtx(){
+  if(!SET.sound)return null;
+  if(_actx)return _actx;
+  try{
+    _actx=new (window.AudioContext||window.webkitAudioContext)();
+  }catch(e){return null;}
+  return _actx;
+}
+// Resume the audio context on first user gesture (required by autoplay policies)
+function _initAudioOnGesture(){
+  const ctx=_getAudioCtx();
+  if(ctx&&ctx.state==='suspended')ctx.resume().catch(()=>{});
+  if(SET.sound&&SET.ambient)startAmbient();
+}
+['pointerdown','keydown','touchstart'].forEach(ev=>{
+  window.addEventListener(ev,_initAudioOnGesture,{once:true,passive:true});
+});
+
 function snd(type){
-  // Sound stub - audio not implemented
+  if(!SET.sound)return;
+  const ctx=_getAudioCtx();
+  if(!ctx)return;
+  if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+  const now=ctx.currentTime;
+  const master=ctx.createGain();
+  master.gain.value=0.18; // overall sfx volume, kept modest
+  master.connect(ctx.destination);
+
+  switch(type){
+    case'hit':{
+      // Short noise burst — percussive "thud"
+      const buf=ctx.createBuffer(1,ctx.sampleRate*0.08,ctx.sampleRate);
+      const data=buf.getChannelData(0);
+      for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
+      const src=ctx.createBufferSource();src.buffer=buf;
+      const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=900;
+      const g=ctx.createGain();g.gain.setValueAtTime(0.6,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.08);
+      src.connect(filter);filter.connect(g);g.connect(master);
+      src.start(now);src.stop(now+0.08);
+      break;
+    }
+    case'crit':{
+      // Higher-pitched ping — short sine sweep upward
+      const osc=ctx.createOscillator();osc.type='triangle';
+      osc.frequency.setValueAtTime(700,now);
+      osc.frequency.exponentialRampToValueAtTime(1400,now+0.12);
+      const g=ctx.createGain();g.gain.setValueAtTime(0.5,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.18);
+      osc.connect(g);g.connect(master);
+      osc.start(now);osc.stop(now+0.18);
+      break;
+    }
+    case'heal':{
+      // Gentle upward swoop — sine sweep low to mid with soft attack
+      const osc=ctx.createOscillator();osc.type='sine';
+      osc.frequency.setValueAtTime(300,now);
+      osc.frequency.exponentialRampToValueAtTime(700,now+0.35);
+      const g=ctx.createGain();g.gain.setValueAtTime(0.0001,now);
+      g.gain.exponentialRampToValueAtTime(0.4,now+0.08);
+      g.gain.exponentialRampToValueAtTime(0.001,now+0.4);
+      osc.connect(g);g.connect(master);
+      osc.start(now);osc.stop(now+0.4);
+      break;
+    }
+    case'win':{
+      // Bright ascending two-note chime
+      [0,0.12].forEach((delay,i)=>{
+        const osc=ctx.createOscillator();osc.type='triangle';
+        osc.frequency.value=i===0?660:880;
+        const g=ctx.createGain();g.gain.setValueAtTime(0.35,now+delay);g.gain.exponentialRampToValueAtTime(0.001,now+delay+0.25);
+        osc.connect(g);g.connect(master);
+        osc.start(now+delay);osc.stop(now+delay+0.25);
+      });
+      break;
+    }
+    case'lose':{
+      // Descending low tone
+      const osc=ctx.createOscillator();osc.type='sawtooth';
+      osc.frequency.setValueAtTime(220,now);
+      osc.frequency.exponentialRampToValueAtTime(90,now+0.5);
+      const g=ctx.createGain();g.gain.setValueAtTime(0.3,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.5);
+      osc.connect(g);g.connect(master);
+      osc.start(now);osc.stop(now+0.5);
+      break;
+    }
+  }
+}
+
+// ── BACKGROUND AMBIENT (optional, synthesized drone) ─────────────────────────
+let _ambientNodes=null;
+function startAmbient(){
+  if(!SET.sound||!SET.ambient)return;
+  const ctx=_getAudioCtx();
+  if(!ctx||_ambientNodes)return;
+  if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+  const master=ctx.createGain();
+  master.gain.value=0.05; // very quiet background pad
+  master.connect(ctx.destination);
+  // Two slightly-detuned sine oscillators for a soft pad, plus a slow LFO on volume
+  const osc1=ctx.createOscillator();osc1.type='sine';osc1.frequency.value=110;
+  const osc2=ctx.createOscillator();osc2.type='sine';osc2.frequency.value=110*1.5;
+  const lfo=ctx.createOscillator();lfo.type='sine';lfo.frequency.value=0.07;
+  const lfoGain=ctx.createGain();lfoGain.gain.value=0.02;
+  lfo.connect(lfoGain);lfoGain.connect(master.gain);
+  osc1.connect(master);osc2.connect(master);
+  osc1.start();osc2.start();lfo.start();
+  _ambientNodes={osc1,osc2,lfo,master};
+}
+function stopAmbient(){
+  if(!_ambientNodes)return;
+  try{
+    _ambientNodes.osc1.stop();_ambientNodes.osc2.stop();_ambientNodes.lfo.stop();
+    _ambientNodes.master.disconnect();
+  }catch(e){}
+  _ambientNodes=null;
+}
+function toggleAmbient(on){
+  SET.ambient=on;saveSET();
+  if(on)startAmbient();else stopAmbient();
 }
 
 function checkPetUnlocks(){
@@ -6072,7 +6213,7 @@ function init(){
     // Skip tutorial automatically on first load too — user can replay via Settings
     G.tutDone=true;save();
   },1700);
-  document.getElementById('setSound').checked=SET.sound;document.getElementById('setVib').checked=SET.vibrate;document.getElementById('setMotion').checked=SET.reduceMotion;document.getElementById('setSmartAuto').checked=SET.smartAuto;const _apc=document.getElementById('autoPotChk');if(_apc)_apc.checked=SET.autoPot||false;const _apt=document.getElementById('autoPotToggle');if(_apt)_apt.checked=SET.autoPot||false;document.getElementById('setAutoDelay').value=String(SET.autoDelay);
+  document.getElementById('setSound').checked=SET.sound;document.getElementById('setAmbient').checked=SET.ambient;document.getElementById('setVib').checked=SET.vibrate;document.getElementById('setMotion').checked=SET.reduceMotion;document.getElementById('setSmartAuto').checked=SET.smartAuto;const _apc=document.getElementById('autoPotChk');if(_apc)_apc.checked=SET.autoPot||false;const _apt=document.getElementById('autoPotToggle');if(_apt)_apt.checked=SET.autoPot||false;document.getElementById('setAutoDelay').value=String(SET.autoDelay);
   const _toastChk=document.getElementById('setToasts');if(_toastChk)_toastChk.checked=SET.toasts!==false;
   const _arqChk=document.getElementById('setAutoResetQuests');if(_arqChk)_arqChk.checked=SET.autoResetQuests===true;
   const _orientSel=document.getElementById('setOrientation');if(_orientSel)_orientSel.value=SET.orientation||'auto';
@@ -6944,11 +7085,12 @@ function potion(type){
     const potPower=1+getHouseBonus('potionPower');
     G.party.forEach(n=>{const r=G.roster[n];if(r&&r.hp>0){const mx=getMaxHp(n);const old=r.hp;r.hp=Math.min(mx,Math.floor(r.hp+(mx-r.hp)*potPower));if(r.hp<mx)r.hp=mx;totalHealed+=r.hp-old;}});
     setMsg('🧪 Full Party Heal! All HP restored!','','heal');
+    snd('heal');
     spawnDmg('FULL HEAL!','hl',document.getElementById('squadSec'));renderSquad();
   }else if(type==='megaHeal'){
     G.party.forEach(n=>{const r=G.roster[n];if(r){r.hp=getMaxHp(n);}});
     G.playerStatus={};
-    setMsg('💉 Elixir! Full heal + all debuffs cleared!','','heal');renderSquad();
+    setMsg('💉 Elixir! Full heal + all debuffs cleared!','','heal');snd('heal');renderSquad();
   }else if(type==='boost'){
     // +50% ATK/DEF, stacked turns
     if(!G.playerBuffs)G.playerBuffs={};
@@ -10981,12 +11123,23 @@ async function syncSaveToCloud(){
     await setDoc(saveDocRef, {data: JSON.stringify(s), updatedAt: serverTimestamp()}, {merge: true});
     console.log('Cloud sync OK via SDK');
     if(window._manualSync) toast('☁️ Cloud save synced!','ok');
+    if(_cloudSyncFailWarned){_cloudSyncFailWarned=false;toast('✅ Cloud sync restored.','ok');}
   }catch(e){
     console.error('SDK sync failed:', e.code, e.message);
     window._lastSyncError = {msg: e.message, code: e.code, uid, time: new Date().toISOString()};
     if(window._manualSync) alert('SDK Error:\nCode: '+e.code+'\nMsg: '+e.message+'\nUID: '+uid+'\n\nIf permission-denied with open rules:\nGo to Firebase Console → App Check → disable enforcement for Firestore');
+    else if(!_cloudSyncFailWarned){
+      _cloudSyncFailWarned=true;
+      const isTooLarge=e.code==='invalid-argument'||/exceeds.*maximum|too large|1.*MiB/i.test(e.message||'');
+      if(isTooLarge){
+        toast('⚠️ Cloud backup failed — your save is too large to upload (Firestore 1MB limit). Local save still works, but cloud backup is paused. Try Bulk Sell in Inventory to shrink your save.','er');
+      }else{
+        toast('⚠️ Cloud backup failed ('+(e.code||'error')+'). Your local save still works, but won\'t be backed up until this resolves.','er');
+      }
+    }
   }
 }
+let _cloudSyncFailWarned=false;
 
 // ── SOUL ZODIACS (Online endgame) ──────────────────────────────────────────────
 const SOUL_UNLOCK_FLOOR=5000;
@@ -11789,20 +11942,31 @@ async function loadFromCloud(){
     const uid=currentUser.uid;
     const saveDocRef = doc(db, 'players', uid, 'saveData', 'latest');
     const snap = await getDoc(saveDocRef);
-    if(!snap.exists()) return false;
+    if(!snap.exists()){toast('No cloud save found.','er');return false;}
     const dataStr = snap.data()?.data;
     if(dataStr){
       const cloud=JSON.parse(dataStr);
-      // Only load if cloud save is newer/better
-      if((cloud.wins||0)>(G.wins||0)||(cloud.ascension||0)>(G.ascension||0)){
+      const cloudBetter=(cloud.wins||0)>(G.wins||0)||(cloud.ascension||0)>(G.ascension||0);
+      const cloudWorse=(cloud.ascension||0)<(G.ascension||0)
+        ||(cloud.gold||0)<(G.gold||0)*0.5
+        ||(cloud.playtime||0)<(G.playtime||0)*0.8;
+      const applyCloud=()=>{
         Object.assign(G,cloud);
         save();updateHdr();renderSquad();
         try{spawnEnemy();}catch(e){}
         toast('☁️ Cloud save loaded!','ok');
+      };
+      if(cloudWorse){
+        confirm2('⚠️ Cloud Save Looks Older',
+          'The cloud save appears to have LESS progress than your current local save (lower ascension, gold, or playtime). Loading it will overwrite your current progress. Are you sure?',
+          applyCloud);
+        return true;
+      }else if(cloudBetter||!cloudWorse){
+        applyCloud();
         return true;
       }
     }
-  }catch(e){console.warn('Cloud load failed:',e.message);}
+  }catch(e){console.warn('Cloud load failed:',e.message);toast('Cloud load failed: '+e.message,'er');}
   return false;
 }
 
@@ -14000,91 +14164,6 @@ function awardAscensionEssence(){
 function getAscEssence(){ return G._ascEssence||0; }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// FRIEND LIST (#3) — two-way requests via Firestore
-// ══════════════════════════════════════════════════════════════════════════════
-async function sendFriendRequest(toUid, toName){
-  if(!fbReady()){toast('Sign in first!','er');return;}
-  if(toUid===fbUID()){toast('Cannot add yourself!','er');return;}
-  try{
-    const {db,doc,setDoc,serverTimestamp} = window.FB;
-    await setDoc(doc(db,`players/${toUid}/friendRequests`,fbUID()),{
-      from:fbUID(), fromName:fbName(), fromAvatar:fbAvatar()||'',
-      ts:serverTimestamp(), status:'pending'
-    });
-    toast(`👥 Friend request sent to ${toName}!`,'ok');
-  }catch(e){toast('Failed: '+e.message,'er');}
-}
-
-async function acceptFriendRequest(fromUid, fromName){
-  if(!fbReady()) return;
-  try{
-    const {db,doc,setDoc,deleteDoc,serverTimestamp} = window.FB;
-    // Add to both friends lists
-    await setDoc(doc(db,`players/${fbUID()}/friends`,fromUid),{uid:fromUid,name:fromName,since:serverTimestamp()});
-    await setDoc(doc(db,`players/${fromUid}/friends`,fbUID()),{uid:fbUID(),name:fbName(),since:serverTimestamp()});
-    // Remove request
-    await deleteDoc(doc(db,`players/${fbUID()}/friendRequests`,fromUid));
-    toast(`✅ Now friends with ${fromName}!`,'ok');
-    renderFriendsList();
-  }catch(e){toast('Failed: '+e.message,'er');}
-}
-
-async function renderFriendsList(){
-  const body=document.getElementById('friendsBody');if(!body)return;
-  if(!fbReady()){body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to use friends</div>';return;}
-  body.innerHTML='<div style="text-align:center;padding:12px;">Loading...</div>';
-  try{
-    const {db,collection,getDocs,doc,getDoc} = window.FB;
-    const [friendsSnap,reqSnap] = await Promise.all([
-      getDocs(collection(db,`players/${fbUID()}/friends`)),
-      getDocs(collection(db,`players/${fbUID()}/friendRequests`)),
-    ]);
-    let html='';
-    // Pending requests
-    if(!reqSnap.empty){
-      html+=`<div style="font-size:10px;font-weight:700;margin-bottom:6px;color:#fbbf24;">📨 Friend Requests (${reqSnap.size})</div>`;
-      reqSnap.forEach(d=>{
-        const r=d.data();
-        html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:5px;">
-          ${r.fromAvatar?`<img src="${r.fromAvatar}" style="width:28px;height:28px;border-radius:50%;">`:'<span style="font-size:20px;">🐲</span>'}
-          <span style="flex:1;font-size:11px;font-weight:700;">${escHtml(r.fromName||'?')}</span>
-          <button class="btn bp" style="font-size:9px;padding:3px 8px;" onclick="acceptFriendRequest('${d.id}','${escHtml(r.fromName||'?')}')">✅ Accept</button>
-        </div>`;
-      });
-    }
-    // Friends list
-    if(friendsSnap.empty&&reqSnap.empty){
-      html='<div style="text-align:center;color:var(--txt2);padding:20px;font-size:10px;">No friends yet — find players on the Leaderboard and add them!</div>';
-    } else {
-      html+=`<div style="font-size:10px;font-weight:700;margin-bottom:6px;">👥 Friends (${friendsSnap.size})</div>`;
-      const friendData=[];
-      for(const d of friendsSnap.docs){
-        try{
-          const pSnap=await getDoc(doc(db,'players',d.id));
-          if(pSnap.exists())friendData.push({id:d.id,...pSnap.data()});
-          else friendData.push({id:d.id,...d.data()});
-        }catch(e){friendData.push({id:d.id,...d.data()});}
-      }
-      friendData.sort((a,b)=>(b.power||0)-(a.power||0));
-      friendData.forEach(f=>{
-        const rank=getPvpRank(f.pvpPoints||0);
-        html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border:1px solid rgba(71,85,105,.2);border-radius:8px;margin-bottom:4px;cursor:pointer;" onclick="openWorldProfile('${f.id}')">
-          ${f.avatar?`<img src="${escAttr(f.avatar)}" style="width:32px;height:32px;border-radius:50%;">`:'<span style="font-size:22px;">🐲</span>'}
-          <div style="flex:1;"><div style="font-weight:700;font-size:11px;">${escHtml(f.name||'?')}</div>
-          <div style="font-size:9px;color:var(--txt2);">${rank.emoji} ${rank.name} · ⚡${fmt(f.power||0)} · Asc.${f.ascension||0}</div></div>
-          <button class="btn bs bblk" style="font-size:9px;padding:3px 8px;" onclick="event.stopPropagation();showGiftPanel('${f.id}','${escHtml(f.name||'?')}')">🎁</button>
-        </div>`;
-      });
-    }
-    body.innerHTML=html;
-  }catch(e){
-    if(e.code==='permission-denied'||e.message?.includes('Missing or insufficient')){
-      body.innerHTML='<div style="padding:12px;text-align:center;font-size:10px;color:var(--txt2);">🔒 Permission error. Make sure Firestore rules are published in Firebase console.<br><br>Go to Firestore → Rules → Publish the rules provided.</div>';
-    }else{body.innerHTML=`<div style="padding:10px;color:#ef4444;font-size:10px;">${e.message}</div>`;}
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
 // RECENT VISITORS (#6)
 // ══════════════════════════════════════════════════════════════════════════════
 async function trackProfileVisit(targetUid){
@@ -15858,7 +15937,6 @@ function triggerPWAInstall(){
 <div class="modal" id="mAnnouncement"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">📢 Announcement</span><button class="xbtn" onclick="closeM('mAnnouncement')">✕</button></div><div class="pb" id="announcementBody"></div></div></div>
 
 <!-- ═══ FRIENDS ═══ -->
-<div class="modal" id="mFriends"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">👥 Friends</span><button class="xbtn" onclick="closeM('mFriends')">✕</button></div><div class="pb" id="friendsBody"></div></div></div>
 
 <!-- ═══ SERVER BOSS ═══ -->
 <div class="modal" id="mServerBoss"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🐉 Server Boss</span><button class="xbtn" onclick="closeM('mServerBoss')">✕</button></div><div class="pb" id="serverBossBody"></div></div></div>
