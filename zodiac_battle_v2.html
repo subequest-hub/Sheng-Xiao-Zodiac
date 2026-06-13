@@ -1128,6 +1128,7 @@ onAuthStateChanged(auth, user => {
 <div class="modal" id="mCrafting"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🛠️ Crafting Skills</span><button class="xbtn" onclick="closeM('mCrafting')">✕</button></div><div class="pb" id="craftingBody"></div></div></div>
 
 <div class="modal" id="mInventory"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🎒 Inventory</span><button class="xbtn" onclick="closeM('mInventory')">✕</button></div><div class="pb" id="inventoryBody"></div></div></div>
+<div class="modal" id="mBulkSell"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🗑️ Bulk Sell</span><button class="xbtn" onclick="closeM('mBulkSell')">✕</button></div><div class="pb" id="bulkSellBody"></div></div></div>
 <div class="modal" id="mGuild"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">⚔️ Adventurer Guild</span><button class="xbtn" onclick="closeM('mGuild')">✕</button></div><div class="pb" id="guildBody"></div></div></div>
 <div class="modal" id="mHouse"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏠 Your House</span><button class="xbtn" onclick="closeM('mHouse')">✕</button></div><div class="pb" id="houseBody"></div></div></div>
 <div class="modal" id="mSettings"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">⚙️ Settings</span><button class="xbtn" onclick="closeM('mSettings')">✕</button></div><div class="pb">
@@ -2611,8 +2612,65 @@ function save(){
     delete s.combo;delete s.usedPot;delete s.curTurn;
     delete s.playerStatus;delete s.enemyStatus;delete s.enemyArmor;
     delete s.playerBuffs;delete s.enemySkillQueue;delete s.fightDmg;delete s.damageTakenFight;
-    localStorage.setItem('zb5',JSON.stringify(s));
-  }catch(e){}
+    _trySaveString(JSON.stringify(s));
+  }catch(e){
+    _onSaveFailed(e);
+  }
+}
+// Attempt to write the save string; on quota errors, prune the largest unbounded
+// data (unequipped equipment) and retry a few times before giving up.
+function _trySaveString(json){
+  try{
+    localStorage.setItem('zb5',json);
+    if(G._saveFailing){G._saveFailing=false;toast('✅ Save restored — storage space recovered.','ok');}
+  }catch(e){
+    if(e.name==='QuotaExceededError'||e.code===22){
+      // Emergency relief: trim unequipped equipment (oldest/lowest-rarity first),
+      // which is the most common source of unbounded save growth.
+      const before=(G.equipment||[]).length;
+      _pruneEquipment(300);
+      if((G.equipment||[]).length<before){
+        // Re-serialize with trimmed equipment and retry once
+        const s={...G};
+        delete s.enemy;delete s.enemyQ;delete s.turns;delete s.alive;
+        delete s.combo;delete s.usedPot;delete s.curTurn;
+        delete s.playerStatus;delete s.enemyStatus;delete s.enemyArmor;
+        delete s.playerBuffs;delete s.enemySkillQueue;delete s.fightDmg;delete s.damageTakenFight;
+        try{
+          localStorage.setItem('zb5',JSON.stringify(s));
+          toast(`⚠️ Save was too large — auto-trimmed ${before-(G.equipment||[]).length} unused equipment items to fit. Your progress is safe.`,'er');
+          return;
+        }catch(e2){_onSaveFailed(e2);return;}
+      }
+      _onSaveFailed(e);
+    }else{
+      _onSaveFailed(e);
+    }
+  }
+}
+// Trim G.equipment down to maxItems, keeping all EQUIPPED items plus the
+// highest-rarity/highest-level unequipped items. Removes the rest.
+function _pruneEquipment(maxItems){
+  if(!Array.isArray(G.equipment)||G.equipment.length<=maxItems)return;
+  const rarityOrder={Godly:6,Mythical:5,Legendary:4,Epic:3,Rare:2,Uncommon:1,Common:0};
+  const equipped=G.equipment.filter(it=>it.equippedOn);
+  let unequipped=G.equipment.filter(it=>!it.equippedOn);
+  unequipped.sort((a,b)=>(rarityOrder[b.rarity]||0)-(rarityOrder[a.rarity]||0)||(b.level||0)-(a.level||0));
+  const keepCount=Math.max(0,maxItems-equipped.length);
+  unequipped=unequipped.slice(0,keepCount);
+  G.equipment=[...equipped,...unequipped];
+}
+// Save is failing persistently (quota exceeded even after pruning, or some
+// other storage error) — warn the player visibly instead of failing silently,
+// since silent save failures can cause hours of progress loss on next reload.
+let _saveFailWarned=false;
+function _onSaveFailed(e){
+  G._saveFailing=true;
+  console.error('Save failed:',e);
+  if(!_saveFailWarned){
+    _saveFailWarned=true;
+    toast(`⚠️ Save failed (${e.name||e.code||'unknown error'})! Your progress since the last successful save may be lost if you close this tab. Try freeing up browser storage.`,'er');
+  }
 }
 function load(){
   try{
@@ -6942,6 +7000,7 @@ function summonEquipment(count,goldCost,starCost=0){
         else item.stats[stat]=val;
       });
       if(!G.equipment)G.equipment=[];G.equipment.push(item);
+      if(G.equipment.length>500)_pruneEquipment(500);
       results.push(item);
     }else{
       const dropped=rollEquipmentDrop();if(dropped)results.push(dropped);
@@ -9201,6 +9260,58 @@ function renderEnemyPartyList(){
   }
 }
 
+// Simple sell value: scales with rarity multiplier and item level.
+function getEquipmentSellValue(item){
+  const mult=EQUIPMENT_RARITIES[item.rarity]?.mult||1;
+  return Math.max(1,Math.floor((item.level||1)*mult*2));
+}
+function openBulkSellEquipment(){
+  openM('mBulkSell');
+  renderBulkSellPanel();
+}
+function renderBulkSellPanel(){
+  const body=document.getElementById('bulkSellBody');if(!body)return;
+  const unequipped=(G.equipment||[]).filter(it=>!it.equippedOn);
+  const counts={};let totalValue=0;
+  unequipped.forEach(it=>{
+    counts[it.rarity]=(counts[it.rarity]||0)+1;
+    totalValue+=getEquipmentSellValue(it);
+  });
+  const rarOrd=['Common','Uncommon','Rare','Epic','Legendary','Mythical','Godly'];
+  let html=`<div style="font-size:10px;color:var(--txt2);margin-bottom:10px;">${unequipped.length} unequipped items · would sell for 💰${fmt(totalValue)} total</div>`;
+  if(!unequipped.length){
+    html+='<div style="text-align:center;color:var(--txt2);padding:14px;font-size:10px;">Nothing to sell — all your items are equipped!</div>';
+  }else{
+    html+='<div style="font-size:10px;font-weight:700;margin-bottom:6px;">Sell all unequipped items at or below:</div>';
+    rarOrd.forEach(rarity=>{
+      const upTo=rarOrd.indexOf(rarity);
+      const matching=unequipped.filter(it=>rarOrd.indexOf(it.rarity)<=upTo);
+      if(!matching.length)return;
+      const value=matching.reduce((s,it)=>s+getEquipmentSellValue(it),0);
+      const rd=EQUIPMENT_RARITIES[rarity];
+      html+=`<button class="btn bs bblk mb2" style="width:100%;text-align:left;display:flex;justify-content:space-between;" onclick="bulkSellEquipment('${rarity}')">
+        <span>Up to <b style="color:${rd?.color||'#fff'};">${rarity}</b> (${matching.length} items)</span>
+        <span style="color:#fbbf24;">💰${fmt(value)}</span>
+      </button>`;
+    });
+  }
+  body.innerHTML=html;
+}
+// Sell all unequipped items at or below the given rarity tier.
+function bulkSellEquipment(maxRarity){
+  const rarOrd=['Common','Uncommon','Rare','Epic','Legendary','Mythical','Godly'];
+  const maxIdx=rarOrd.indexOf(maxRarity);
+  const toSell=(G.equipment||[]).filter(it=>!it.equippedOn&&rarOrd.indexOf(it.rarity)<=maxIdx);
+  if(!toSell.length){toast('Nothing to sell!','er');return;}
+  const totalValue=toSell.reduce((s,it)=>s+getEquipmentSellValue(it),0);
+  const sellIds=new Set(toSell.map(it=>it.id));
+  G.equipment=(G.equipment||[]).filter(it=>!sellIds.has(it.id));
+  G.gold+=totalValue;G.totalGold=(G.totalGold||0)+totalValue;
+  save();updateHdr();
+  toast(`🗑️ Sold ${toSell.length} items for 💰${fmt(totalValue)} gold!`,'ok');
+  renderBulkSellPanel();
+  if(document.getElementById('inventoryBody'))renderInventory();
+}
 function renderInventory(){
   const body=document.getElementById('inventoryBody');if(!body)return;
   const eq=G.equipment||[];
@@ -9242,6 +9353,10 @@ function renderInventory(){
     filtBar.appendChild(b);
   });
   body.appendChild(filtBar);
+  // Bulk sell tool - release valve for unbounded equipment accumulation
+  const bulkBar=document.createElement('div');bulkBar.style.cssText='margin-bottom:8px;';
+  bulkBar.innerHTML=`<button class="btn bd bblk" style="font-size:9px;width:100%;" onclick="openBulkSellEquipment()">🗑️ Bulk Sell Unequipped Items</button>`;
+  body.appendChild(bulkBar);
   body.appendChild(el);
   const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:5px;';
   all.forEach(item=>{
