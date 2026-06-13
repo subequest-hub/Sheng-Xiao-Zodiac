@@ -1144,8 +1144,8 @@ onAuthStateChanged(auth, user => {
   <div class="setting-row"><span>Auto-Salvage Below</span><select id="setSalvageRarity" onchange="SET.salvageRarity=this.value;saveSET();autoSalvageLowRarity()" style="background:var(--bg3);color:var(--txt);border:none;border-radius:6px;padding:4px 8px;font-size:11px;"><option value="">Off</option><option value="Common">Keep Uncommon+</option><option value="Uncommon">Keep Rare+</option><option value="Rare">Keep Epic+</option><option value="Epic">Keep Legendary+</option><option value="Legendary">Keep Mythical+</option><option value="Mythical">Keep Godly only</option></select></div>
 
   <div class="sec-t mb2" style="margin-top:14px;">🔊 Audio & Feel</div>
-  <div class="setting-row"><span>Sound Effects</span><label class="sw"><input type="checkbox" id="setSound" onchange="SET.sound=this.checked;saveSET();if(!SET.sound)stopAmbient();else if(SET.ambient)startAmbient();"><span class="swt"></span></label></div>
-  <div class="setting-row"><span>🎵 Background Music</span><label class="sw"><input type="checkbox" id="setAmbient" onchange="toggleAmbient(this.checked)"><span class="swt"></span></label></div>
+  <div class="setting-row"><span>Sound Effects</span><label class="sw"><input type="checkbox" id="setSound" onchange="SET.sound=this.checked;saveSET();if(!SET.sound)stopAmbient();else if(SET.ambient)startAmbient();_updateAmbientToggleState();"><span class="swt"></span></label></div>
+  <div class="setting-row" id="ambientRow"><span>🎵 Background Music</span><label class="sw"><input type="checkbox" id="setAmbient" onchange="toggleAmbient(this.checked)"><span class="swt"></span></label></div>
   <div class="t2 ts" style="margin:-4px 0 8px;padding-left:2px;">Soft ambient pad. Requires Sound Effects to be enabled.</div>
   <div class="setting-row"><span>🔔 Show Toast Popups</span><label class="sw"><input type="checkbox" id="setToasts" checked onchange="SET.toasts=this.checked;saveSET()"><span class="swt"></span></label></div>
   <div class="setting-row"><span>🔄 Auto-Reset Completed Quests</span><label class="sw"><input type="checkbox" id="setAutoResetQuests" onchange="SET.autoResetQuests=this.checked;saveSET()"><span class="swt"></span></label></div>
@@ -5463,7 +5463,15 @@ function applyOrientationLock(){
     const lockType=mode==='landscape'?'landscape':'portrait';
     if(screen.orientation&&screen.orientation.lock){
       screen.orientation.lock(lockType).catch(()=>{
-        toast('⚠️ Orientation lock requires fullscreen/installed app','warn');
+        // The web app manifest already declares "orientation": "portrait" for
+        // installed/standalone launches, so a portrait lock rejection here is
+        // expected on many browsers (the Orientation Lock API requires an
+        // active fullscreen element, which isn't always true even in
+        // standalone PWAs) and the manifest-level lock is likely already
+        // working. Only warn for landscape, which the manifest doesn't cover.
+        if(lockType==='landscape'){
+          toast('⚠️ Landscape lock requires fullscreen/installed app','warn');
+        }
       });
     }else{
       toast('⚠️ Orientation lock not supported on this browser','warn');
@@ -6111,6 +6119,16 @@ function toggleAmbient(on){
   SET.ambient=on;saveSET();
   if(on)startAmbient();else stopAmbient();
 }
+// Background Music depends on Sound Effects - disable and visually gray out
+// the toggle when Sound Effects is off, so the dependency is obvious rather
+// than just described in a caption.
+function _updateAmbientToggleState(){
+  const chk=document.getElementById('setAmbient');
+  const row=document.getElementById('ambientRow');
+  if(!chk||!row)return;
+  chk.disabled=!SET.sound;
+  row.style.opacity=SET.sound?'1':'.45';
+}
 
 function checkPetUnlocks(){
   if(!G.pets)G.pets={};
@@ -6221,7 +6239,7 @@ function init(){
     // Skip tutorial automatically on first load too — user can replay via Settings
     G.tutDone=true;save();
   },1700);
-  document.getElementById('setSound').checked=SET.sound;document.getElementById('setAmbient').checked=SET.ambient;document.getElementById('setVib').checked=SET.vibrate;document.getElementById('setMotion').checked=SET.reduceMotion;document.getElementById('setSmartAuto').checked=SET.smartAuto;const _apc=document.getElementById('autoPotChk');if(_apc)_apc.checked=SET.autoPot||false;const _apt=document.getElementById('autoPotToggle');if(_apt)_apt.checked=SET.autoPot||false;document.getElementById('setAutoDelay').value=String(SET.autoDelay);
+  document.getElementById('setSound').checked=SET.sound;document.getElementById('setAmbient').checked=SET.ambient;document.getElementById('setVib').checked=SET.vibrate;document.getElementById('setMotion').checked=SET.reduceMotion;document.getElementById('setSmartAuto').checked=SET.smartAuto;const _apc=document.getElementById('autoPotChk');if(_apc)_apc.checked=SET.autoPot||false;const _apt=document.getElementById('autoPotToggle');if(_apt)_apt.checked=SET.autoPot||false;document.getElementById('setAutoDelay').value=String(SET.autoDelay);_updateAmbientToggleState();
   const _toastChk=document.getElementById('setToasts');if(_toastChk)_toastChk.checked=SET.toasts!==false;
   const _arqChk=document.getElementById('setAutoResetQuests');if(_arqChk)_arqChk.checked=SET.autoResetQuests===true;
   const _orientSel=document.getElementById('setOrientation');if(_orientSel)_orientSel.value=SET.orientation||'auto';
