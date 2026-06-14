@@ -975,6 +975,10 @@ onAuthStateChanged(auth, user => {
         <span class="hub-icon">⚔️</span><span class="hub-label">PvP Arena</span>
         <span class="hub-sub" id="hubPvpSub">Rank: —</span>
       </button>
+      <button class="hub-btn" onclick="closeM('mMore');openArenaLadder()">
+        <span class="hub-icon">🐉</span><span class="hub-label">Soul Arena</span>
+        <span class="hub-sub" id="hubArenaSub">Rank #300</span>
+      </button>
       <button class="hub-btn" onclick="closeM('mMore');openLeaderboard()">
         <span class="hub-icon">🏆</span><span class="hub-label">Leaderboard</span>
         <span class="hub-sub">Global ranks</span>
@@ -3722,7 +3726,7 @@ function spawnTrialEnemy(){
   const waveMult=1+wave*0.3;const ascMult=1+asc*0.5;
   G.enemy={...t,level:t.level+wave*10,maxHp:Math.floor(B.BASE_HP*t.hpM*waveMult*ascMult),hp:Math.floor(B.BASE_HP*t.hpM*waveMult*ascMult),atk:Math.floor(B.BASE_ATK*t.atkM*waveMult*ascMult),gold:Math.floor(t.gold*waveMult),isTrial:true};
   G.alive=true;G.combo=0;G.enemyStatus={};G.enemyPhase=0;G._battleStartTime=Date.now();G._phoenixUsedThisBattle=false;
-  renderEnemy();buildTurns();
+  renderEnemy();buildTurns();updateModeBadge();
   setMsg(`⚔️ Trial Wave ${wave}/${ASCENSION_TRIAL_WAVES}: ${t.emoji} ${t.name}!`,`Survive all ${ASCENSION_TRIAL_WAVES} waves for Godly loot!`,'');
   if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}
 }
@@ -3734,7 +3738,7 @@ function onTrialWaveWin(){
     G._trialActive=false;G._trialWave=0;
     const stars=20*(G.ascension||1);const gold=5000*(G.ascension||1);
     G.stars=(G.stars||0)+stars;G.gold+=gold;
-    updateHdr();save();
+    updateHdr();updateModeBadge();save();
     toast(`🏆 TRIAL COMPLETE! +${stars}⭐ +${gold}g!`,'ok');
     vib&&vib([100,50,200,50,400,100,400]);
     // Godly pieces are unlocked via specific conditions only, not trial drops
@@ -7475,6 +7479,7 @@ function updateModeBadge(){
   else if(G.enemy?.isFactionBoss){mb.textContent='💀 FACTION BOSS BATTLE';mb.style.display='block';mb.style.background='linear-gradient(135deg,#7f1d1d,#450a0a)';mb.style.color='#fca5a5';}
   else if(_guildRankTestActive){mb.textContent=`⚔️ Guild Rank Trial — ${GUILD_RANK_TESTS[_guildRankTestId||'']?.name||'Rank Test'}`;mb.style.display='block';mb.style.background='linear-gradient(135deg,#b45309,#92400e)';mb.style.color='#fde68a';}
   else if(G.mirrorFightActive){mb.textContent='⚔️ Mirror Battle — Defeat your past self!';mb.style.display='block';mb.style.background='linear-gradient(135deg,#7c3aed,#1e3a8a)';mb.style.color='#e9d5ff';}
+  else if(G._trialActive){mb.textContent=`🏆 Ascension Trial — Wave ${G._trialWave||1}/${ASCENSION_TRIAL_WAVES}`;mb.style.display='block';mb.style.background='linear-gradient(135deg,#7c2d12,#1e1b4b)';mb.style.color='#fde68a';}
   else{mb.style.display='none';}
   // Show abandon button for reborn/ironman/capture tower variants
   const abandonBtn=document.getElementById('abandonRunBtn');
@@ -7636,6 +7641,7 @@ function updateHdr(){
   }
   // Show endgame buttons
   const trialBtn=document.getElementById('trialBtn');if(trialBtn)trialBtn.style.display=(G.ascension||0)>=1?'':'none';
+  const hubArenaSub=document.getElementById('hubArenaSub');if(hubArenaSub)hubArenaSub.textContent=`Rank #${(G._arena&&G._arena.rank)||ARENA_TOTAL_RANKS}`;
   const convBtn=document.getElementById('convergenceBtn');
   if(convBtn){const ts=Object.values(G.mythicalStacks||{}).reduce((a,b)=>a+b,0);convBtn.style.display=ts>=10?'':'none';}
   const nbBtn=document.getElementById('nightmareBossBtn');
@@ -11499,6 +11505,8 @@ function speedUpSanctuary(){
 // ══════════════════════════════════════════════════════════════════════════════
 // Ratios derived from the balance-tuning reference (3-fighter team:
 // hp600/atk300/def150/spd150 vs tier-1 boss hp5000/atk160/def80/spd60)
+// Ratios derived from the balance-tuning reference (3-fighter team:
+// hp600/atk300/def150/spd150 vs tier-1 boss hp5000/atk160/def80/spd60)
 const BOSS_TRIAL_RATIO={hp:8.3333,atk:0.5333,def:0.5333,spd:0.4};
 function _bossTrialTier1(fighters){
   let teamHp=0,teamAtkTotal=0,teamDefTotal=0,teamSpdTotal=0;
@@ -11620,12 +11628,13 @@ function runBossTrialSimulation(fighters){
   let round=0;
   while(round<BOSS_TRIAL_MAX_ROUNDS){
     round++;
+    let dmgThisRound=0;
 
     // ── Boss DOT tick (from Dog bleed stacks) ──
     if(boss.dotStacks>0&&boss.hp>0){
       let tick=Math.floor(boss.maxHp*BOSS_TRIAL_DOT_TICK_PCT*boss.dotStacks);
       tick=Math.floor(tick*goatBossDmgMult);
-      boss.hp-=tick;
+      boss.hp-=tick; dmgThisRound+=tick;
       fighters.forEach(f=>{
         const share=fighters.length>0?1/fighters.length:1;
         const d=Math.floor(tick*share);perPlayerDamage[f.uid]+=d;f.dmgDealt+=d;
@@ -11653,7 +11662,7 @@ function runBossTrialSimulation(fighters){
     dmgToBoss=Math.floor(dmgToBoss*goatBossDmgMult);
 
     let ratDmgThisRound=0;
-    boss.hp-=dmgToBoss; ratDmgThisRound+=dmgToBoss;
+    boss.hp-=dmgToBoss; ratDmgThisRound+=dmgToBoss; dmgThisRound+=dmgToBoss;
     fighters.forEach(f=>{
       const share=teamAtk>0?(f.stats.atk*atkMult)/teamAtk:1/fighters.length;
       const d=Math.floor(dmgToBoss*share);
@@ -11666,7 +11675,7 @@ function runBossTrialSimulation(fighters){
       let extraDmg=Math.max(1,Math.floor(teamAtk*P.ratExtraAtkMult)-Math.floor(boss.def*0.5));
       if(bossCritChance>0&&Math.random()<bossCritChance)extraDmg=Math.floor(extraDmg*critDmgMult);
       extraDmg=Math.floor(extraDmg*bossDmgMult*goatBossDmgMult);
-      boss.hp-=extraDmg; ratDmgThisRound+=extraDmg;
+      boss.hp-=extraDmg; ratDmgThisRound+=extraDmg; dmgThisRound+=extraDmg;
       fighters.forEach(f=>{
         const share=teamAtk>0?(f.stats.atk*atkMult)/teamAtk:1/fighters.length;
         const d=Math.floor(extraDmg*share);perPlayerDamage[f.uid]+=d;f.dmgDealt+=d;
@@ -11679,7 +11688,7 @@ function runBossTrialSimulation(fighters){
       let extraDmg=Math.max(1,teamAtk-Math.floor(boss.def*0.5));
       if(bossCritChance>0&&Math.random()<bossCritChance)extraDmg=Math.floor(extraDmg*critDmgMult);
       extraDmg=Math.floor(extraDmg*bossDmgMult*goatBossDmgMult);
-      boss.hp-=extraDmg;
+      boss.hp-=extraDmg; dmgThisRound+=extraDmg;
       fighters.forEach(f=>{
         const share=teamAtk>0?(f.stats.atk*atkMult)/teamAtk:1/fighters.length;
         const d=Math.floor(extraDmg*share);perPlayerDamage[f.uid]+=d;f.dmgDealt+=d;
@@ -11695,7 +11704,7 @@ function runBossTrialSimulation(fighters){
       let roosterDmg=Math.floor(boss.maxHp*P.roosterDmgBoss);
       if(bossCritChance>0&&Math.random()<bossCritChance)roosterDmg=Math.floor(roosterDmg*critDmgMult);
       roosterDmg=Math.floor(roosterDmg*goatBossDmgMult);
-      boss.hp-=roosterDmg;
+      boss.hp-=roosterDmg; dmgThisRound+=roosterDmg;
       fighters.forEach(f=>{
         const share=1/fighters.length;
         const d=Math.floor(roosterDmg*share);perPlayerDamage[f.uid]+=d;f.dmgDealt+=d;
@@ -11739,7 +11748,7 @@ function runBossTrialSimulation(fighters){
         if(dogReflectPct>0&&boss.hp>0){
           let reflect=Math.floor(dmgToTeam*dogReflectPct);
           reflect=Math.floor(reflect*goatBossDmgMult);
-          boss.hp-=reflect;
+          boss.hp-=reflect; dmgThisRound+=reflect;
           fighters.forEach(f=>{const d=Math.floor(reflect/fighters.length);perPlayerDamage[f.uid]+=d;f.dmgDealt+=d;});
           events.push({type:'reflect',round,name:'Dog',dmg:reflect,bossHp:Math.max(0,boss.hp),bossMaxHp:boss.maxHp});
         }
@@ -11747,7 +11756,7 @@ function runBossTrialSimulation(fighters){
         if(pigReflectPct>0&&boss.hp>0){
           let reflect=Math.floor(dmgToTeam*pigReflectPct);
           reflect=Math.floor(reflect*goatBossDmgMult);
-          boss.hp-=reflect;
+          boss.hp-=reflect; dmgThisRound+=reflect;
           fighters.forEach(f=>{const d=Math.floor(reflect/fighters.length);perPlayerDamage[f.uid]+=d;f.dmgDealt+=d;});
           events.push({type:'reflect',round,name:'Pig',dmg:reflect,bossHp:Math.max(0,boss.hp),bossMaxHp:boss.maxHp});
         }
@@ -11782,7 +11791,7 @@ function runBossTrialSimulation(fighters){
 
     // ── Goat: heal % of damage dealt this round + poison chance ──
     if(goatHealPct>0&&team.hp>0&&team.hp<team.maxHp){
-      const healAmt=Math.floor(dmgToBoss*goatHealPct);
+      const healAmt=Math.floor(dmgThisRound*goatHealPct);
       const before=team.hp;
       team.hp=Math.min(team.maxHp,team.hp+healAmt);
       if(team.hp>before)events.push({type:'heal',round,amount:team.hp-before,teamHp:team.hp,teamMaxHp:team.maxHp});
@@ -12277,7 +12286,7 @@ async function openLeaderboard(){
 
 async function switchLBTab(tab){
   _lbTab=tab;
-  ['power','wins','asc','tower','pvp','hof'].forEach(t=>{
+  ['power','wins','asc','tower','pvp','arena','hof'].forEach(t=>{
     const btn=document.getElementById('lbTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if(btn)btn.className='log-tab'+(t===tab?' on':'');
   });
@@ -12290,6 +12299,7 @@ async function renderLeaderboard(){
   body.innerHTML='<div style="text-align:center;padding:20px;">Loading...</div>';
   try{
     if(_lbTab==='hof'){body.innerHTML=await renderHallOfFame();return;}
+    if(_lbTab==='arena'){body.innerHTML=await renderArenaLeaderboard();return;}
     const {db,collection,query,orderBy,limit,getDocs}=window.FB;
     const fieldMap={power:'power',wins:'wins',asc:'ascension',tower:'towerBest',pvp:'pvpPoints'};
     const field=fieldMap[_lbTab]||'power';
@@ -12672,6 +12682,7 @@ function openOnlineMode(){
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openWorldProfile()">👤 My Profile</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openFaction()">🏰 Faction</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openPvpArena()">⚔️ PvP Arena</button>
+      <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openArenaLadder()">🐉 Soul Arena</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="closeM('mOnlineMode');openLeaderboard()">🏆 Leaderboard</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="window._manualSync=true;syncSaveToCloud().then(()=>{toast('☁️ Synced!','ok');window._manualSync=false;}).catch(e=>{toast('Error: '+e.message,'er');window._manualSync=false;})">☁️ Sync Save</button>
       <button class="btn bs bblk" style="font-size:11px;padding:10px;" onclick="loadFromCloud()">📥 Load Cloud</button>
@@ -13183,6 +13194,663 @@ function startFactionBossFight(){
 }
 
 
+// ══════════════════════════════════════════════════════════════════════════════
+// SOUL ARENA — 3v3 LADDER (300 ranks, Firebase-backed shared ladder)
+// ══════════════════════════════════════════════════════════════════════════════
+const ARENA_TOTAL_RANKS=300;
+const ARENA_CHALLENGE_RANGE=30; // can challenge up to this many ranks above (closer to #1)
+const ARENA_DAILY_FIGHTS=5;
+const ARENA_ESSENCE_PER_WIN=30;
+const ARENA_ESSENCE_DAILY_CAP=ARENA_ESSENCE_PER_WIN*ARENA_DAILY_FIGHTS; // 150/day, before Rabbit bonus
+// NOTE: without Rabbit, essenceGained is always exactly ARENA_ESSENCE_PER_WIN
+// (30) per win, so the daily cap is always reached in exactly 5 wins and the
+// "(daily cap reached)" partial-payout branch below is never hit with a
+// non-zero remainder. WITH Rabbit's +20% bonus (see ARENA_RABBIT_BONUS_MULT),
+// essenceGained becomes 36/win against a scaled 180/day cap — still an exact
+// multiple, BUT if Rabbit is added/removed between fights in the same day
+// (changing the effective per-win amount mid-session), the remaining budget
+// may not divide evenly, making the partial-payout branch genuinely reachable.
+
+// Rabbit's "Lucky Charm" passive: +20% to all Arena rewards (essence, gold,
+// and a 1-in-5 chance at +1 extra Soul to keep the average rate at +20%
+// without awarding fractional items). Active whenever Rabbit is one of the
+// 3 zodiacs in the player's current Attack Squad.
+const ARENA_RABBIT_BONUS_MULT=1.2;
+const ARENA_RABBIT_SOUL_BONUS_CHANCE=0.2; // 1/5 roll for +1 extra Soul
+function arenaHasRabbitBonus(a){
+  a=a||initArenaState();
+  return (a.attackSquad||[]).includes('Rabbit');
+}
+
+// Zodiac titles awarded based on rank tier (purely cosmetic, shown next to name)
+const ARENA_TITLES=[
+  {minRank:1,   maxRank:1,   title:'Celestial Sovereign', color:'#f59e0b'},
+  {minRank:2,   maxRank:5,   title:'Zodiac Ascendant',     color:'#ec4899'},
+  {minRank:6,   maxRank:15,  title:'Grand Champion',       color:'#9333ea'},
+  {minRank:16,  maxRank:30,  title:'Arena Master',         color:'#b9f2ff'},
+  {minRank:31,  maxRank:60,  title:'Elite Duelist',        color:'#e5e4e2'},
+  {minRank:61,  maxRank:100, title:'Veteran Fighter',      color:'#ffd700'},
+  {minRank:101, maxRank:150, title:'Seasoned Warrior',     color:'#a8a9ad'},
+  {minRank:151, maxRank:220, title:'Rising Challenger',    color:'#cd7f32'},
+  {minRank:221, maxRank:300, title:'Arena Novice',         color:'#94a3b8'},
+];
+function getArenaTitle(rank){
+  return ARENA_TITLES.find(t=>rank>=t.minRank&&rank<=t.maxRank)||ARENA_TITLES[ARENA_TITLES.length-1];
+}
+
+// Daily reward table by rank tier: Souls + bonus gold (Essence is now win-based, see below)
+function getArenaDailyReward(rank){
+  if(rank<=1)   return {souls:5, gold:5000};
+  if(rank<=5)   return {souls:4, gold:3500};
+  if(rank<=15)  return {souls:3, gold:2500};
+  if(rank<=30)  return {souls:3, gold:1800};
+  if(rank<=60)  return {souls:2, gold:1200};
+  if(rank<=100) return {souls:2, gold:800};
+  if(rank<=150) return {souls:1, gold:500};
+  if(rank<=220) return {souls:1, gold:300};
+  return {souls:1, gold:150};
+}
+
+// Deterministic name pool for NPC ladder seeding
+const ARENA_NPC_NAMES=[
+  'Wukong','Mei','Tao','Jin','Lian','Hao','Suyin','Feng','Kira','Akira','Rin','Bao',
+  'Chen','Yara','Soo','Daiyu','Renji','Kaida','Wen','Niko','Sora','Ami','Ryo','Kuro',
+  'Mochi','Yumi','Boran','Lex','Nyx','Zara','Onyx','Vex','Quill','Sable','Iris','Echo',
+];
+function _arenaSeed(rank){
+  let h=2166136261;
+  const s='arena_'+rank;
+  for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+  return ()=>{h^=h<<13;h^=h>>>17;h^=h<<5;h>>>=0;return (h>>>0)/4294967296;};
+}
+const ZODIAC_NAMES=ZODIACS.map(z=>z.name);
+
+// Build the seed data for one NPC rank slot (used when initially populating
+// Firestore, and as an offline fallback when not signed in).
+function _arenaNpcSeed(rank){
+  const rng=_arenaSeed(rank);
+  const t=(ARENA_TOTAL_RANKS-rank)/(ARENA_TOTAL_RANKS-1); // 0 at rank300, 1 at rank1
+  const level=Math.max(1,Math.round(3+t*t*57)); // quadratic ramp, steeper near rank 1
+  const pool=[...ZODIAC_NAMES];
+  const squad=[];
+  for(let i=0;i<3;i++){
+    const idx=Math.floor(rng()*pool.length);
+    squad.push(pool.splice(idx,1)[0]);
+  }
+  const name=(ARENA_NPC_NAMES[Math.floor(rng()*ARENA_NPC_NAMES.length)]+' '+(rank<=30?'★':'')).trim();
+  return {rank,uid:null,isNPC:true,name,level,defenseSquad:squad,defenseLevels:[level,level,level]};
+}
+
+// ── Player local arena state: G._arena = {rank, fightsToday, lastFightDate,
+//    attackSquad:[3], defenseSquad:[3], lastClaimDate, essenceToday, lastEssenceDate} ──
+function initArenaState(){
+  if(!G._arena)G._arena={};
+  const a=G._arena;
+  if(!a.rank)a.rank=ARENA_TOTAL_RANKS; // start at the bottom
+  const today=getToday();
+  if(a.lastFightDate!==today){a.lastFightDate=today;a.fightsToday=0;a.winStreakToday=0;}
+  if(a.lastEssenceDate!==today){a.lastEssenceDate=today;a.essenceToday=0;}
+  if(!a.attackSquad)a.attackSquad=[];
+  if(!a.defenseSquad)a.defenseSquad=[];
+  return a;
+}
+function getOwnedSoulZodiacs(){
+  return ZODIAC_NAMES.filter(name=>G.soulZodiacs?.[name]?.level>0)
+    .map(name=>({name,level:G.soulZodiacs[name].level}));
+}
+function setArenaSquadSlot(which,slot,zodiacName){
+  const a=initArenaState();
+  const key=which==='defense'?'defenseSquad':'attackSquad';
+  const arr=[...(a[key]||[])];
+  if(zodiacName&&arr.includes(zodiacName)){
+    const dupIdx=arr.indexOf(zodiacName);
+    if(dupIdx!==slot)arr[dupIdx]=null;
+  }
+  arr[slot]=zodiacName||null;
+  a[key]=arr;
+  save();
+  // Push defense squad changes to Firestore so other players fight your current setup
+  if(which==='defense')_syncArenaDefenseSquad();
+}
+function getArenaSquadFighters(squadNames,levels){
+  return (squadNames||[]).filter(Boolean).map((name,i)=>{
+    const level=(levels&&levels[i])||G.soulZodiacs?.[name]?.level||1;
+    return {name,level,stats:getSoulZodiacStats(name,level),passiveId:name,passiveName:SOUL_PASSIVES[name]?.name||''};
+  });
+}
+
+// ── Combat resolution: power-based win-probability model ──
+// Uses the same passive multipliers as Boss Trial (shared crit, dmg reduction,
+// lifesteal, shield, etc.) but resolves team-vs-team rather than team-vs-boss.
+function _arenaTeamPower(fighters){
+  let hp=0,atk=0,def=0,spd=0;
+  fighters.forEach(f=>{hp+=f.stats.hp;atk+=f.stats.atk;def+=f.stats.def;spd+=f.stats.spd;});
+  const count=p=>fighters.filter(f=>f.passiveId===p).length;
+  const dragonC=count('Dragon'),tigerC=count('Tiger'),oxC=count('Ox'),horseC=count('Horse'),
+        dogC=count('Dog'),goatC=count('Goat'),pigC=count('Pig'),ratC=count('Rat'),
+        snakeC=count('Snake'),monkeyC=count('Monkey'),roosterC=count('Rooster');
+  const P=BOSS_TRIAL_PARAMS;
+  atk=Math.floor(atk*(1+dragonC*P.dragonAtkBonus));
+  def=Math.floor(def*(1+dogC*P.dogDefMult));
+  const dmgTakenReduction=Math.min(0.9, oxC*P.oxDmgReduction + horseC*P.horseDmgReduction);
+  const critBonus=1+tigerC*P.tigerCritDmgMult*Math.min(0.9,tigerC*P.tigerCritChance);
+  const sustainBonus=1 + goatC*0.15 + pigC*0.10 + ratC*0.08 + dogC*0.05;
+  const evasionBonus=1 + monkeyC*P.monkeyDodgeChance*0.5 + snakeC*P.snakeStunChance*0.3;
+  const aoeBonus=1 + roosterC*0.05;
+  const offense=atk*critBonus*aoeBonus*(1+ratC*0.1);
+  const defense=(hp+def*4)*(1+dmgTakenReduction*1.5)*sustainBonus*evasionBonus;
+  return {offense,defense,hp,atk,def,spd};
+}
+function resolveArenaBattle(attackFighters,defenseFighters,rng){
+  rng=rng||Math.random;
+  const A=_arenaTeamPower(attackFighters);
+  const D=_arenaTeamPower(defenseFighters);
+  const aScore=A.offense*Math.pow(A.defense,0.35)*Math.pow(A.spd||1,0.15);
+  const dScore=D.offense*Math.pow(D.defense,0.35)*Math.pow(D.spd||1,0.15);
+  const total=aScore+dScore;
+  const winChance=total>0?aScore/total:0.5;
+  const win=rng()<winChance;
+  return {win,winChance,aScore,dScore};
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FIRESTORE LADDER ACCESS
+// arenaRanks/{rank} = {rank, uid, isNPC, name, level, defenseSquad:[3], defenseLevels:[3]}
+// players/{uid}.arenaRank = current rank (cached for quick lookup/leaderboard)
+// players/{uid}.arenaDefenseLog = [{ts, attackerName, attackerRank, result, rankLost}]
+// ══════════════════════════════════════════════════════════════════════════════
+// Short-lived per-rank cache so opening/re-rendering the Fight tab doesn't fire
+// up to ARENA_CHALLENGE_RANGE Firestore reads every time. Entries expire after
+// ARENA_CACHE_MS, and are explicitly invalidated for any rank slot that moves
+// (see arenaChallenge, where both oldRank and targetRank are evicted).
+const _arenaRankCache=new Map(); // rank(number) -> {ts, data}
+const ARENA_CACHE_MS=15000;
+function _arenaCacheGet(rank){
+  const entry=_arenaRankCache.get(rank);
+  if(entry&&(Date.now()-entry.ts)<ARENA_CACHE_MS)return entry.data;
+  return null;
+}
+function _arenaCacheSet(rank,data){
+  _arenaRankCache.set(rank,{ts:Date.now(),data});
+}
+function _arenaCacheInvalidate(...ranks){
+  ranks.forEach(r=>_arenaRankCache.delete(r));
+}
+
+async function _arenaGetRank(rank){
+  if(!window.FB)return _arenaNpcSeed(rank);
+  const cached=_arenaCacheGet(rank);
+  if(cached)return cached;
+  const {db,doc,getDoc}=window.FB;
+  const ref=doc(db,'arenaRanks',String(rank));
+  const snap=await getDoc(ref);
+  let result;
+  if(snap.exists())result={rank,...snap.data()};
+  else{
+    // Not seeded yet — seed lazily with NPC placeholder. This write isn't
+    // transactional, but _arenaNpcSeed(rank) is a pure deterministic function
+    // of `rank` alone, so even if this races with another read (or with the
+    // challenge transaction's own _arenaNpcSeed fallback for a non-existent
+    // target doc), both writers produce identical data — a harmless overwrite.
+    const seed=_arenaNpcSeed(rank);
+    try{const{setDoc}=window.FB;await setDoc(ref,{...seed,rank});}catch(e){}
+    result=seed;
+  }
+  _arenaCacheSet(rank,result);
+  return result;
+}
+async function _arenaGetRanks(ranks){
+  if(!window.FB)return ranks.map(r=>_arenaNpcSeed(r));
+  return Promise.all(ranks.map(r=>_arenaGetRank(r)));
+}
+
+// Find (or initialize) the current player's rank slot. If the player has never
+// been placed on the ladder, they start at rank 300 (or the lowest free NPC slot).
+async function _arenaGetMyRank(){
+  const a=initArenaState();
+  if(!window.FB)return a.rank;
+  try{
+    const {db,doc,getDoc}=window.FB;
+    const myUid=fbUID();
+    // Cached value is authoritative once placed; verify it still points to us
+    const ref=doc(db,'arenaRanks',String(a.rank));
+    const snap=await getDoc(ref);
+    if(snap.exists()&&snap.data().uid===myUid)return a.rank;
+    // Cache is stale (e.g. someone else took our rank while we were away) —
+    // check our player doc for the rank we were moved to.
+    const pSnap=await getDoc(doc(db,'players',myUid));
+    if(pSnap.exists()&&pSnap.data().arenaRank){
+      const claimedRank=pSnap.data().arenaRank;
+      const claimedRef=doc(db,'arenaRanks',String(claimedRank));
+      const claimedSnap=await getDoc(claimedRef);
+      if(claimedSnap.exists()&&claimedSnap.data().uid===myUid){
+        a.rank=claimedRank;save();
+        return a.rank;
+      }
+    }
+    // Never placed — claim our starting slot (rank 300) if unclaimed by us
+    const ref300=doc(db,'arenaRanks',String(ARENA_TOTAL_RANKS));
+    const snap300=await getDoc(ref300);
+    if(!snap300.exists()||snap300.data().uid===myUid||snap300.data().isNPC){
+      const {setDoc}=window.FB;
+      await setDoc(ref300,{rank:ARENA_TOTAL_RANKS,uid:myUid,isNPC:false,
+        name:G.playerName||fbName()||'Anonymous',level:1,
+        defenseSquad:a.defenseSquad||[],defenseLevels:(a.defenseSquad||[]).map(n=>G.soulZodiacs?.[n]?.level||1)},{merge:true});
+      a.rank=ARENA_TOTAL_RANKS;save();_arenaCacheInvalidate(ARENA_TOTAL_RANKS);
+      return a.rank;
+    }
+    // rank 300 occupied by another real player — fall back to local rank
+    return a.rank;
+  }catch(e){return a.rank;}
+}
+function _syncArenaDefenseSquad(){
+  if(!window.FB||!fbReady())return;
+  const a=initArenaState();
+  try{
+    const {db,doc,setDoc}=window.FB;
+    const myUid=fbUID();
+    const defenseLevels=(a.defenseSquad||[]).map(n=>G.soulZodiacs?.[n]?.level||1);
+    const avgLevel=defenseLevels.length?Math.round(defenseLevels.reduce((s,l)=>s+l,0)/defenseLevels.length):1;
+    setDoc(doc(db,'arenaRanks',String(a.rank)),{
+      uid:myUid,isNPC:false,name:G.playerName||fbName()||'Anonymous',
+      level:avgLevel,
+      defenseSquad:a.defenseSquad||[],
+      defenseLevels,
+    },{merge:true}).catch(()=>{});
+    _arenaCacheInvalidate(a.rank);
+  }catch(e){}
+}
+
+// ── Challenge list: opponents within range, all higher-ranked (closer to #1) ──
+async function getArenaChallengeList(){
+  const myRank=await _arenaGetMyRank();
+  const minRank=Math.max(1,myRank-ARENA_CHALLENGE_RANGE);
+  const maxRank=Math.max(1,myRank-1);
+  const ranks=[];
+  for(let r=maxRank;r>=minRank;r--)ranks.push(r);
+  if(!ranks.length)return [];
+  return await _arenaGetRanks(ranks);
+}
+
+function arenaFightsRemaining(){
+  const a=initArenaState();
+  return Math.max(0,ARENA_DAILY_FIGHTS-(a.fightsToday||0));
+}
+function arenaEssenceDailyCap(a){
+  a=a||initArenaState();
+  const cap=ARENA_ESSENCE_DAILY_CAP*(arenaHasRabbitBonus(a)?ARENA_RABBIT_BONUS_MULT:1);
+  return Math.floor(cap);
+}
+function arenaEssenceRemaining(){
+  const a=initArenaState();
+  return Math.max(0,arenaEssenceDailyCap(a)-(a.essenceToday||0));
+}
+
+// Challenge a specific rank. On win: swap ladder slots with the opponent
+// (transactional if online — so a real player's rank/defense squad is correctly
+// taken). On loss: no rank change. Always consumes a daily fight.
+async function arenaChallenge(targetRank){
+  const a=initArenaState();
+  if(arenaFightsRemaining()<=0){toast('No arena fights left today! Come back tomorrow.','er');return;}
+  const atkSquad=getArenaSquadFighters(a.attackSquad);
+  if(atkSquad.length<3){toast('Set all 3 Attack Squad slots first!','er');return;}
+  const myRank=await _arenaGetMyRank();
+  if(targetRank>=myRank||targetRank<myRank-ARENA_CHALLENGE_RANGE){toast('Invalid target!','er');return;}
+
+  const target=await _arenaGetRank(targetRank);
+  if(target.uid&&target.uid===fbUID()){toast('That rank is already yours!','er');return;}
+  const defSquad=getArenaSquadFighters(target.defenseSquad,target.defenseLevels);
+  const result=resolveArenaBattle(atkSquad,defSquad);
+  a.fightsToday=(a.fightsToday||0)+1;
+  const oldRank=myRank;
+  let essenceGained=0;
+  let streakSoul=0,streakBonusSoul=false,streakSoulZodiac=null;
+
+  if(result.win){
+    a.wins=(a.wins||0)+1;
+    a.winStreakToday=(a.winStreakToday||0)+1;
+    // Essence reward: 30/win (36 with Rabbit's +20% bonus), capped at the
+    // (possibly Rabbit-scaled) daily cap.
+    const rabbitBonus=arenaHasRabbitBonus(a);
+    const perWin=Math.floor(ARENA_ESSENCE_PER_WIN*(rabbitBonus?ARENA_RABBIT_BONUS_MULT:1));
+    const remaining=arenaEssenceRemaining();
+    essenceGained=Math.min(perWin,remaining);
+    if(essenceGained>0){
+      G._ascEssence=(G._ascEssence||0)+essenceGained;
+      a.essenceToday=(a.essenceToday||0)+essenceGained;
+    }
+    // Perfect streak bonus: the 5th consecutive win of the day drops a bonus
+    // Soul on top of its normal essence (which is already the Rabbit-boosted
+    // 36 if Rabbit is in the attack squad). With Rabbit, there's also a 20%
+    // roll for a 2nd bonus Soul, keeping the +20% rate consistent here too.
+    // (streakSoul, streakBonusSoul, streakSoulZodiac declared at function scope above)
+    if(a.winStreakToday>=ARENA_DAILY_FIGHTS){
+      streakSoul=1;
+      if(rabbitBonus&&Math.random()<ARENA_RABBIT_SOUL_BONUS_CHANCE){streakSoul+=1;streakBonusSoul=true;}
+      const owned=getOwnedSoulZodiacs();
+      streakSoulZodiac=owned.length?owned[Math.floor(Math.random()*owned.length)].name:'Rat';
+      if(!G.soulZodiacs[streakSoulZodiac])G.soulZodiacs[streakSoulZodiac]={level:0,souls:0};
+      G.soulZodiacs[streakSoulZodiac].souls=(G.soulZodiacs[streakSoulZodiac].souls||0)+streakSoul;
+    }
+    if(window.FB&&fbReady()){
+      try{
+        const {db,doc,runTransaction,serverTimestamp}=window.FB;
+        const myUid=fbUID();
+        const myRef=doc(db,'arenaRanks',String(oldRank));
+        const targetRef=doc(db,'arenaRanks',String(targetRank));
+        await runTransaction(db,async(tx)=>{
+          const mySnap=await tx.get(myRef);
+          const tgtSnap=await tx.get(targetRef);
+          const myData=mySnap.exists()?mySnap.data():{rank:oldRank,uid:myUid,isNPC:false,name:G.playerName||fbName()||'Anonymous',defenseSquad:a.defenseSquad,defenseLevels:(a.defenseSquad||[]).map(n=>G.soulZodiacs?.[n]?.level||1)};
+          const tgtData=tgtSnap.exists()?tgtSnap.data():_arenaNpcSeed(targetRank);
+          // I take the target's slot; they take mine. Each slot keeps its `rank`
+          // field fixed — only occupant data (uid/name/squad/etc.) swaps.
+          tx.set(myRef,{...tgtData,rank:oldRank},{merge:false});
+          tx.set(targetRef,{...myData,rank:targetRank},{merge:false});
+          // If we displaced a real player, append to their defense log (arrayUnion
+          // so multiple displacements while they're offline all get recorded —
+          // a plain {merge:true} would overwrite the whole array instead of appending)
+          if(tgtData.uid&&!tgtData.isNPC){
+            const {arrayUnion}=window.FB;
+            const theirPlayerRef=doc(db,'players',tgtData.uid);
+            tx.set(theirPlayerRef,{arenaRank:oldRank,arenaDefenseLog:arrayUnion(
+              {ts:Date.now(),attackerName:G.playerName||fbName()||'Anonymous',attackerUid:myUid,
+               result:'loss',rankLost:targetRank,newRank:oldRank}
+            )},{merge:true});
+          }
+          const myPlayerRef=doc(db,'players',myUid);
+          tx.set(myPlayerRef,{arenaRank:targetRank},{merge:true});
+        });
+        a.rank=targetRank;
+      }catch(e){
+        // Fallback: at least update locally if the transaction failed
+        a.rank=targetRank;
+      }
+    }else{
+      a.rank=targetRank;
+    }
+    _arenaCacheInvalidate(oldRank,targetRank);
+    let msg=`🏆 Victory! Climbed from #${oldRank} to #${targetRank}! +💎${essenceGained} Essence`+(essenceGained<perWin?' (daily cap reached)':'');
+    if(streakSoul>0)msg+=` · 🎉 PERFECT STREAK! +${streakSoul} ${streakSoulZodiac} Soul${streakSoul>1?'s':''}`+(streakBonusSoul?' (🐇 bonus!)':'');
+    toast(msg,'ok');
+  }else{
+    a.losses=(a.losses||0)+1;
+    a.winStreakToday=0;
+    toast(`💀 Defeat vs ${escHtml(target.name)} (Rank #${targetRank}). Try a different squad!`,'er');
+  }
+  save();
+  return {win:result.win,oldRank,newRank:a.rank,target,winChance:result.winChance,essenceGained,
+    streakSoul,streakBonusSoul,streakSoulZodiac};
+}
+
+// ── Daily reward claim (Souls + Gold; Essence is now earned per-win above) ──
+function canClaimArenaDaily(){
+  const a=initArenaState();
+  return a.lastClaimDate!==getToday();
+}
+function claimArenaDaily(){
+  const a=initArenaState();
+  if(!canClaimArenaDaily()){toast('Already claimed today!','er');return;}
+  const reward=getArenaDailyReward(a.rank);
+  const rabbitBonus=arenaHasRabbitBonus(a);
+  const goldAmt=Math.floor(reward.gold*(rabbitBonus?ARENA_RABBIT_BONUS_MULT:1));
+  G.gold=(G.gold||0)+goldAmt;G.totalGold=(G.totalGold||0)+goldAmt;
+  let soulsAmt=reward.souls;
+  let bonusSoulRolled=false;
+  if(rabbitBonus&&Math.random()<ARENA_RABBIT_SOUL_BONUS_CHANCE){soulsAmt+=1;bonusSoulRolled=true;}
+  const owned=getOwnedSoulZodiacs();
+  const target=owned.length?owned[Math.floor(Math.random()*owned.length)].name:'Rat';
+  if(!G.soulZodiacs[target])G.soulZodiacs[target]={level:0,souls:0};
+  G.soulZodiacs[target].souls=(G.soulZodiacs[target].souls||0)+soulsAmt;
+  a.lastClaimDate=getToday();
+  updateHdr();save();
+  const rabbitTag=rabbitBonus?` 🐇+20%${bonusSoulRolled?' (+1 bonus Soul!)':''}`:'';
+  toast(`🏆 Daily Arena Reward! +${soulsAmt} ${target} Souls, +${fmt(goldAmt)}g${rabbitTag}`,'ok');
+}
+
+// ── Defense log: shows when other players took your rank while you were away ──
+async function getArenaDefenseLog(){
+  if(!window.FB||!fbReady())return [];
+  try{
+    const {db,doc,getDoc,setDoc}=window.FB;
+    const ref=doc(db,'players',fbUID());
+    const snap=await getDoc(ref);
+    if(!snap.exists())return [];
+    const full=snap.data().arenaDefenseLog||[];
+    // Trim stored log to the most recent 20 so arrayUnion doesn't grow it
+    // unbounded over long offline periods with many displacements.
+    if(full.length>20){
+      const trimmed=full.slice(-20);
+      setDoc(ref,{arenaDefenseLog:trimmed},{merge:true}).catch(()=>{});
+      return trimmed.slice().reverse();
+    }
+    return full.slice().reverse();
+  }catch(e){return [];}
+}
+async function clearArenaDefenseLog(){
+  if(!window.FB||!fbReady())return;
+  try{
+    const {db,doc,setDoc}=window.FB;
+    await setDoc(doc(db,'players',fbUID()),{arenaDefenseLog:[]},{merge:true});
+  }catch(e){}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SOUL ARENA UI
+// ══════════════════════════════════════════════════════════════════════════════
+let _arenaTab='fight';
+async function openArenaLadder(){
+  initArenaState();
+  const badge=document.getElementById('arenaRankBadge');
+  if(badge)badge.textContent='Loading...';
+  openM('mArenaLadder');
+  await switchArenaTab('fight');
+}
+async function switchArenaTab(tab){
+  _arenaTab=tab;
+  ['fight','squads','rewards','log'].forEach(t=>{
+    const btn=document.getElementById('arenatab-'+t);
+    if(btn)btn.classList.toggle('on',t===tab);
+  });
+  await renderArenaTab(tab);
+}
+async function renderArenaTab(tab){
+  const body=document.getElementById('arenaBody');if(!body)return;
+  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt2);">Loading...</div>';
+  let html='';
+  if(tab==='fight')html=await renderArenaFight();
+  else if(tab==='squads')html=renderArenaSquads();
+  else if(tab==='rewards')html=await renderArenaRewards();
+  else if(tab==='log')html=await renderArenaLog();
+  body.innerHTML=html;
+  const myRank=await _arenaGetMyRank();
+  const badge=document.getElementById('arenaRankBadge');
+  if(badge)badge.textContent=`#${myRank} ${getArenaTitle(myRank).title}`;
+  const sub=document.getElementById('hubArenaSub');
+  if(sub)sub.textContent=`Rank #${myRank}`;
+}
+
+async function renderArenaFight(){
+  const a=initArenaState();
+  const myRank=await _arenaGetMyRank();
+  const myTitle=getArenaTitle(myRank);
+  const fightsLeft=arenaFightsRemaining();
+  const essenceLeft=arenaEssenceRemaining();
+  const essenceCap=arenaEssenceDailyCap(a);
+  const rabbitBonus=arenaHasRabbitBonus(a);
+  const streak=a.winStreakToday||0;
+  const atkSquad=a.attackSquad||[];
+  const atkReady=atkSquad.filter(Boolean).length===3;
+  let html=`
+    <div style="text-align:center;padding:12px;background:${myTitle.color}11;border:1px solid ${myTitle.color}33;border-radius:12px;margin-bottom:12px;">
+      <div style="font-size:32px;">🐉</div>
+      <div style="font-weight:900;font-size:18px;color:${myTitle.color};">Rank #${myRank}</div>
+      <div style="font-size:11px;color:${myTitle.color};font-weight:700;">${myTitle.title}</div>
+      <div style="font-size:9px;color:var(--txt2);margin-top:4px;">⚔️ ${fightsLeft}/${ARENA_DAILY_FIGHTS} fights left · 💎 ${essenceLeft}/${essenceCap} Essence left today</div>
+      <div style="font-size:9px;color:var(--txt2);margin-top:2px;">📊 ${a.wins||0}W – ${a.losses||0}L lifetime</div>
+      ${rabbitBonus?'<div style="font-size:9px;color:#f0a6ca;margin-top:2px;">🐇 Lucky Charm active: +20% Arena rewards</div>':''}
+      ${fightsLeft>0?`<div style="font-size:9px;color:${streak>0?'#22c55e':'var(--txt2)'};margin-top:2px;">${streak>0?'🔥':'⭐'} Win streak today: ${streak}/${ARENA_DAILY_FIGHTS} ${streak>=ARENA_DAILY_FIGHTS-1&&streak<ARENA_DAILY_FIGHTS?'— 1 more for a bonus Soul!':streak>0?'— keep it up for a perfect-day Soul!':''}</div>`:''}
+    </div>`;
+  if(!atkReady){
+    html+=`<div style="text-align:center;padding:16px;color:var(--txt2);font-size:11px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;margin-bottom:10px;">
+      ⚠️ Set all 3 Attack Squad slots in the 🛡️ Squads tab before challenging!
+      <div style="margin-top:8px;"><button class="btn bs bblk" onclick="switchArenaTab('squads')">🛡️ Go to Squads</button></div>
+    </div>`;
+  }
+  html+=`<div style="font-size:10px;font-weight:700;margin-bottom:6px;">⚔️ Challenge (Rank #${Math.max(1,myRank-ARENA_CHALLENGE_RANGE)} – #${Math.max(1,myRank-1)}):</div>`;
+  if(myRank<=1){
+    html+=`<div style="text-align:center;padding:16px;color:#f59e0b;font-size:11px;">👑 You are #1! No higher ranks to challenge.</div>`;
+  }else{
+    const challenges=await getArenaChallengeList();
+    html+=`<div style="display:flex;flex-direction:column;gap:5px;max-height:340px;overflow-y:auto;">`;
+    challenges.forEach(opp=>{
+      const t=getArenaTitle(opp.rank);
+      const squadEmojis=(opp.defenseSquad||[]).map(name=>ZODIACS.find(z=>z.name===name)?.emoji||'❓').join(' ');
+      const playerTag=opp.isNPC?'':'<span style="font-size:8px;color:#f59e0b;">👤 Player</span>';
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;">
+        <div style="font-size:11px;font-weight:700;color:${t.color};width:42px;">#${opp.rank}</div>
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:700;">${escHtml(opp.name||'?')} <span style="font-size:8px;color:var(--txt2);">Lv.${opp.level||1}</span> ${playerTag}</div>
+          <div style="font-size:13px;">${squadEmojis}</div>
+        </div>
+        <button class="btn bs bblk" style="font-size:9px;padding:5px 10px;" ${atkReady&&fightsLeft>0?'':'disabled'} onclick="arenaChallengeAndRender(${opp.rank})">⚔️ Fight</button>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  return html;
+}
+
+function renderArenaSquads(){
+  const a=initArenaState();
+  const owned=getOwnedSoulZodiacs();
+  if(!owned.length){
+    return `<div style="text-align:center;padding:20px;color:var(--txt2);font-size:11px;">You don't own any Soul Zodiacs yet! Unlock them in Soul Zodiacs first.</div>`;
+  }
+  const renderSlots=(which,squad)=>{
+    let h=`<div style="display:flex;gap:6px;margin-bottom:10px;">`;
+    for(let i=0;i<3;i++){
+      const cur=squad[i];
+      const z=ZODIACS.find(zz=>zz.name===cur);
+      h+=`<div style="flex:1;text-align:center;">
+        <div style="font-size:28px;padding:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;margin-bottom:4px;">${z?z.emoji:'➕'}</div>
+        <select style="width:100%;font-size:9px;padding:3px;border-radius:6px;background:var(--bg2);color:var(--txt);border:1px solid rgba(255,255,255,.1);" onchange="setArenaSquadSlot('${which}',${i},this.value);renderArenaTab('squads')">
+          <option value="">— Empty —</option>
+          ${owned.map(o=>`<option value="${o.name}" ${cur===o.name?'selected':''}>${o.name} Lv.${o.level}</option>`).join('')}
+        </select>
+      </div>`;
+    }
+    h+=`</div>`;
+    return h;
+  };
+  return `
+    <div style="font-size:10px;font-weight:700;margin-bottom:4px;">⚔️ Attack Squad <span style="color:var(--txt2);font-weight:400;">(used when you challenge others)</span></div>
+    ${renderSlots('attack',a.attackSquad||[])}
+    <div style="font-size:10px;font-weight:700;margin-bottom:4px;">🛡️ Defense Squad <span style="color:var(--txt2);font-weight:400;">(shown when other players challenge you)</span></div>
+    ${renderSlots('defense',a.defenseSquad||[])}
+    <div style="font-size:9px;color:var(--txt2);margin-top:8px;">💡 Each Soul Zodiac's passive applies its Boss Trial bonuses to your squad's combined stats. Your Defense Squad is saved online — other players will fight it even while you're offline!</div>
+  `;
+}
+
+async function renderArenaRewards(){
+  const a=initArenaState();
+  const myRank=await _arenaGetMyRank();
+  const reward=getArenaDailyReward(myRank);
+  const canClaim=canClaimArenaDaily();
+  const rabbitBonus=arenaHasRabbitBonus(a);
+  const perWin=Math.floor(ARENA_ESSENCE_PER_WIN*(rabbitBonus?ARENA_RABBIT_BONUS_MULT:1));
+  const essenceCap=arenaEssenceDailyCap(a);
+  const previewGold=Math.floor(reward.gold*(rabbitBonus?ARENA_RABBIT_BONUS_MULT:1));
+  let html=`<div style="text-align:center;padding:12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:12px;margin-bottom:10px;">
+    <div style="font-size:28px;">💎</div>
+    <div style="font-weight:700;font-size:12px;margin-bottom:4px;">Win Rewards</div>
+    <div style="font-size:11px;color:var(--ok);">+${perWin} Ascension Essence per victory${rabbitBonus?' 🐇':''}</div>
+    <div style="font-size:9px;color:var(--txt2);">Up to ${essenceCap} Essence/day (${ARENA_DAILY_FIGHTS} fights × ${perWin})</div>
+    <div style="font-size:9px;color:var(--acc);margin-top:4px;">Today: ${a.essenceToday||0}/${essenceCap} earned</div>
+    ${rabbitBonus?'<div style="font-size:9px;color:#f0a6ca;margin-top:4px;">🐇 Lucky Charm: +20% Essence per win & daily cap</div>':''}
+  </div>`;
+  html+=`<div style="text-align:center;padding:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;margin-bottom:12px;">
+    <div style="font-size:28px;">🎁</div>
+    <div style="font-weight:700;font-size:12px;margin-bottom:6px;">Daily Login Reward (Rank #${myRank})</div>
+    <div style="font-size:11px;color:var(--acc);">🐉 ${reward.souls}${rabbitBonus?'(+20% chance of +1)':''} Souls · 💰 ${fmt(previewGold)} Gold${rabbitBonus?' 🐇':''}</div>
+    <button class="btn bp" style="width:100%;margin-top:10px;" ${canClaim?'':'disabled'} onclick="claimArenaDaily();renderArenaTab('rewards')">${canClaim?'🎁 Claim Daily Reward':'✅ Claimed Today'}</button>
+  </div>`;
+  html+=`<div style="font-size:10px;font-weight:700;margin-bottom:6px;">🏷️ Rank Tier Rewards:</div>`;
+  ARENA_TITLES.forEach(t=>{
+    const r=getArenaDailyReward(t.minRank);
+    const inTier=myRank>=t.minRank&&myRank<=t.maxRank;
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px;background:${inTier?t.color+'1a':'rgba(255,255,255,.03)'};border:1px solid ${inTier?t.color+'55':'rgba(255,255,255,.08)'};border-radius:8px;margin-bottom:4px;">
+      <div style="font-size:9px;font-weight:700;color:${t.color};width:70px;">#${t.minRank}${t.maxRank>t.minRank?'–#'+t.maxRank:''}</div>
+      <div style="flex:1;font-size:10px;font-weight:700;color:${t.color};">${t.title}</div>
+      <div style="font-size:9px;color:var(--txt2);">🐉${r.souls} 💰${fmt(r.gold)}</div>
+    </div>`;
+  });
+  return html;
+}
+
+async function renderArenaLog(){
+  if(!window.FB||!fbReady()){
+    return `<div style="text-align:center;padding:20px;color:var(--txt2);font-size:11px;">Sign in to see who challenged your Arena rank while you were away!</div>`;
+  }
+  const log=await getArenaDefenseLog();
+  let html='';
+  if(!log.length){
+    html=`<div style="text-align:center;padding:20px;color:var(--txt2);font-size:11px;">No one has taken your rank yet. 🛡️</div>`;
+  }else{
+    html=`<div style="font-size:10px;font-weight:700;margin-bottom:6px;">📨 Your rank was taken while you were away:</div>`;
+    log.forEach(h=>{
+      const time=new Date(h.ts).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;margin-bottom:4px;">
+        <span style="font-size:16px;">💀</span>
+        <div style="flex:1;">
+          <div style="font-size:10px;font-weight:700;">${escHtml(h.attackerName||'?')} took rank #${h.rankLost}</div>
+          <div style="font-size:9px;color:var(--txt2);">You dropped to #${h.newRank} · ${time}</div>
+        </div>
+      </div>`;
+    });
+    html+=`<button class="btn bs bblk" style="width:100%;margin-top:8px;font-size:10px;" onclick="clearArenaDefenseLog().then(()=>switchArenaTab('log'))">🗑️ Clear Log</button>`;
+  }
+  return html;
+}
+
+async function arenaChallengeAndRender(targetRank){
+  await arenaChallenge(targetRank);
+  await renderArenaTab('fight');
+}
+
+// ── Leaderboard integration: top 50 Soul Arena ranks (lower rank = better) ──
+async function renderArenaLeaderboard(){
+  if(!window.FB)return '<div style="text-align:center;padding:20px;color:var(--txt2);">Sign in to see the Soul Arena leaderboard</div>';
+  try{
+    const {db,collection,query,orderBy,limit,getDocs}=window.FB;
+    const q=query(collection(db,'arenaRanks'),orderBy('rank','asc'),limit(50));
+    const snap=await getDocs(q);
+    const ranks=[];
+    snap.forEach(d=>ranks.push({id:d.id,...d.data()}));
+    if(!ranks.length)return '<div style="text-align:center;padding:20px;color:var(--txt2);">Arena ladder not initialized yet.</div>';
+    const myUid=fbUID();
+    let html=`<div style="font-size:9px;color:var(--txt2);margin-bottom:8px;text-align:center;">🐉 Top 50 Soul Arena ranks · Climb by challenging in the Soul Arena!</div>`;
+    ranks.forEach(r=>{
+      const isMe=r.uid===myUid;
+      const t=getArenaTitle(r.rank);
+      const squadEmojis=(r.defenseSquad||[]).map(name=>ZODIACS.find(z=>z.name===name)?.emoji||'❓').join(' ');
+      const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':`#${r.rank}`;
+      const playerTag=r.isNPC?'<span style="font-size:8px;color:var(--txt2);">NPC</span>':'<span style="font-size:8px;color:#f59e0b;">👤 Player</span>';
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+        background:${isMe?'rgba(245,158,11,.1)':'rgba(28,38,56,.5)'};
+        border:1px solid ${isMe?'rgba(245,158,11,.4)':'rgba(71,85,105,.2)'};
+        border-radius:8px;margin-bottom:4px;">
+        <span style="font-size:12px;font-weight:700;color:${t.color};min-width:32px;">${medal}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isMe?'var(--acc)':'var(--txt)'};">${isMe?'⭐ ':''}${escHtml(r.name||'?')} ${playerTag}</div>
+          <div style="font-size:9px;color:${t.color};">${t.title} · ${squadEmojis}</div>
+        </div>
+      </div>`;
+    });
+    return html;
+  }catch(e){return `<div style="text-align:center;padding:20px;color:#ef4444;font-size:10px;">Error: ${e.message}</div>`;}
+}
 // ══════════════════════════════════════════════════════════════════════════════
 // PVP ARENA SYSTEM
 // ══════════════════════════════════════════════════════════════════════════════
@@ -16506,6 +17174,7 @@ function triggerPWAInstall(){
       <button class="log-tab"    id="lbTabAsc"     onclick="switchLBTab('asc')"    style="flex:1;">📈 Asc</button>
       <button class="log-tab"    id="lbTabTower"   onclick="switchLBTab('tower')"  style="flex:1;">🗼 Tower</button>
       <button class="log-tab"    id="lbTabPvp"     onclick="switchLBTab('pvp')"    style="flex:1;">⚔️ PvP</button>
+      <button class="log-tab"    id="lbTabArena"   onclick="switchLBTab('arena')"  style="flex:1;">🐉 Arena</button>
       <button class="log-tab"    id="lbTabHof"     onclick="switchLBTab('hof')"    style="flex:1;">🏅 HoF</button>
     </div>
     <div style="display:flex;gap:4px;margin-bottom:8px;">
@@ -16543,6 +17212,9 @@ function triggerPWAInstall(){
 
 <div class="modal" id="mFaction"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🏰 Faction</span><span id="factionCurrencyBadge" style="font-size:10px;color:#fbbf24;font-weight:700;margin-left:auto;margin-right:8px;"></span><button class="xbtn" onclick="closeM('mFaction')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="ftab-overview" onclick="switchFactionTab('overview')">🏰 Home</button><button class="log-tab" id="ftab-members" onclick="switchFactionTab('members')">👥 Members</button><button class="log-tab" id="ftab-boss" onclick="switchFactionTab('boss')">💀 Boss</button><button class="log-tab" id="ftab-quests" onclick="switchFactionTab('quests')">📋 Quests</button><button class="log-tab" id="ftab-treasury" onclick="switchFactionTab('treasury')">💰 Treasury</button><button class="log-tab" id="ftab-wars" onclick="switchFactionTab('wars')">⚔️ Wars</button><button class="log-tab" id="ftab-upgrades" onclick="switchFactionTab('upgrades')">⬆️ Upgrades</button><button class="log-tab" id="ftab-checkin" onclick="switchFactionTab('checkin')">📅 Check-in</button></div><div id="factionBody"></div></div></div></div>
 <div class="modal" id="mPvpArena"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">⚔️ PvP Arena</span><span id="pvpRankBadge" style="font-size:9px;color:var(--acc);font-weight:700;margin-left:auto;margin-right:8px;"></span><button class="xbtn" onclick="closeM('mPvpArena')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="pvptab-arena" onclick="switchPvpTab('arena')">⚔️</button><button class="log-tab" id="pvptab-ranking" onclick="switchPvpTab('ranking')">🏆</button><button class="log-tab" id="pvptab-history" onclick="switchPvpTab('history')">📜</button><button class="log-tab" id="pvptab-replay" onclick="switchPvpTab('replay')">🎬</button><button class="log-tab" id="pvptab-tournament" onclick="switchPvpTab('tournament')">🏆</button><button class="log-tab" id="pvptab-teampvp" onclick="switchPvpTab('teampvp')">👥</button></div><div id="pvpBody"></div></div></div></div>
+
+<!-- ═══ SOUL ARENA (3v3 NPC LADDER) ═══ -->
+<div class="modal" id="mArenaLadder"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🐉 Soul Arena</span><span id="arenaRankBadge" style="font-size:9px;color:var(--acc);font-weight:700;margin-left:auto;margin-right:8px;"></span><button class="xbtn" onclick="closeM('mArenaLadder')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="arenatab-fight" onclick="switchArenaTab('fight')">⚔️ Fight</button><button class="log-tab" id="arenatab-squads" onclick="switchArenaTab('squads')">🛡️ Squads</button><button class="log-tab" id="arenatab-rewards" onclick="switchArenaTab('rewards')">🎁 Rewards</button></div><div id="arenaBody"></div></div></div></div>
 
 
 <!-- ═══ TITLE PICKER ═══ -->
