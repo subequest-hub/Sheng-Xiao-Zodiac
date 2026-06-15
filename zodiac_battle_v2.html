@@ -5752,7 +5752,8 @@ function canAscend(){
   };
 }
 function showAscensionPanel(){
-  const{ok,count,needed,r}=canAscend();
+  const r=canAscend();
+  const{ok}=r;
   const ascLvl=G.ascension||0;
   const nextMult=((ascLvl+1)*0.5+1).toFixed(1);
   if(!ok){
@@ -7635,9 +7636,10 @@ function updateHdr(){
   // Ascension display
   const ascIcon=document.getElementById('ascIcon');
   if(ascIcon){
-    const{ok,count,needed}=canAscend();
-    ascIcon.textContent=G.ascension>0?`Lv${G.ascension} ×${G.ascensionMult||1}`:ok?'Ready!':count+'/'+needed;
-    ascIcon.style.color=ok?'#22c55e':'var(--txt2)';
+    const r=canAscend();
+    const metCount=[r.zodiacOk,r.towerOk,r.bossOk,r.winsOk].filter(Boolean).length;
+    ascIcon.textContent=G.ascension>0?`Lv${G.ascension} ×${G.ascensionMult||1}`:r.ok?'Ready!':metCount+'/4';
+    ascIcon.style.color=r.ok?'#22c55e':'var(--txt2)';
   }
   // Show endgame buttons
   const trialBtn=document.getElementById('trialBtn');if(trialBtn)trialBtn.style.display=(G.ascension||0)>=1?'':'none';
