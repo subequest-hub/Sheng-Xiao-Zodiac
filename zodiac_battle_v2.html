@@ -5851,20 +5851,25 @@ function _spawnMirrorEnemy(fighter){
   G._hordeQueue=G.mirrorFightQueue.map(f=>({...f}));
   renderEnemy();renderBattleCards();buildTurns();
   setMsg(`⚔️ MIRROR: ${fighter.emoji} ${fighter.name} (Asc.${G.ascension})!`,`Defeat ${(G.mirrorSnapshot||[]).length} echoes of your past self.`,'');
+  if(G.auto){_autoLastAttack=Date.now();clearInterval(autoIv);autoIv=null;autoIv=setInterval(_autoTick,150);}
 }
 function onMirrorEnemyDefeated(){
   _mirrorWins++;
+  vib&&vib([100,50,150]);snd('win');
+  spawnPts(22,'#a78bfa',document.getElementById('eCube'));
   if(G.mirrorFightQueue.length>0){
     const next=G.mirrorFightQueue.shift();
     G._hordeQueue=[...G.mirrorFightQueue];
+    setMsg(`✅ Echo defeated! ${G.mirrorFightQueue.length} remaining...`,'','crit');
     setTimeout(()=>{_spawnMirrorEnemy(next);},1200);
     return true;// handled
   }else{
     // All mirror fighters defeated
     G.mirrorWins=(G.mirrorWins||0)+1;
     if(G.mirrorWins>=10)checkGodlyPieceUnlock('mirror_10');
-    G.mirrorFightActive=false;G.mirrorSnapshot=null;G.mirrorFightQueue=[];
+    G.mirrorFightActive=false;G.mirrorSnapshot=null;G.mirrorFightQueue=[];G._hordeQueue=[];
     const cb=_mirrorCallback;_mirrorCallback=null;
+    updateHdr();save();
     toast(`🌟 Mirror battle won! You may now ascend!`,'ok');
     setTimeout(()=>{
       if(cb)confirm2('⬆️ Ascend Now?','You defeated your past self. Confirm ascension?',cb);
@@ -6839,6 +6844,14 @@ function updateBattleStats(goldEarned,dmgDealt,battleDurationMs){
   G.sessionDmg=(G.sessionDmg||0)+dmgDealt;
 }
 function onWin(sMult=1){
+  // Mirror Battle (Ascension gate): defeating an echo of your past self
+  // doesn't grant normal gold/XP/loot - just advances the mirror queue or,
+  // on the final echo, completes the battle and offers ascension.
+  if(G.mirrorFightActive){
+    G.alive=false;clearCT();clearInterval(autoIv);autoIv=null;clearTimeout(_msgClearTimer);
+    onMirrorEnemyDefeated();
+    return;
+  }
   G.alive=false;clearCT();clearInterval(autoIv);autoIv=null;clearTimeout(_msgClearTimer);
   const _battleEndTime=Date.now();
   const _battleDuration=G._battleStartTime?_battleEndTime-G._battleStartTime:3000;
