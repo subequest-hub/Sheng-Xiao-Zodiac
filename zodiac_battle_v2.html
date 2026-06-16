@@ -2397,19 +2397,50 @@ const AFFINITIES=[
   {pair:['Pig','Goat'],name:'Lucky Duo',bonus:0.10,desc:'+10% all stats'},
   {pair:['Monkey','Rooster'],name:'Clever Birds',bonus:0.15,desc:'+15% crit rate'},
 ];
-// Extended group bonuses for 3/4/6 matching zodiacs
-const GROUP_AFFINITIES=[
-  {group:['Dragon','Tiger','Horse'],name:'Fire Triad',size:3,bonus:0.20,stat:'atk',desc:'+20% ATK to all'},
-  {group:['Rat','Ox','Pig'],name:'Earth Trinity',size:3,bonus:0.20,stat:'def',desc:'+20% DEF to all'},
-  {group:['Snake','Rabbit','Monkey'],name:'Shadow Trinity',size:3,bonus:0.15,stat:'all',desc:'+15% all stats'},
-  {group:['Dragon','Tiger','Horse','Rooster'],name:'Warrior Quartet',size:4,bonus:0.25,stat:'atk',desc:'+25% ATK + crit'},
-  {group:['Rat','Ox','Pig','Goat'],name:'Iron Wall Quartet',size:4,bonus:0.25,stat:'def',desc:'+25% DEF + HP'},
-  {group:['Rat','Ox','Tiger','Rabbit','Dragon','Snake'],name:'Ancient Six',size:6,bonus:0.30,stat:'all',desc:'+30% ALL stats'},
-  {group:['Horse','Goat','Monkey','Rooster','Dog','Pig'],name:'Earthly Six',size:6,bonus:0.30,stat:'all',desc:'+30% ALL stats'},
-];
-function getActiveGroupAffinities(party){
-  return GROUP_AFFINITIES.filter(g=>g.group.every(n=>party.includes(n)));
+// ── ELEMENTAL GROUP AFFINITIES ─────────────────────────────────────────────
+// Bonuses based on how many party members share the same current element.
+// Uses getZodiacElement(name) so element changes via Element Change are respected.
+// Tiers: 3 same = bonus tier 1 | 4 same = bonus tier 2 | 6 same = bonus tier 3 (full squad)
+const ELEMENTAL_GROUP_BONUSES={
+  // [3-match bonus, 4-match bonus, 6-match bonus]
+  fire:     [{stat:'atk',bonus:0.20,desc:'+20% ATK (Fire Triad)'},      {stat:'atk',bonus:0.35,desc:'+35% ATK (Fire Quad)'},       {stat:'all',bonus:0.50,desc:'+50% ALL (Inferno Legion)'}],
+  water:    [{stat:'def',bonus:0.20,desc:'+20% DEF (Water Triad)'},      {stat:'def',bonus:0.35,desc:'+35% DEF (Tidal Quad)'},        {stat:'all',bonus:0.50,desc:'+50% ALL (Abyssal Tide)'}],
+  earth:    [{stat:'hp', bonus:0.20,desc:'+20% HP (Earth Triad)'},       {stat:'hp', bonus:0.35,desc:'+35% HP (Stone Quad)'},          {stat:'all',bonus:0.50,desc:'+50% ALL (Titan Formation)'}],
+  air:      [{stat:'spd',bonus:0.20,desc:'+20% SPD (Wind Triad)'},       {stat:'spd',bonus:0.35,desc:'+35% SPD (Storm Quad)'},         {stat:'all',bonus:0.50,desc:'+50% ALL (Tempest Swarm)'}],
+  dark:     [{stat:'all',bonus:0.15,desc:'+15% ALL (Shadow Triad)'},     {stat:'all',bonus:0.28,desc:'+28% ALL (Void Quad)'},          {stat:'all',bonus:0.50,desc:'+50% ALL (Abyssal Veil)'}],
+  light:    [{stat:'all',bonus:0.15,desc:'+15% ALL (Radiant Triad)'},    {stat:'all',bonus:0.28,desc:'+28% ALL (Holy Quad)'},          {stat:'all',bonus:0.50,desc:'+50% ALL (Divine Mandate)'}],
+  lightning:[{stat:'atk',bonus:0.18,desc:'+18% ATK (Thunder Triad)'},   {stat:'atk',bonus:0.32,desc:'+32% ATK (Storm Quad)'},         {stat:'all',bonus:0.50,desc:'+50% ALL (Thunderstorm)'}],
+};
+// Get active elemental group affinities for a party
+function getActiveElementalGroupAffinities(party){
+  if(!party||party.length<3)return[];
+  const elementCounts={};
+  party.forEach(n=>{const el=getZodiacElement(n);if(el)elementCounts[el]=(elementCounts[el]||0)+1;});
+  const active=[];
+  Object.entries(elementCounts).forEach(([el,count])=>{
+    const tiers=ELEMENTAL_GROUP_BONUSES[el];if(!tiers)return;
+    if(count>=6&&tiers[2])active.push({el,tier:3,count,bonus:tiers[2]});
+    else if(count>=4&&tiers[1])active.push({el,tier:2,count,bonus:tiers[1]});
+    else if(count>=3&&tiers[0])active.push({el,tier:1,count,bonus:tiers[0]});
+  });
+  return active;
 }
+// Get the combined elemental group bonus multiplier for a specific zodiac
+function getElementalGroupBonus(name){
+  const myEl=getZodiacElement(name);
+  const actives=getActiveElementalGroupAffinities(G.party||[]);
+  let atkBonus=0,defBonus=0,spdBonus=0,hpBonus=0,allBonus=0;
+  actives.forEach(({el,bonus})=>{
+    if(el!==myEl)return;// only applies to matching element members
+    if(bonus.stat==='atk')atkBonus+=bonus.bonus;
+    else if(bonus.stat==='def')defBonus+=bonus.bonus;
+    else if(bonus.stat==='spd')spdBonus+=bonus.bonus;
+    else if(bonus.stat==='hp')hpBonus+=bonus.bonus;
+    else if(bonus.stat==='all'){allBonus+=bonus.bonus;}
+  });
+  return{atk:1+atkBonus+allBonus,def:1+defBonus+allBonus,spd:1+spdBonus+allBonus,hp:1+hpBonus+allBonus};
+}
+
 const ZODIAC_SKILLS={
   Rat:    {name:'Coin Snatch', emoji:'🪙',desc:'Steal 5-15g from enemy',  ult:(e,f)=>stealGold(f)},
   Ox:     {name:'Iron Wall',   emoji:'🛡️',desc:'Taunt: +50% def for 2 turns',ult:(e,f)=>oxTaunt(f)},
@@ -5117,7 +5148,9 @@ function liveM(name){
   const affBoost=getAffinityMult(name);
   const eqStats=getEquipmentStats(name);
   const totalBoost=pBoost*affBoost;
-  const boostedMaxHp=Math.floor((r.maxHp+eqStats.hp)*totalBoost*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.hpBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).hp*(1+getPetBonus('hp'))*getSkinStatBoost(name)*(1+getHouseBonus('bossDmg')*0)*getTowerShopMult('hp')*(G.towerActive?getTowerBuffMult('hp'):1));
+  // Elemental group affinity — per-stat multipliers (3/4/6 same element)
+  const _elGrp=getElementalGroupBonus(name);
+  const boostedMaxHp=Math.floor((r.maxHp+eqStats.hp)*totalBoost*_elGrp.hp*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.hpBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).hp*(1+getPetBonus('hp'))*getSkinStatBoost(name)*(1+getHouseBonus('bossDmg')*0)*getTowerShopMult('hp')*(G.towerActive?getTowerBuffMult('hp'):1));
   // Clamp current HP to boosted max without mutating r.maxHp base value
   if(r.hp>boostedMaxHp)r.hp=boostedMaxHp;
   if(!z)return null;// guard: zodiac not found in ZODIACS
@@ -5130,7 +5163,7 @@ function liveM(name){
     element:ZEL[name]||'fire',rarity:r.rarity,
     level:r.level,xp:r.xp,xpNext:r.xpNext,stars:r.stars,
     maxHp:boostedMaxHp,hp:r.hp,
-    atk:Math.floor((r.atk+eqStats.atk)*totalBoost*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.atkBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).atk*(1+getPetBonus('atk'))*getSkinStatBoost(name)*(1+getGuildResearchBonus('atk')+getGuildShopBonus('atk')+getTowerShopMult('atk')-1)*_houseAtk*(G.towerActive?getTowerBuffMult('atk'):1)),def:Math.floor((r.def+eqStats.def)*totalBoost*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.defBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).def*(1+getPetBonus('def'))*(1+getGuildShopBonus('def'))*getTowerShopMult('def')*(G.towerActive?getTowerBuffMult('def'):1)),spd:Math.floor((r.spd+eqStats.spd)*totalBoost*(G.ascensionMult||1)*(1+(G.prestigeShop?.spdBonus||0))*getMasteryBonus(name).spd*(1+getPetBonus('spd'))*(1+getGuildShopBonus('spd'))*getTowerShopMult('spd')*(G.towerActive?getTowerBuffMult('spd'):1)),
+    atk:Math.floor((r.atk+eqStats.atk)*totalBoost*_elGrp.atk*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.atkBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).atk*(1+getPetBonus('atk'))*getSkinStatBoost(name)*(1+getGuildResearchBonus('atk')+getGuildShopBonus('atk')+getTowerShopMult('atk')-1)*_houseAtk*(G.towerActive?getTowerBuffMult('atk'):1)),def:Math.floor((r.def+eqStats.def)*totalBoost*_elGrp.def*getMythicalMult(getMythicalStacks(name))*(1+(G.prestigeShop?.defBonus||0))*(G.ascensionMult||1)*getMasteryBonus(name).def*(1+getPetBonus('def'))*(1+getGuildShopBonus('def'))*getTowerShopMult('def')*(G.towerActive?getTowerBuffMult('def'):1)),spd:Math.floor((r.spd+eqStats.spd)*totalBoost*_elGrp.spd*(G.ascensionMult||1)*(1+(G.prestigeShop?.spdBonus||0))*getMasteryBonus(name).spd*(1+getPetBonus('spd'))*(1+getGuildShopBonus('spd'))*getTowerShopMult('spd')*(G.towerActive?getTowerBuffMult('spd'):1)),
     prestigeStars:pStars,
     eqCritRate:eqStats.critRate,eqCritDmg:eqStats.critDmg,eqDodge:eqStats.dodge,
     eqUltCharge:eqStats.ultCharge,eqGoldFind:eqStats.goldFind,eqElementDmg:eqStats.elementDmg,eqBossDmg:eqStats.bossDmg,
@@ -5143,11 +5176,11 @@ function getActiveAffinities(g){const party=g.party||[];return AFFINITIES.filter
 function getAffinityMult(name){
   const actives=getActiveAffinities(G);let mult=1;
   actives.forEach(a=>{if(a.pair.includes(name))mult+=a.bonus;});
-  // Group affinities
-  getActiveGroupAffinities(G.party||[]).forEach(g=>{
-    if(g.group.includes(name)){mult+=g.bonus;}
-  });
-  return mult;
+  // Elemental group affinities (3/4/6 same-element bonus)
+  const elBonus=getElementalGroupBonus(name);
+  // elBonus returns {atk,def,spd,hp} multipliers — we fold atk into the general mult here
+  // (stat-specific ones are applied in liveM() directly)
+  return mult;// pair affinities only; elemental group applied per-stat in liveM()
 }
 
 // ══ QUEST TIMERS ══
@@ -5783,52 +5816,88 @@ function unlockSpeedButtons(){[4,5].forEach(n=>{const btn=document.getElementByI
 function checkOfflineRewards(){
   const lastSave=G._lastSave;if(!lastSave)return;
   const elapsed=Date.now()-lastSave;if(elapsed<60000)return;
-  const ms=Math.min(elapsed,24*60*60*1000);const mins=Math.floor(ms/60000);
-  const simBattles=Math.floor(ms/30000);
+  const MS_CAP=12*60*60*1000;// 12 hour cap
+  const ms=Math.min(elapsed,MS_CAP);const mins=Math.floor(ms/60000);
+  // ── Tower offline simulation ───────────────────────────────────
+  let towerResult=null;
+  if(G.towerActive&&G.towerFloor>0){
+    const SEC_PER_FLOOR=2;
+    const maxNewFloors=Math.floor(ms/1000/SEC_PER_FLOOR);
+    const startFloor=G.towerFloor;
+    const playerPower=(G.party||[]).reduce((s,n)=>{const m=liveM(n);return s+(m?m.atk*2+m.def+m.hp/10:0);},0)||1;
+    let floorsCleared=0,goldEarned=0,starsEarned=0,xpEarned=0,equipDrops=0;
+    const sc=getWinScale();const ascBonus=1+(G.ascension||0)*0.5;
+    for(let i=1;i<=maxNewFloors;i++){
+      const floor=startFloor+i;
+      const enemyPower=(B.BASE_HP*1.2*(1+floor*0.05)*sc*ascBonus)+(B.BASE_ATK*1.1*(1+floor*0.05)*sc*ascBonus)*2;
+      if(enemyPower>playerPower*1.5)break;
+      floorsCleared=i;
+      goldEarned+=floor*100+Math.floor(25*sc*(1+(G.prestigeShop?.goldFindBonus||0)));
+      if(floor%50===0)starsEarned+=Math.floor(floor/50);
+      if([10,50,100,500,1000].includes(floor))starsEarned+=5;
+      xpEarned+=50+floor*2;
+      if(Math.random()<0.15)equipDrops++;
+    }
+    if(floorsCleared>0){
+      towerResult={startFloor,floorsCleared,endFloor:startFloor+floorsCleared,goldEarned,starsEarned,xpEarned,equipDrops,hitWall:floorsCleared<maxNewFloors};
+    }
+  }
+  // ── Normal offline simulation ───────────────────────────────────
+  const simBattles=towerResult?0:Math.floor(ms/30000);
   let simGold=0,simXp=0,simStars=0;
-  const ePool=ENEMIES.filter(e=>!e.boss);
-  if(simBattles>0&&G.party.length>0&&ePool.length){
+  if(simBattles>0&&G.party.length){
+    const ePool=ENEMIES.filter(e=>!e.boss);const sc=getWinScale();
     for(let i=0;i<Math.min(simBattles,2880);i++){
       const e=ePool[Math.floor(Math.random()*ePool.length)];
-      const sc=getWinScale();
-      const g=Math.floor(e.gold*sc*(1+(G.prestigeShop?.goldFindBonus||0))+getPetBonus('gold')*e.gold);
-      simGold+=g;simXp+=e.xp+e.level;
+      simGold+=Math.floor(e.gold*sc*(1+(G.prestigeShop?.goldFindBonus||0))+getPetBonus('gold')*e.gold);
+      simXp+=e.xp+e.level;
     }
     simStars=(G.mineShafts||0)*simBattles+(G.starMines||0)*10*simBattles+(G.voidVaults||0)*100*simBattles;
   }
   let expBonus=0;const expReturns=[];
   Object.entries(G.expeditions||{}).forEach(([name,exp])=>{
     if(exp.active&&Date.now()-exp.start>=exp.duration){
-      const g=Math.floor((50+exp.level*10)*(1+(G.prestigeShop?.expBonus||0)+getHouseBonus('expedBonus')));
-      expBonus+=g;expReturns.push(name);
+      expBonus+=Math.floor((50+exp.level*10)*(1+(G.prestigeShop?.expBonus||0)+getHouseBonus('expedBonus')));
+      expReturns.push(name);
     }
   });
-  const totalGold=simGold+expBonus;
-  if(totalGold<=0&&simStars<=0&&mins<1)return;
-  G._pendingOffline={ms,mins,simBattles,simGold,simXp,simStars,expBonus,expReturns,totalGold};
+  const totalGold=(towerResult?towerResult.goldEarned:simGold)+expBonus;
+  const totalStars=towerResult?towerResult.starsEarned:simStars;
+  if(totalGold<=0&&totalStars<=0&&!towerResult&&mins<1)return;
+  G._pendingOffline={ms,mins,simBattles,simGold,simXp,simStars,expBonus,expReturns,totalGold,totalStars,towerResult};
   setTimeout(()=>openOfflineRewardsModal(),300);
 }
 function openOfflineRewardsModal(){
   const p=G._pendingOffline;if(!p)return;
   const hrs=Math.floor(p.mins/60);const minsLeft=p.mins%60;
   const timeStr=hrs>0?`${hrs}h ${minsLeft}m`:`${p.mins}m`;
-  const goldPerHr=p.mins>0?Math.floor(p.totalGold/p.mins*60):0;
-  const starsPerHr=p.mins>0?Math.floor(p.simStars/p.mins*60):0;
-  const body=document.getElementById('offlineRewardsBody');
-  if(!body)return;
+  const body=document.getElementById('offlineRewardsBody');if(!body)return;
+  const tr=p.towerResult;
   body.innerHTML=`
     <div style="text-align:center;margin-bottom:12px;">
-      <div style="font-size:36px;">💤</div>
+      <div style="font-size:36px;">${tr?'🗼':'💤'}</div>
       <div style="font-family:'Cinzel',serif;color:var(--acc);font-size:15px;font-weight:700;margin-top:4px;">Welcome Back!</div>
-      <div class="t2 ts">You were away for <b style="color:var(--txt);">${timeStr}</b></div>
+      <div class="t2 ts">Away for <b style="color:var(--txt);">${timeStr}</b></div>
     </div>
-    <div style="background:rgba(28,38,56,.6);border-radius:10px;padding:10px;margin-bottom:8px;">
+    ${tr?`<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.3);border-radius:10px;padding:10px;margin-bottom:8px;">
+      <div style="font-weight:700;font-size:11px;color:#a78bfa;margin-bottom:6px;">🗼 Tower Progress (2s/floor baseline)</div>
+      <div class="row sb mb1"><span class="t2">Started at</span><b>Floor ${tr.startFloor}</b></div>
+      <div class="row sb mb1"><span class="t2">Floors cleared</span><b style="color:#a78bfa;">+${tr.floorsCleared} floors</b></div>
+      <div class="row sb mb1"><span class="t2">Now at</span><b style="color:var(--acc);">Floor ${tr.endFloor}</b></div>
+      ${tr.hitWall?`<div class="row sb mb1"><span class="t2">Stopped because</span><span class="t2 ts" style="color:#f87171;">Enemy power exceeded yours (×1.5)</span></div>`:`<div class="row sb mb1"><span class="t2">Stopped at</span><span class="ts t2">12-hour cap</span></div>`}
+      <div class="row sb mb1"><span class="t2">💰 Gold</span><b style="color:#fbbf24;">+${fmt(tr.goldEarned)}g</b></div>
+      ${tr.starsEarned>0?`<div class="row sb mb1"><span class="t2">⭐ Stars</span><b style="color:#a78bfa;">+${tr.starsEarned}⭐</b></div>`:''}
+      ${tr.equipDrops>0?`<div class="row sb mb1"><span class="t2">⚔️ Gear drops</span><b>+${tr.equipDrops} items</b></div>`:''}
+    </div>`:`<div style="background:rgba(28,38,56,.6);border-radius:10px;padding:10px;margin-bottom:8px;">
       <div class="row sb mb1"><span class="t2">⚔️ Simulated battles</span><b>${fmt(p.simBattles)}</b></div>
-      <div class="row sb mb1"><span class="t2">💰 Gold earned</span><b style="color:#fbbf24;">+${fmt(p.totalGold)}g</b></div>
-      <div class="row sb mb1"><span class="t2">📈 Gold rate</span><span class="ts t2">${fmt(goldPerHr)}/hr</span></div>
+      <div class="row sb mb1"><span class="t2">💰 Gold earned</span><b style="color:#fbbf24;">+${fmt(p.simGold)}g</b></div>
       <div class="row sb mb1"><span class="t2">✨ XP earned</span><b style="color:#60a5fa;">+${fmt(p.simXp)}</b></div>
-      ${p.simStars>0?`<div class="row sb mb1"><span class="t2">⭐ Stars earned</span><b style="color:#a78bfa;">+${fmt(p.simStars)}</b></div><div class="row sb mb1"><span class="t2">📈 Star rate</span><span class="ts t2">${fmt(starsPerHr)}/hr</span></div>`:''}
-      ${p.expReturns.length?`<div class="row sb"><span class="t2">🗺️ Expeditions</span><b>${p.expReturns.join(', ')} returned</b></div>`:''}
+      ${p.simStars>0?`<div class="row sb mb1"><span class="t2">⭐ Stars</span><b style="color:#a78bfa;">+${fmt(p.simStars)}</b></div>`:''}
+    </div>`}
+    ${p.expBonus>0?`<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px;margin-bottom:8px;" class="row sb"><span class="t2">🗺️ Expeditions returned</span><b style="color:#fbbf24;">+${fmt(p.expBonus)}g</b></div>`:''}
+    <div style="background:rgba(28,38,56,.4);border-radius:8px;padding:8px;margin-bottom:10px;" class="row sb">
+      <b>Total</b>
+      <span><b style="color:#fbbf24;">${fmt(p.totalGold)}g</b>${p.totalStars>0?` <b style="color:#a78bfa;">+${p.totalStars}⭐</b>`:''}</span>
     </div>
     <button class="btn bp" style="width:100%;" onclick="claimOfflineRewards()">🎁 Claim Rewards</button>
   `;
@@ -5836,29 +5905,27 @@ function openOfflineRewardsModal(){
 }
 function claimOfflineRewards(){
   const p=G._pendingOffline;if(!p)return;
+  const tr=p.towerResult;
   G.gold+=p.totalGold;G.totalGold+=p.totalGold;
-  if(p.simStars>0)G.stars=(G.stars||0)+p.simStars;
-  if(p.simXp>0&&G.party.length){
-    const xpEach=Math.floor(p.simXp/G.party.length);
-    G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=xpEach;lvCheck(n);}});
+  if(p.totalStars>0)G.stars=(G.stars||0)+p.totalStars;
+  if(tr){
+    G.towerFloor=tr.endFloor;
+    if(tr.endFloor>G.towerBest)G.towerBest=tr.endFloor;
+    if(tr.endFloor>(G.towerBestFloor||0))G.towerBestFloor=tr.endFloor;
+    if(typeof updateFactionQuestProgress==='function')updateFactionQuestProgress('towerFloors',tr.floorsCleared);
+    for(let i=0;i<tr.equipDrops;i++){const drop=rollEquipmentDrop();if(drop){if(!G.equipment)G.equipment=[];G.equipment.push(drop);if(G.equipment.length>500)_pruneEquipment(500);}}
+    if(tr.xpEarned>0&&G.party.length){const xpEach=Math.floor(tr.xpEarned/G.party.length);G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=xpEach;lvCheck(n);}});}
+  }else{
+    if(p.simXp>0&&G.party.length){const xpEach=Math.floor(p.simXp/G.party.length);G.party.forEach(n=>{const r=G.roster[n];if(r){r.xp+=xpEach;lvCheck(n);}});}
+    for(let i=0;i<Math.min(p.simBattles,2880);i++){if(Math.random()<0.05+getLuckBonuses(G.active).dropRate)rollEquipmentDrop();}
   }
-  // Resolve expeditions
   Object.entries(G.expeditions||{}).forEach(([name,exp])=>{
-    if(exp.active&&p.expReturns.includes(name)){
-      exp.active=false;
-      const r=G.roster[name];if(r){r.xp+=10+exp.level*1;lvCheck(name);}
-    }
+    if(exp.active&&(p.expReturns||[]).includes(name)){exp.active=false;const r=G.roster[name];if(r){r.xp+=10+exp.level*1;lvCheck(name);}}
   });
-  // Drop chance for equipment based on battles
-  for(let i=0;i<Math.min(p.simBattles,2880);i++){
-    if(Math.random()<0.05+getLuckBonuses(G.active).dropRate)rollEquipmentDrop();
-  }
   delete G._pendingOffline;
   updateHdr();save();renderSquad();closeM('mOfflineRewards');
-  toast(`💤 Claimed offline rewards!`,'ok');
+  toast(tr?`🗼 Offline tower: +${tr.floorsCleared} floors → Floor ${tr.endFloor}!`:`💤 Claimed offline rewards!`,'ok');
 }
-
-// ══ KEY HANDLER ══
 function onKey(e){
   if(document.querySelector('.modal.on'))return;
   if(e.key==='Enter'||e.key===' '){if(G.alive)doAttack();}
@@ -8113,9 +8180,11 @@ function toggleAffinityPanel(){
 function renderRosterAffinities(){
   const el=document.getElementById('rosterAffinityPanel');if(!el)return;
   const pairs=getActiveAffinities(G);
-  const groups=getActiveGroupAffinities(G.party||[]);
-  // Show all possible affinities with unlock state
+  const EI_LOCAL={fire:'🔥',water:'💧',earth:'🌍',air:'💨',dark:'🌑',light:'☀️',lightning:'⚡'};
+  const EC={fire:'#ef4444',water:'#3b82f6',earth:'#84cc16',air:'#a3e635',dark:'#8b5cf6',light:'#fbbf24',lightning:'#f59e0b'};
   let html='<div style="display:grid;gap:4px;margin-bottom:8px;">';
+
+  // Pair affinities
   AFFINITIES.forEach(a=>{
     const active=a.pair.every(n=>G.party.includes(n));
     html+=`<div style="display:flex;align-items:center;gap:6px;background:${active?'rgba(245,158,11,.1)':'rgba(28,38,56,.4)'};border:1px solid ${active?'var(--acc)':'rgba(71,85,105,.2)'};border-radius:7px;padding:5px 8px;opacity:${active?1:.5};">
@@ -8124,13 +8193,28 @@ function renderRosterAffinities(){
       <span style="font-size:10px;color:${active?'var(--acc)':'var(--txt2)'};">${a.desc}</span>
     </div>`;
   });
-  GROUP_AFFINITIES.forEach(g=>{
-    const active=g.group.every(n=>G.party.includes(n));
-    const have=g.group.filter(n=>G.party.includes(n)).length;
-    html+=`<div style="display:flex;align-items:center;gap:6px;background:${active?'rgba(139,92,246,.1)':'rgba(28,38,56,.4)'};border:1px solid ${active?'#a78bfa':'rgba(71,85,105,.2)'};border-radius:7px;padding:5px 8px;opacity:${active?1:.5};">
-      <span style="font-size:11px;">${active?'✅':'🔒'}</span>
-      <div style="flex:1;"><span style="font-size:10px;font-weight:700;color:#a78bfa;">${g.name} (${have}/${g.size})</span></div>
-      <span style="font-size:10px;color:${active?'#a78bfa':'var(--txt2)'};">${g.desc}</span>
+
+  // Elemental group affinities — show all 7 elements with current party count
+  html+=`<div style="font-size:9px;color:var(--txt2);margin:4px 0 2px;">⚡ Elemental Groups (3/4/6 same element)</div>`;
+  const partyElements={};
+  (G.party||[]).forEach(n=>{const e=getZodiacElement(n);partyElements[e]=(partyElements[e]||0)+1;});
+  Object.entries(ELEMENTAL_GROUP_BONUSES).forEach(([el,tiers])=>{
+    const count=partyElements[el]||0;
+    const activeTier=count>=6?3:count>=4?2:count>=3?1:0;
+    const tierBonus=activeTier>0?tiers[activeTier-1]:null;
+    const color=EC[el]||'#9ca3af';
+    html+=`<div style="background:${activeTier>0?color+'18':'rgba(28,38,56,.4)'};border:1px solid ${activeTier>0?color+'44':'rgba(71,85,105,.2)'};border-radius:7px;padding:5px 8px;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:13px;">${EI_LOCAL[el]||'⚡'}</span>
+        <div style="flex:1;">
+          <span style="font-size:10px;font-weight:700;color:${activeTier>0?color:'var(--txt2)'};">${el.charAt(0).toUpperCase()+el.slice(1)}</span>
+          <span style="font-size:9px;color:var(--txt2);"> ${count} in party</span>
+        </div>
+        <span style="font-size:9px;color:${activeTier>0?color:'#6b7280'};">${activeTier>0?tierBonus.desc:'Need 3+'}</span>
+      </div>
+      <div style="display:flex;gap:3px;margin-top:4px;">
+        ${tiers.map((t,i)=>{const need=[3,4,6][i];const active=count>=need;return`<div style="flex:1;padding:2px 4px;border-radius:4px;background:${active?color+'33':'rgba(0,0,0,.2)'};border:1px solid ${active?color+'55':'rgba(71,85,105,.1)'};text-align:center;"><div style="font-size:7px;color:${active?color:'#6b7280'};">${need}✦</div><div style="font-size:7px;color:${active?'var(--txt)':'#6b7280'};">${t.desc.split('(')[0].trim()}</div></div>`;}).join('')}
+      </div>
     </div>`;
   });
   html+='</div>';
@@ -9945,7 +10029,12 @@ function updateBattleCardEnemy(){
   if(hpBar){hpBar.style.width=hpPct+'%';hpBar.className='bcard-hpfill'+(hpPct<25?' lo':hpPct<50?' mid':'');}
   el('bcardEnemyHpTxt',fmt(e.hp)+'/'+fmt(e.maxHp));
   const tEl=document.getElementById('bcardEnemyTags');
-  if(tEl&&e.type){const ec={fire:'#ef4444',water:'#3b82f6',earth:'#84cc16',lightning:'#f59e0b',dark:'#8b5cf6',light:'#fbbf24'}[e.type]||'#6b7280';tEl.innerHTML=`<span class="bcard-tag" style="background:${ec}22;color:${ec};border:1px solid ${ec}44;font-size:8px;padding:1px 4px;border-radius:4px;">${e.type.toUpperCase()}</span>`+(e.weak?`<span class="bcard-tag" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid #f8717144;font-size:8px;padding:1px 4px;border-radius:4px;">WEAK: ${e.weak.toUpperCase()}</span>`:'');}
+  if(tEl&&e.type){
+    const ec={fire:'#ef4444',water:'#3b82f6',earth:'#84cc16',lightning:'#f59e0b',dark:'#8b5cf6',light:'#fbbf24'}[e.type]||'#6b7280';
+    const _EI={fire:'🔥',water:'💧',earth:'🌍',air:'💨',dark:'🌑',light:'☀️',lightning:'⚡'};
+    const _imm=G.enemyImmune;
+    tEl.innerHTML=`<span class="bcard-tag" style="background:${ec}22;color:${ec};border:1px solid ${ec}44;font-size:8px;padding:1px 4px;border-radius:4px;">${e.type.toUpperCase()}</span>`+(e.weak?`<span class="bcard-tag" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid #f8717144;font-size:8px;padding:1px 4px;border-radius:4px;">WEAK: ${e.weak.toUpperCase()}</span>`:'')+(_imm?`<span class="bcard-tag" style="background:rgba(156,163,175,.15);color:#e5e7eb;border:1px solid rgba(156,163,175,.4);font-size:8px;padding:1px 4px;border-radius:4px;">${_EI[_imm]||'🛡️'} IMMUNE</span>`:'');
+  }
   const stEl=document.getElementById('bcardEnemyStatus');
   if(stEl){const es=G.enemyStatus||{};stEl.innerHTML=Object.entries(es).filter(([_,v])=>Array.isArray(v)?v.length>0:v>0).map(([s,v])=>{const d=STATUS_DATA[s];if(!d)return'';const turns=Array.isArray(v)?Math.max(...v):v;return`<span style="font-size:8px;background:${d.color}22;color:${d.color};border:1px solid ${d.color}44;padding:1px 3px;border-radius:3px;">${d.emoji}${turns}</span>`;}).join('');}
   renderEnemyPartyList();
