@@ -5824,29 +5824,34 @@ function checkOfflineRewards(){
     const SEC_PER_FLOOR=2;
     const maxNewFloors=Math.floor(ms/1000/SEC_PER_FLOOR);
     const startFloor=G.towerFloor;
-    // Get player power — use raw roster stats for capture/special modes where liveM() may return 0
-    const rosterToUse=G._captureMode&&G._captureRunRoster?G._captureRunRoster:G.roster;
-    const partyToUse=G._captureMode&&G._captureParty?G._captureParty:(G.party||[]);
+    const isCaptureMode=!!G._captureMode;
+    const rosterToUse=isCaptureMode&&G._captureRunRoster?G._captureRunRoster:G.roster;
+    const partyToUse=isCaptureMode&&G._captureParty?G._captureParty:(G.party||[]);
+
+    // Sum total party power across ALL members (they fight sequentially, so total matters)
     let playerPower=0;
     partyToUse.forEach(n=>{
       const r=rosterToUse&&rosterToUse[n];
       if(!r)return;
-      // Try liveM first (works for normal tower), fall back to raw stats for capture tower
-      const m=(!G._captureMode)?liveM(n):null;
+      const m=(!isCaptureMode)?liveM(n):null;
       if(m&&(m.atk>0||m.hp>0)){
         playerPower+=m.atk*2+m.def+m.hp/10;
       }else{
-        // Raw stats — still meaningful for power comparison
         playerPower+=(r.atk||40)*2+(r.def||30)+(r.maxHp||200)/10;
       }
     });
     playerPower=Math.max(playerPower,1);
+
     let floorsCleared=0,goldEarned=0,starsEarned=0,xpEarned=0,equipDrops=0;
     const sc=getWinScale();const ascBonus=1+(G.ascension||0)*0.5;
     for(let i=1;i<=maxNewFloors;i++){
       const floor=startFloor+i;
       const enemyPower=(B.BASE_HP*1.2*(1+floor*0.05)*sc*ascBonus)+(B.BASE_ATK*1.1*(1+floor*0.05)*sc*ascBonus)*2;
-      if(enemyPower>playerPower*1.5)break;
+      // Capture tower: 6 fighters vs 1 enemy — player wins as long as total party
+      // power exceeds the single enemy (no 1.5x margin needed, 6v1 is always favourable)
+      // Non-capture: stop when single enemy outpowers the whole combined party by 1.5x
+      const powerThreshold=isCaptureMode?1.0:1.5;
+      if(enemyPower>playerPower*powerThreshold)break;
       floorsCleared=i;
       goldEarned+=floor*100+Math.floor(25*sc*(1+(G.prestigeShop?.goldFindBonus||0)));
       if(floor%50===0)starsEarned+=Math.floor(floor/50);
@@ -5854,11 +5859,10 @@ function checkOfflineRewards(){
       xpEarned+=50+floor*2;
       if(Math.random()<0.15)equipDrops++;
     }
-    // Always set towerResult when in tower so floor count is preserved on claim,
-    // even if 0 floors were cleared (player was already at the wall)
     towerResult={startFloor,floorsCleared,endFloor:startFloor+floorsCleared,
       goldEarned,starsEarned,xpEarned,equipDrops,
-      hitWall:floorsCleared<maxNewFloors,hitWallFloor:floorsCleared===0};
+      hitWall:floorsCleared<maxNewFloors,hitWallFloor:floorsCleared===0,
+      isCaptureMode};
   }
   // Normal offline sim only runs when NOT in tower mode
   // 3000ms per battle = ~3s/fight at ×1 auto speed (150ms tick × ~20 turns avg)
@@ -5904,10 +5908,10 @@ function openOfflineRewardsModal(){
       <div class="row sb mb1"><span class="t2">Tower mode</span><b>${G._captureMode?'🎯 Capture':G._ironmanMode?'💀 Ironman':G._rebornMode?'♻️ Reborn':'🗼 Standard'}</b></div>
       <div class="row sb mb1"><span class="t2">Started at</span><b>Floor ${tr.startFloor}</b></div>
       ${tr.hitWallFloor?
-        `<div class="row sb mb1"><span class="t2">Floors cleared</span><span style="color:#f87171;font-size:10px;">Already at power limit — no progress</span></div>`:
+        `<div class="row sb mb1"><span class="t2">Floors cleared</span><span style="color:#f87171;font-size:10px;">${tr.isCaptureMode?'Combined party too weak for next floor':'Already at power limit — no progress'}</span></div>`:
         `<div class="row sb mb1"><span class="t2">Floors cleared</span><b style="color:#a78bfa;">+${tr.floorsCleared} floors</b></div>
          <div class="row sb mb1"><span class="t2">Now at</span><b style="color:var(--acc);">Floor ${tr.endFloor}</b></div>`}
-      ${tr.hitWall&&!tr.hitWallFloor?`<div class="row sb mb1"><span class="t2">Stopped because</span><span class="t2 ts" style="color:#f87171;">Enemy power exceeded yours (×1.5)</span></div>`:''}
+      ${tr.hitWall&&!tr.hitWallFloor?`<div class="row sb mb1"><span class="t2">Stopped because</span><span class="t2 ts" style="color:#f87171;">${tr.isCaptureMode?'Combined party overwhelmed by enemy':'Enemy power exceeded yours (×1.5)'}</span></div>`:''}
       ${!tr.hitWall&&!tr.hitWallFloor?`<div class="row sb mb1"><span class="t2">Stopped at</span><span class="ts t2">12-hour cap</span></div>`:''}
       ${tr.goldEarned>0?`<div class="row sb mb1"><span class="t2">💰 Gold</span><b style="color:#fbbf24;">+${fmt(tr.goldEarned)}g</b></div>`:''}
       ${tr.starsEarned>0?`<div class="row sb mb1"><span class="t2">⭐ Stars</span><b style="color:#a78bfa;">+${tr.starsEarned}⭐</b></div>`:''}
