@@ -1702,13 +1702,6 @@ function getPrestigeShopCost(item){
 const STAR_REWARDS={bossKill:0,perfectWin:0,towerFloor10:1,towerFloor50:3,towerFloor100:8};
 
 // ══ BOMB TIERS ══
-const BOMB_TIERS=[
-  {tier:1,baseDmg:120,maxDmg:160,cost:25,name:'Small Bomb'},
-  {tier:2,baseDmg:300,maxDmg:450,cost:60,name:'Medium Bomb',unlockWins:20},
-  {tier:3,baseDmg:800,maxDmg:1200,cost:150,name:'Large Bomb',unlockWins:50},
-  {tier:4,baseDmg:2000,maxDmg:3500,cost:400,name:'Mega Bomb',unlockWins:100},
-  {tier:5,baseDmg:6000,maxDmg:10000,cost:1000,name:'Nuke',unlockWins:200},
-];
 
 // ══ AREAS ══
 const AREAS=[
@@ -1943,9 +1936,9 @@ const SOUL_PASSIVES={
   Dragon: {name:'Draconic Might',  desc:'Party ATK +47.5%.'},
   Rat:    {name:'Swift Strike',    desc:'Party attacks again on turn 1 and every 2nd turn after. Lifesteal: heals the party for 15% of the extra damage dealt (capped at 15% of max HP per turn).'},
   Snake:  {name:'Venom Coil',      desc:'38% chance each turn to stun the boss for that turn.'},
-  Goat:   {name:'Herd Ward',       desc:'Heals the party for 21% of damage dealt each turn, plus a 22% chance per turn to poison the boss (poison ticks for 3% of its max HP per stack per turn). Adds +40 flat damage per attack.'},
+  Goat:   {name:'Herd Ward',       desc:'Heals the party for 21% of damage dealt each turn, plus a 22% chance per turn to poison the boss (poison ticks for 3% of its max HP per stack per turn). Adds +40 flat damage per attack. Trade-off: all damage your team deals to the boss is reduced by 66% while Goat is active — built for sustain, not for high damage output.'},
   Tiger:  {name:"Predator's Edge", desc:'Party crit chance +44% and crit damage +100%.'},
-  Rabbit: {name:'Lucky Charm',     desc:'Party gold and star rewards +20%. Also adds +35 flat damage per attack in Boss Trials.'},
+  Rabbit: {name:'Lucky Charm',     desc:'Adds +35 flat damage per attack in Boss Trials. (More damage means more Ascension Essence earned, since Essence scales with total damage dealt.)'},
   Horse:  {name:'Stampede',        desc:'Party takes 38% less damage from the boss.'},
   Monkey: {name:'Trickster',       desc:"40% chance each turn for the party to dodge the boss's attack entirely."},
   Rooster:{name:'Dawn Call',       desc:"Deals bonus AoE damage to the boss every turn while alive, but takes self-damage each turn as a tradeoff."},
@@ -2926,6 +2919,7 @@ function _confirmResolveBtn(ok){
   _confirmPendingCb=null;
 }
 // Override confirm2 to use the built-in confirm dialog
+let _confirm2Stack=[];
 function confirm2(msg,details,onConfirm){
   if(typeof onConfirm!=='function')return;
   const d=document.createElement('div');
@@ -2938,9 +2932,18 @@ function confirm2(msg,details,onConfirm){
     +'<button id="_c2no" style="padding:8px 20px;background:rgba(71,85,105,.5);color:#fff;border:none;border-radius:8px;cursor:pointer;">Cancel</button>'
     +'</div></div>';
   document.body.appendChild(d);
+  _confirm2Stack.push(d);
   d.getElementById=function(id){return d.querySelector('#'+id);};
-  d.querySelector('#_c2yes').onclick=function(){d.remove();onConfirm();};
-  d.querySelector('#_c2no').onclick=function(){d.remove();};
+  d.querySelector('#_c2yes').onclick=function(){d.remove();_confirm2Stack=_confirm2Stack.filter(x=>x!==d);onConfirm();};
+  d.querySelector('#_c2no').onclick=function(){d.remove();_confirm2Stack=_confirm2Stack.filter(x=>x!==d);};
+}
+// Closes all currently-open confirm2 dialogs. Needed when a button INSIDE
+// a confirm2 dialog's details HTML needs to replace the dialog with a fresh
+// one (e.g. "Spend All Stars" inside the Ascension confirm) — without this,
+// dialogs stack on top of each other and the player sees stale/duplicate UI.
+function closeAllConfirm2(){
+  _confirm2Stack.forEach(d=>d.remove());
+  _confirm2Stack=[];
 }
 
 // ══ ROSTER HELPERS ══
@@ -2995,13 +2998,12 @@ const PRESTIGE_TITLES=[
   {min:10, title:'Eternal',  badge:'♾️'},
 ];
 function getPrestigeTitle(name){
-  const p=(G.prestigeStars&&G.prestigeStars[name])||0;
-  let t=PRESTIGE_TITLES[0];
-  for(const pt of PRESTIGE_TITLES){if(p>=pt.min)t=pt;}
-  return t;
+  const stars=(G.prestigeStars&&G.prestigeStars[name])||0;
+  for(let i=PRESTIGE_TITLES.length-1;i>=0;i--){
+    if(stars>=PRESTIGE_TITLES[i].min)return PRESTIGE_TITLES[i];
+  }
+  return PRESTIGE_TITLES[0];
 }
-
-
 // ══ STAR BUYOUT SYSTEM ══
 // Max spend stars on prestige shop before ascending
 function spendAllStarsOnPrestigeShop(){
@@ -4110,16 +4112,6 @@ function startMythicConvergence(){
 
 // Hook trial win into onWin
 const _origOnWin=null;// handled inline in onWin below
-function getCurrentBombTier(){
-  for(let i=BOMB_TIERS.length-1;i>=0;i--){if(G.wins>=(BOMB_TIERS[i].unlockWins||0))return BOMB_TIERS[i];}
-  return BOMB_TIERS[0];
-}
-function getBombDamage(){
-  const t=getCurrentBombTier();const eScale=G.enemy?(1+G.enemy.level*0.1):1;
-  const tScale=G.towerActive?(1+G.towerFloor*0.05):1;
-  return Math.floor((t.baseDmg+Math.floor(Math.random()*(t.maxDmg-t.baseDmg)))*eScale*tScale);
-}
-
 // ══ AREA SYSTEM ══
 function getCurrentArea(){return AREAS.find(a=>a.id===(G.currentArea||'meadow'))||AREAS[0];}
 function getAreaProgress(areaId){
@@ -5176,11 +5168,9 @@ function getActiveAffinities(g){const party=g.party||[];return AFFINITIES.filter
 function getAffinityMult(name){
   const actives=getActiveAffinities(G);let mult=1;
   actives.forEach(a=>{if(a.pair.includes(name))mult+=a.bonus;});
-  // Elemental group affinities (3/4/6 same-element bonus)
-  const elBonus=getElementalGroupBonus(name);
-  // elBonus returns {atk,def,spd,hp} multipliers — we fold atk into the general mult here
-  // (stat-specific ones are applied in liveM() directly)
-  return mult;// pair affinities only; elemental group applied per-stat in liveM()
+  // Elemental group affinities (3/4/6 same-element) are applied per-stat in liveM()
+  // directly via _elGrp — no additional multiplier needed here
+  return mult;
 }
 
 // ══ QUEST TIMERS ══
@@ -6117,7 +6107,7 @@ function showAscensionPanel(){
     <div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);border-radius:9px;padding:8px;margin-top:10px;text-align:left;">
       <div style="font-weight:700;color:#f59e0b;font-size:11px;">⚠️ You have ${fmt(starCount)}⭐ Stars that will RESET on ascension!</div>
       <div style="font-size:9px;color:var(--txt2);margin-top:3px;">Spend them in the Star Shop first, or click below to spend all now.</div>
-      <button class="btn bp" style="width:100%;margin-top:6px;font-size:10px;" onclick="spendAllStarsOnPrestigeShop();showAscensionPanel()">⭐ Spend All ${fmt(starCount)}⭐ Now</button>
+      <button class="btn bp" style="width:100%;margin-top:6px;font-size:10px;" onclick="closeAllConfirm2();spendAllStarsOnPrestigeShop();showAscensionPanel()">⭐ Spend All ${fmt(starCount)}⭐ Now</button>
     </div>`:'';
   // Build detailed Ascension Essence breakdown
   const wins=G.wins||0;const towerFloor=G.towerBestFloor||0;const bossKills=G.bossKills||0;
@@ -7234,6 +7224,21 @@ function onWin(sMult=1){
   if(G._pvpActive){
     G.alive=false;clearCT();clearInterval(autoIv);autoIv=null;clearTimeout(_msgClearTimer);
     onPvpEnemyDefeated();
+    return;
+  }
+  // Faction Boss: award faction coins/stars, advance the rotation to the
+  // next boss in FACTION_BOSS_SCHEDULE, and reset HP for the new boss.
+  if(G.enemy?.isFactionBoss){
+    G.alive=false;clearCT();clearInterval(autoIv);autoIv=null;clearTimeout(_msgClearTimer);
+    const bossIdx=(G._factionBossIndex||0)%FACTION_BOSS_SCHEDULE.length;
+    const boss=FACTION_BOSS_SCHEDULE[bossIdx];
+    G._factionCoins=(G._factionCoins||0)+(boss.rewardCoins||0);
+    if(boss.rewardStars)G.stars=(G.stars||0)+boss.rewardStars;
+    G._factionBossIndex=(bossIdx+1)%FACTION_BOSS_SCHEDULE.length;
+    G._factionBossHp=null;// next boss starts at full HP
+    updateHdr();save();
+    toast(`👑 ${boss.name} DEFEATED! +🪙${boss.rewardCoins} +⭐${boss.rewardStars||0}! Next: ${FACTION_BOSS_SCHEDULE[G._factionBossIndex].emoji} ${FACTION_BOSS_SCHEDULE[G._factionBossIndex].name}`,'ok');
+    setTimeout(()=>spawnEnemy(),1800);
     return;
   }
   G.alive=false;clearCT();clearInterval(autoIv);autoIv=null;clearTimeout(_msgClearTimer);
@@ -8401,6 +8406,8 @@ function openZDetail(name){
   }else{
     body+=`<div style="color:var(--acc);font-size:11px;font-weight:700;text-align:center;margin-bottom:6px;">🌟 MAX EVOLUTION!</div>`;
     const prestigeLabel2=pStars>=10?'✅ Max Prestige (10/10)':`⭐ Prestige (${pStars}/10)`;
+    const _pt=getPrestigeTitle(name);
+    if(_pt&&_pt.badge)body+=`<div style="text-align:center;font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:4px;">${_pt.badge} ${_pt.title}</div>`;
     body+=`<button class="btn bs bblk mb2" ${pStars>=10?'disabled':''} onclick="doPrestige('${name}')">${prestigeLabel2}</button>`;
   }
   // Equipment section (Batch 8)
@@ -10802,12 +10809,6 @@ function isSkinAvailable(skin){
   return true;
 }
 // Zodiac-specific bonus
-function getSkinZodiacBonus(zodiacName,stat){
-  const skinId=G.activeSkins&&G.activeSkins[zodiacName];if(!skinId)return 0;
-  const skin=SKINS_ENHANCED[skinId];
-  if(!skin||skin.zodiac&&skin.zodiac!==zodiacName)return 0;
-  return (skin.zodiacBonus&&skin.zodiacBonus[stat])||0;
-}
 // Fusion system
 function canFuseSkins(skin1Id,skin2Id){
   const s1=SKINS_ENHANCED[skin1Id],s2=SKINS_ENHANCED[skin2Id];
@@ -12559,12 +12560,31 @@ let _bossTrialLobbyId=null;
 let _bossTrialHeartbeatIv=null;
 let _bossTrialListenerUnsub=null;
 
+// Render a Soul Zodiac sprite for ANY member's synced data (skinId explicit,
+// not read from local G.selectedSkin — needed for showing OTHER players' skins).
+function _bossTrialMemberSprite(zodiacName,skinId,size){
+  size=size||28;
+  const shape=ZODIAC_SVG_SHAPES[zodiacName];
+  if(!shape)return `<span style="font-size:${size}px;">${getZodiac(zodiacName)?.emoji||'👻'}</span>`;
+  const overlay=skinId?getZodiacSkinOverlay(zodiacName,skinId):'';
+  return `<span class="zsvg zt0 z-${zodiacName.toLowerCase()}" style="width:${size}px;height:${size}px;display:inline-block;"><svg viewBox="0 0 100 100">${shape}${overlay}</svg></span>`;
+}
+// Build the display name for ANY member (e.g. "Ultimate Rat") using their
+// synced titleId rather than the local player's G.selectedTitle.
+function _bossTrialMemberTitleName(zodiacName,titleId){
+  if(!titleId)return zodiacName;
+  const titleName=ZODIAC_TITLES[titleId]?.name||'';
+  return titleName?`${titleName} ${zodiacName}`:zodiacName;
+}
 function _myBossTrialMember(){
   if(!fbReady())return null;
   if(!G.activeSoulZodiac||!(G.soulZodiacs?.[G.activeSoulZodiac]?.level>0)){return null;}
+  const skinId=G.selectedSkin?.[G.activeSoulZodiac]||null;
+  const titleId=G.selectedTitle?.[G.activeSoulZodiac]||null;
   return{
     uid:fbUID(),name:G.playerName||fbName()||'Anonymous',avatar:fbAvatar()||'',
     soulZodiac:G.activeSoulZodiac,soulZodiacLevel:G.soulZodiacs[G.activeSoulZodiac].level||1,
+    skinId,titleId,
     lastPing:Date.now(),
   };
 }
@@ -12708,10 +12728,16 @@ async function renderBossTrialLobby(){
         <div class="t2 ts" style="font-size:10px;">${fresh.length}/3 players · waiting for ${isLeader?'more players, or start the fight':'the leader to start'}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-        ${fresh.map(m=>{const z=getZodiac(m.soulZodiac);const sprite=m.soulZodiac&&ZODIAC_SVG_SHAPES[m.soulZodiac]?`<span style="display:inline-flex;width:20px;height:20px;">${`<span class="zsvg zt0 z-${m.soulZodiac.toLowerCase()}" style="width:20px;height:20px;"><svg viewBox="0 0 100 100">${ZODIAC_SVG_SHAPES[m.soulZodiac]}</svg></span>`}</span>`:`<span style="font-size:20px;">${z?.emoji||'👻'}</span>`;return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;">
+        ${fresh.map(m=>{
+          const sprite=_bossTrialMemberSprite(m.soulZodiac,m.skinId,24);
+          const displayName=_bossTrialMemberTitleName(m.soulZodiac,m.titleId);
+          return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(28,38,56,.6);border-radius:8px;">
           ${sprite}
-          <div style="flex:1;font-size:11px;">${escHtml(m.name)}${m.uid===data.leaderUid?' <span style="color:var(--acc);">★ Leader</span>':''}</div>
-          <div style="font-size:10px;color:var(--txt2);">${m.soulZodiac} Lv.${m.soulZodiacLevel}</div>
+          <div style="flex:1;">
+            <div style="font-size:11px;">${escHtml(m.name)}${m.uid===data.leaderUid?' <span style="color:var(--acc);">★ Leader</span>':''}</div>
+            <div style="font-size:9px;color:#a78bfa;">${escHtml(displayName)}</div>
+          </div>
+          <div style="font-size:10px;color:var(--txt2);">Lv.${m.soulZodiacLevel}</div>
         </div>`;}).join('')}
       </div>
       ${isLeader?`<button class="btn bp" style="width:100%;margin-bottom:6px;" onclick="startBossTrialFight()">⚔️ Start Fight (${fresh.length}/3)</button>`:''}
@@ -12846,6 +12872,22 @@ async function renderBossTrialResult(data){
   body.innerHTML=`
     <div style="text-align:center;margin-bottom:8px;">
       <div style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;font-weight:700;">⚔️ Boss Trial</div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      ${members.map(m=>{
+        const sprite=_bossTrialMemberSprite(m.soulZodiac,m.skinId,32);
+        const displayName=_bossTrialMemberTitleName(m.soulZodiac,m.titleId);
+        const passive=SOUL_PASSIVES[m.soulZodiac];
+        const dmg=result.perPlayerDamage?.[m.uid]||0;
+        const isMe=m.uid===myUid;
+        return `<div style="flex:1;text-align:center;background:${isMe?'rgba(245,158,11,.1)':'rgba(28,38,56,.6)'};border:1px solid ${isMe?'var(--acc)':'rgba(71,85,105,.3)'};border-radius:9px;padding:7px 4px;min-width:0;">
+          <div style="display:flex;justify-content:center;">${sprite}</div>
+          <div style="font-size:9px;font-weight:700;margin-top:3px;color:${isMe?'var(--acc)':'var(--txt)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(m.name)}</div>
+          <div style="font-size:8px;color:#a78bfa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(displayName)}">${escHtml(displayName)}</div>
+          <div style="font-size:7px;color:var(--txt2);">Lv.${m.soulZodiacLevel} · ${passive?.name||''}</div>
+          <div style="font-size:9px;color:#fbbf24;margin-top:2px;">${fmt(dmg)} dmg</div>
+        </div>`;
+      }).join('')}
     </div>
     <div id="bossTrialReplay" style="background:rgba(28,38,56,.6);border-radius:10px;padding:10px;margin-bottom:10px;min-height:160px;font-size:11px;line-height:1.6;max-height:240px;overflow-y:auto;"></div>
     <div id="bossTrialReplayBars" style="margin-bottom:10px;"></div>
@@ -14055,10 +14097,12 @@ function setArenaSquadSlot(which,slot,zodiacName){
   // Push defense squad changes to Firestore so other players fight your current setup
   if(which==='defense')_syncArenaDefenseSquad();
 }
-function getArenaSquadFighters(squadNames,levels){
+function getArenaSquadFighters(squadNames,levels,skins,titles){
   return (squadNames||[]).filter(Boolean).map((name,i)=>{
     const level=(levels&&levels[i])||G.soulZodiacs?.[name]?.level||1;
-    return {name,level,stats:getSoulZodiacStats(name,level),passiveId:name,passiveName:SOUL_PASSIVES[name]?.name||''};
+    const skinId=(skins&&skins[i])||(name?G.selectedSkin?.[name]:null)||null;
+    const titleId=(titles&&titles[i])||(name?G.selectedTitle?.[name]:null)||null;
+    return {name,level,skinId,titleId,stats:getSoulZodiacStats(name,level),passiveId:name,passiveName:SOUL_PASSIVES[name]?.name||''};
   });
 }
 
@@ -14193,12 +14237,14 @@ function _syncArenaDefenseSquad(){
     const {db,doc,setDoc}=window.FB;
     const myUid=fbUID();
     const defenseLevels=(a.defenseSquad||[]).map(n=>G.soulZodiacs?.[n]?.level||1);
+    const defenseSkins=(a.defenseSquad||[]).map(n=>n?(G.selectedSkin?.[n]||null):null);
+    const defenseTitles=(a.defenseSquad||[]).map(n=>n?(G.selectedTitle?.[n]||null):null);
     const avgLevel=defenseLevels.length?Math.round(defenseLevels.reduce((s,l)=>s+l,0)/defenseLevels.length):1;
     setDoc(doc(db,'arenaRanks',String(a.rank)),{
       uid:myUid,isNPC:false,name:G.playerName||fbName()||'Anonymous',
       level:avgLevel,
       defenseSquad:a.defenseSquad||[],
-      defenseLevels,
+      defenseLevels,defenseSkins,defenseTitles,
     },{merge:true}).catch(()=>{});
     _arenaCacheInvalidate(a.rank);
   }catch(e){}
@@ -14232,7 +14278,7 @@ function arenaEssenceRemaining(){
 // Challenge a specific rank. On win: swap ladder slots with the opponent
 // (transactional if online — so a real player's rank/defense squad is correctly
 // taken). On loss: no rank change. Always consumes a daily fight.
-async function arenaChallenge(targetRank){
+async function arenaChallenge(targetRank,rng){
   const a=initArenaState();
   if(arenaFightsRemaining()<=0){toast('No arena fights left today! Come back tomorrow.','er');return;}
   const atkSquad=getArenaSquadFighters(a.attackSquad);
@@ -14242,8 +14288,8 @@ async function arenaChallenge(targetRank){
 
   const target=await _arenaGetRank(targetRank);
   if(target.uid&&target.uid===fbUID()){toast('That rank is already yours!','er');return;}
-  const defSquad=getArenaSquadFighters(target.defenseSquad,target.defenseLevels);
-  const result=resolveArenaBattle(atkSquad,defSquad);
+  const defSquad=getArenaSquadFighters(target.defenseSquad,target.defenseLevels,target.defenseSkins,target.defenseTitles);
+  const result=resolveArenaBattle(atkSquad,defSquad,rng);
   a.fightsToday=(a.fightsToday||0)+1;
   const oldRank=myRank;
   let essenceGained=0;
@@ -14449,13 +14495,16 @@ async function renderArenaFight(){
     html+=`<div style="display:flex;flex-direction:column;gap:5px;max-height:340px;overflow-y:auto;">`;
     challenges.forEach(opp=>{
       const t=getArenaTitle(opp.rank);
-      const squadEmojis=(opp.defenseSquad||[]).map(name=>ZODIACS.find(z=>z.name===name)?.emoji||'❓').join(' ');
+      const squadSprites=(opp.defenseSquad||[]).map((name,i)=>{
+        const skinId=opp.defenseSkins?.[i]||null;
+        return name?_bossTrialMemberSprite(name,skinId,18):'';
+      }).join('');
       const playerTag=opp.isNPC?'':'<span style="font-size:8px;color:#f59e0b;">👤 Player</span>';
       html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;">
         <div style="font-size:11px;font-weight:700;color:${t.color};width:42px;">#${opp.rank}</div>
         <div style="flex:1;">
           <div style="font-size:11px;font-weight:700;">${escHtml(opp.name||'?')} <span style="font-size:8px;color:var(--txt2);">Lv.${opp.level||1}</span> ${playerTag}</div>
-          <div style="font-size:13px;">${squadEmojis}</div>
+          <div style="display:flex;gap:2px;align-items:center;margin-top:2px;">${squadSprites}</div>
         </div>
         <button class="btn bs bblk" style="font-size:9px;padding:5px 10px;" ${atkReady&&fightsLeft>0?'':'disabled'} onclick="arenaChallengeAndRender(${opp.rank})">⚔️ Fight</button>
       </div>`;
@@ -14475,9 +14524,13 @@ function renderArenaSquads(){
     let h=`<div style="display:flex;gap:6px;margin-bottom:10px;">`;
     for(let i=0;i<3;i++){
       const cur=squad[i];
-      const z=ZODIACS.find(zz=>zz.name===cur);
+      const skinId=cur?G.selectedSkin?.[cur]:null;
+      const titleId=cur?G.selectedTitle?.[cur]:null;
+      const sprite=cur?_bossTrialMemberSprite(cur,skinId,28):'➕';
+      const displayName=cur?_bossTrialMemberTitleName(cur,titleId):'';
       h+=`<div style="flex:1;text-align:center;">
-        <div style="font-size:28px;padding:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;margin-bottom:4px;">${z?z.emoji:'➕'}</div>
+        <div style="display:flex;align-items:center;justify-content:center;font-size:28px;padding:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;margin-bottom:4px;min-height:44px;">${sprite}</div>
+        ${cur?`<div style="font-size:8px;color:#a78bfa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;" title="${escHtml(displayName)}">${escHtml(displayName)}</div>`:''}
         <select style="width:100%;font-size:9px;padding:3px;border-radius:6px;background:var(--bg2);color:var(--txt);border:1px solid rgba(255,255,255,.1);" onchange="setArenaSquadSlot('${which}',${i},this.value);renderArenaTab('squads')">
           <option value="">— Empty —</option>
           ${owned.map(o=>`<option value="${o.name}" ${cur===o.name?'selected':''}>${o.name} Lv.${o.level}</option>`).join('')}
@@ -14557,9 +14610,292 @@ async function renderArenaLog(){
   return html;
 }
 
+// ── Arena Fight Preview/Animation: REAL turn-based simulation ──────────────
+// Each Soul Zodiac fighter gets individual HP/ATK/DEF/SPD (not pooled team
+// stats). Turn order is SPD-based like normal battles. Attacks target a
+// random living enemy. Passives trigger contextually per-fighter, mirroring
+// Boss Trial's logic but applied 3v3 instead of 3v1.
+// resolveArenaBattle() still determines win/loss (it's the authoritative
+// power-score model used for matchmaking/rank balance) — this simulation is
+// built to land on that same outcome, but every individual exchange uses
+// real stats and the real formulas, not made-up pooled numbers.
+function _arenaBuildTurnFighters(squad,side){
+  return squad.map(f=>{
+    const s=f.stats;
+    return {
+      name:f.name,skinId:f.skinId,titleId:f.titleId,level:f.level,side,
+      passiveId:f.name,passiveName:f.passiveName,
+      maxHp:s.hp,hp:s.hp,atk:s.atk,def:s.def,spd:s.spd,
+      alive:true,
+    };
+  });
+}
+function _arenaRollDodge(spd,enemySpd,defenderPassive){
+  let chance=Math.min(0.30,Math.max(0,(spd-enemySpd)*.0015+0.04));
+  if(defenderPassive==='Monkey')chance=Math.min(0.55,chance+0.20);
+  return chance;
+}
+function _arenaCalcDmg(atkr,defr){
+  const defMult=Math.max(0.1,1-(defr.def/(defr.def+atkr.atk*2.2)));
+  let dmg=Math.max(1,Math.floor(atkr.atk*defMult*(0.85+Math.random()*0.3)));
+  const isCrit=Math.random()<0.18;
+  if(isCrit)dmg=Math.floor(dmg*1.6);
+  // Ox/Horse: flat damage-taken reduction (mirrors their Boss Trial identity)
+  if(defr.passiveId==='Ox')dmg=Math.floor(dmg*0.75);
+  if(defr.passiveId==='Horse')dmg=Math.floor(dmg*0.78);
+  dmg=Math.max(1,dmg);
+  return{dmg,isCrit};
+}
+function _arenaPickTarget(enemies){
+  const alive=enemies.filter(f=>f.alive);
+  if(!alive.length)return null;
+  return alive[Math.floor(Math.random()*alive.length)];
+}
+function _arenaBuildFightLog(atkSquad,defSquad,forceWin){
+  const P=BOSS_TRIAL_PARAMS;
+  const atk=_arenaBuildTurnFighters(atkSquad,'atk');
+  const def=_arenaBuildTurnFighters(defSquad,'def');
+  const all=[...atk,...def];
+  const events=[{type:'start'}];
+  const maxRounds=40;// safety cap (turns, not rounds — each fighter's turn counts once)
+  let turnsTaken=0;
+
+  // Build initial turn order by SPD (re-sorted each "round" as fighters die,
+  // mirroring how normal battles re-derive turn order from current state)
+  const aliveSide=side=>(side==='atk'?atk:def).filter(f=>f.alive);
+  const allDead=side=>aliveSide(side).length===0;
+
+  while(turnsTaken<maxRounds&&!allDead('atk')&&!allDead('def')){
+    // Turn order this pass: all living fighters, fastest first
+    const order=all.filter(f=>f.alive).sort((a,b)=>b.spd-a.spd);
+    for(const fighter of order){
+      if(!fighter.alive)continue;
+      if(allDead('atk')||allDead('def'))break;
+      turnsTaken++;
+      // Skip turn if stunned by a previous Snake hit
+      if(fighter.stunned){
+        fighter.stunned=false;
+        events.push({type:'stun_skip',name:fighter.name,side:fighter.side});
+        continue;
+      }
+      const enemies=fighter.side==='atk'?aliveSide('def'):aliveSide('atk');
+      const target=_arenaPickTarget(enemies);
+      if(!target)continue;
+
+      // Dodge check
+      const dodgeChance=_arenaRollDodge(target.spd,fighter.spd,target.passiveId);
+      if(Math.random()<dodgeChance){
+        events.push({type:'dodge',atkName:fighter.name,atkSide:fighter.side,defName:target.name});
+        continue;
+      }
+      let dmg,isCrit;
+      const calc=_arenaCalcDmg(fighter,target);
+      dmg=calc.dmg;isCrit=calc.isCrit;
+      // Passive flavor multipliers (lightweight, per-fighter, cosmetic-accurate to Boss Trial identities)
+      if(fighter.passiveId==='Dragon')dmg=Math.floor(dmg*(1+P.dragonAtkBonus*0.5));
+      if(fighter.passiveId==='Tiger'&&isCrit)dmg=Math.floor(dmg*1.4);
+      target.hp=Math.max(0,target.hp-dmg);
+      events.push({type:'attack',atkName:fighter.name,atkSide:fighter.side,defName:target.name,dmg,crit:isCrit,defHp:target.hp,defMaxHp:target.maxHp});
+      // Dog: reflects a portion of the damage it takes back at the attacker
+      if(target.passiveId==='Dog'&&target.hp>0&&fighter.hp>0){
+        const reflect=Math.floor(dmg*0.25);
+        if(reflect>0){
+          fighter.hp=Math.max(0,fighter.hp-reflect);
+          events.push({type:'reflect',name:target.name,side:target.side,atkName:fighter.name,atkSide:fighter.side,amount:reflect,hp:fighter.hp,maxHp:fighter.maxHp});
+          if(fighter.hp<=0){fighter.alive=false;events.push({type:'ko',name:fighter.name,side:fighter.side});}
+        }
+      }
+      // Snake: chance to stun the target, skipping their next turn
+      if(fighter.alive&&fighter.passiveId==='Snake'&&target.hp>0&&Math.random()<P.snakeStunChance*0.6){
+        target.stunned=true;
+        events.push({type:'stun_applied',name:target.name,side:target.side});
+      }
+      // Rat lifesteal flavor: heal self a little on hit
+      if(fighter.alive&&fighter.passiveId==='Rat'&&fighter.hp<fighter.maxHp){
+        const heal=Math.floor(dmg*0.15);
+        fighter.hp=Math.min(fighter.maxHp,fighter.hp+heal);
+        if(heal>0)events.push({type:'lifesteal',name:fighter.name,side:fighter.side,amount:heal,hp:fighter.hp,maxHp:fighter.maxHp});
+      }
+      // Goat heals its own side a little when attacking
+      if(fighter.alive&&fighter.passiveId==='Goat'){
+        const allySide=fighter.side==='atk'?aliveSide('atk'):aliveSide('def');
+        const hurt=allySide.filter(f=>f.hp<f.maxHp);
+        if(hurt.length){
+          const ally=hurt[Math.floor(Math.random()*hurt.length)];
+          const heal=Math.floor(dmg*0.2);
+          ally.hp=Math.min(ally.maxHp,ally.hp+heal);
+          if(heal>0)events.push({type:'heal',name:ally.name,side:ally.side,amount:heal,hp:ally.hp,maxHp:ally.maxHp});
+        }
+      }
+      // Pig: gains a small shield (temp max HP) whenever it lands a hit
+      if(fighter.alive&&fighter.passiveId==='Pig'){
+        const shield=Math.floor(fighter.maxHp*0.05);
+        fighter.maxHp+=shield;fighter.hp+=shield;
+        if(shield>0)events.push({type:'shield',name:fighter.name,side:fighter.side,amount:shield,hp:fighter.hp,maxHp:fighter.maxHp});
+      }
+      // Rooster: also chips a small amount of AoE damage onto another enemy
+      if(fighter.alive&&fighter.passiveId==='Rooster'){
+        const otherEnemies=enemies.filter(f=>f!==target&&f.alive);
+        if(otherEnemies.length){
+          const splash=otherEnemies[Math.floor(Math.random()*otherEnemies.length)];
+          const splashDmg=Math.max(1,Math.floor(dmg*0.3));
+          splash.hp=Math.max(0,splash.hp-splashDmg);
+          events.push({type:'aoe',name:fighter.name,side:fighter.side,defName:splash.name,defSide:splash.side,dmg:splashDmg,hp:splash.hp,maxHp:splash.maxHp});
+          if(splash.hp<=0){splash.alive=false;events.push({type:'ko',name:splash.name,side:splash.side});}
+        }
+      }
+      if(target.hp<=0){
+        target.alive=false;
+        events.push({type:'ko',name:target.name,side:target.side});
+      }
+      if(allDead('atk')||allDead('def'))break;
+    }
+  }
+  const atkWon=allDead('def')&&!allDead('atk');
+  const defWon=allDead('atk')&&!allDead('def');
+  let actualWin=atkWon;
+  if(!atkWon&&!defWon){
+    // Ran out of turns (rare with 40-turn cap) — fall back to the
+    // power-score outcome that resolveArenaBattle() already decided.
+    actualWin=forceWin;
+  }
+  events.push(actualWin?{type:'victory'}:{type:'defeat'});
+  return {events,atk,def,actualWin};
+}
+let _arenaFightAnimState=null;
+function _arenaRosterHtml(fighters,side){
+  return fighters.map(f=>{
+    const sprite=_bossTrialMemberSprite(f.name,f.skinId,26);
+    const displayName=_bossTrialMemberTitleName(f.name,f.titleId);
+    return `<div id="arenaFighterCard_${side}_${f.name}" style="flex:1;text-align:center;background:rgba(255,255,255,.04);border:1px solid transparent;border-radius:7px;padding:4px 2px;min-width:0;transition:border-color .2s,opacity .3s;">
+      <div style="display:flex;justify-content:center;">${sprite}</div>
+      <div style="font-size:6.5px;color:${side==='atk'?'#fbbf24':'#f87171'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;" title="${escHtml(displayName)}">${escHtml(displayName)}</div>
+      <div style="font-size:6px;color:var(--txt2);">Lv.${f.level}</div>
+      <div style="height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin-top:2px;"><div id="arenaFighterHpBar_${side}_${f.name}" style="height:100%;width:100%;background:${side==='atk'?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#b91c1c,#f87171)'};transition:width .3s;"></div></div>
+    </div>`;
+  }).join('');
+}
+async function openArenaFightAnim(targetRank,result,atkSquad,defSquad,opp,seed){
+  const sim=_arenaBuildFightLog(atkSquad,defSquad,result.win);
+  _arenaFightAnimState={events:sim.events,idx:0,iv:null,result,opp,targetRank,seed,atkFighters:sim.atk,defFighters:sim.def,actualWin:sim.actualWin};
+  openM('mArenaFightAnim');
+  document.getElementById('arenaFightAtkRoster').innerHTML=_arenaRosterHtml(sim.atk,'atk');
+  document.getElementById('arenaFightDefRoster').innerHTML=_arenaRosterHtml(sim.def,'def');
+  document.getElementById('arenaFightLog').innerHTML='';
+  document.getElementById('arenaFightResult').style.display='none';
+  document.getElementById('arenaFightResult').innerHTML='';
+  const skipBtn=document.getElementById('arenaFightSkipBtn');if(skipBtn){skipBtn.style.display='block';skipBtn.textContent='⏭️ Skip to Result';}
+  _arenaFightAnimState.iv=setInterval(_arenaFightAnimStep,420);
+}
+function _arenaUpdateFighterCard(name,side,hp,maxHp,alive){
+  const bar=document.getElementById(`arenaFighterHpBar_${side}_${name}`);
+  if(bar)bar.style.width=Math.max(0,Math.min(100,Math.floor(hp/maxHp*100)))+'%';
+  const card=document.getElementById(`arenaFighterCard_${side}_${name}`);
+  if(card&&!alive){card.style.opacity='0.25';card.style.borderColor='rgba(239,68,68,.4)';}
+}
+function _arenaFlashAttacker(name,side){
+  const card=document.getElementById(`arenaFighterCard_${side}_${name}`);
+  if(card){card.style.borderColor=side==='atk'?'#fbbf24':'#f87171';setTimeout(()=>{if(card.style.borderColor!=='')card.style.borderColor='transparent';},350);}
+}
+function _arenaFightAnimStep(){
+  const s=_arenaFightAnimState;if(!s)return;
+  if(s.idx>=s.events.length){_arenaFightAnimFinish();return;}
+  const ev=s.events[s.idx];s.idx++;
+  const log=document.getElementById('arenaFightLog');if(!log)return;
+  let line='';
+  if(ev.type==='start')line=`<div style="color:#a78bfa;font-weight:700;">⚔️ Battle begins! Turn order by SPD.</div>`;
+  else if(ev.type==='attack'){
+    const isAtk=ev.atkSide==='atk';
+    _arenaFlashAttacker(ev.atkName,ev.atkSide);
+    _arenaUpdateFighterCard(ev.defName,isAtk?'def':'atk',ev.defHp,ev.defMaxHp,ev.defHp>0);
+    line=`<div style="color:${isAtk?'#fbbf24':'#f87171'};"><b>${escHtml(ev.atkName)}</b> ${ev.crit?'<b style="color:#fde047;">CRIT</b> ':''}hits <b>${escHtml(ev.defName)}</b> for <b>${fmt(ev.dmg)}</b> (${fmt(Math.max(0,ev.defHp))}/${fmt(ev.defMaxHp)} HP)</div>`;
+  }else if(ev.type==='dodge'){
+    line=`<div style="color:#60a5fa;">💨 <b>${escHtml(ev.defName)}</b> dodges ${escHtml(ev.atkName)}'s attack!</div>`;
+  }else if(ev.type==='lifesteal'){
+    _arenaUpdateFighterCard(ev.name,ev.side,ev.hp,ev.maxHp,true);
+    line=`<div style="color:#34d399;">🩸 <b>${escHtml(ev.name)}</b>'s lifesteal heals for ${fmt(ev.amount)}!</div>`;
+  }else if(ev.type==='heal'){
+    _arenaUpdateFighterCard(ev.name,ev.side,ev.hp,ev.maxHp,true);
+    line=`<div style="color:#34d399;">🐐 <b>${escHtml(ev.name)}</b> is healed for ${fmt(ev.amount)}!</div>`;
+  }else if(ev.type==='aoe'){
+    _arenaUpdateFighterCard(ev.defName,ev.defSide,ev.hp,ev.maxHp,ev.hp>0);
+    line=`<div style="color:#fb923c;">🐓 <b>${escHtml(ev.name)}</b>'s AoE strike clips <b>${escHtml(ev.defName)}</b> for ${fmt(ev.dmg)}!</div>`;
+  }else if(ev.type==='shield'){
+    _arenaUpdateFighterCard(ev.name,ev.side,ev.hp,ev.maxHp,true);
+    line=`<div style="color:#fbbf24;">🐖 <b>${escHtml(ev.name)}</b> gains a shield (+${fmt(ev.amount)} HP)!</div>`;
+  }else if(ev.type==='reflect'){
+    _arenaUpdateFighterCard(ev.atkName,ev.atkSide,ev.hp,ev.maxHp,ev.hp>0);
+    line=`<div style="color:#fb923c;">🛡️ <b>${escHtml(ev.name)}</b> reflects ${fmt(ev.amount)} dmg back at <b>${escHtml(ev.atkName)}</b>!</div>`;
+  }else if(ev.type==='ko'){
+    line=`<div style="color:#ef4444;font-weight:700;">💀 ${escHtml(ev.name)} has fallen!</div>`;
+  }else if(ev.type==='stun_applied'){
+    line=`<div style="color:#a78bfa;">🐍 <b>${escHtml(ev.name)}</b> is stunned!</div>`;
+  }else if(ev.type==='stun_skip'){
+    line=`<div style="color:#a78bfa;">😵 <b>${escHtml(ev.name)}</b> is stunned and can't act!</div>`;
+  }else if(ev.type==='victory')line=`<div style="color:#34d399;font-weight:700;margin-top:4px;">🏆 Victory!</div>`;
+  else if(ev.type==='defeat')line=`<div style="color:#ef4444;font-weight:700;margin-top:4px;">💀 Defeat...</div>`;
+  if(line){const d=document.createElement('div');d.innerHTML=line;log.appendChild(d);log.scrollTop=log.scrollHeight;}
+}
+function _arenaFightAnimSkip(){
+  const s=_arenaFightAnimState;if(!s)return;
+  if(s.iv){clearInterval(s.iv);s.iv=null;}
+  // Fast-forward through all remaining events instantly, then snap every
+  // fighter's HP bar straight to its final state.
+  while(s.idx<s.events.length)_arenaFightAnimStep();
+  _arenaFightAnimFinish();
+}
+async function _arenaFightAnimFinish(){
+  const s=_arenaFightAnimState;if(!s)return;
+  if(s.iv){clearInterval(s.iv);s.iv=null;}
+  const skipBtn=document.getElementById('arenaFightSkipBtn');if(skipBtn)skipBtn.style.display='none';
+  // Now actually commit the real outcome (rank swap, essence, etc.)
+  const finalResult=await _arenaCommitChallengeResult(s.targetRank,s.result,s.opp,s.seed);
+  const resEl=document.getElementById('arenaFightResult');
+  if(resEl){
+    resEl.style.display='block';
+    resEl.innerHTML=`
+      <div style="text-align:center;padding:10px;background:${s.result.win?'rgba(34,197,94,.1)':'rgba(239,68,68,.1)'};border:1px solid ${s.result.win?'rgba(34,197,94,.3)':'rgba(239,68,68,.3)'};border-radius:10px;">
+        <div style="font-size:28px;">${s.result.win?'🏆':'💀'}</div>
+        <div style="font-weight:700;font-size:13px;color:${s.result.win?'#34d399':'#f87171'};">${s.result.win?'Victory!':'Defeat'}</div>
+        <div style="font-size:10px;color:var(--txt2);margin-top:4px;">${finalResult.msg||''}</div>
+      </div>
+      <button class="btn bp" style="width:100%;margin-top:8px;" onclick="closeM('mArenaFightAnim');switchArenaTab('fight')">Continue</button>`;
+  }
+}
+function _arenaFightAnimClose(){
+  const s=_arenaFightAnimState;
+  if(s?.iv)clearInterval(s.iv);
+  // If closed before finishing, still commit the result so state stays consistent
+  if(s&&!document.getElementById('arenaFightResult')?.innerHTML){
+    _arenaFightAnimFinish().then(()=>{closeM('mArenaFightAnim');switchArenaTab('fight');});
+  }else{
+    closeM('mArenaFightAnim');switchArenaTab('fight');
+  }
+}
+
 async function arenaChallengeAndRender(targetRank){
-  await arenaChallenge(targetRank);
-  await renderArenaTab('fight');
+  const a=initArenaState();
+  if(arenaFightsRemaining()<=0){toast('No arena fights left today! Come back tomorrow.','er');return;}
+  const atkSquadNames=getArenaSquadFighters(a.attackSquad);
+  if(atkSquadNames.length<3){toast('Set all 3 Attack Squad slots first!','er');return;}
+  const myRank=await _arenaGetMyRank();
+  if(targetRank>=myRank||targetRank<myRank-ARENA_CHALLENGE_RANGE){toast('Invalid target!','er');return;}
+  const target=await _arenaGetRank(targetRank);
+  if(target.uid&&target.uid===fbUID()){toast('That rank is already yours!','er');return;}
+  const defSquadNames=getArenaSquadFighters(target.defenseSquad,target.defenseLevels,target.defenseSkins,target.defenseTitles);
+  // Preview roll — same RNG function as the real fight. We commit the REAL
+  // result via arenaChallenge() after the animation, passing this same roll
+  // through a seeded RNG so the displayed outcome and committed outcome agree.
+  const seed=Math.random();
+  const previewResult=resolveArenaBattle(atkSquadNames,defSquadNames,()=>seed);
+  await openArenaFightAnim(targetRank,previewResult,atkSquadNames,defSquadNames,target,seed);
+}
+// Commits the actual challenge result (rank swap, essence, Firestore writes)
+// using the SAME seed that determined the previewed animation's outcome, so
+// the fight you watched always matches what actually happens to your rank.
+async function _arenaCommitChallengeResult(targetRank,previewResult,opp,seed){
+  const realResult=await arenaChallenge(targetRank,()=>seed);
+  return {msg:realResult?(realResult.win?`Climbed to #${realResult.newRank}! +💎${realResult.essenceGained} Essence`:`Stay sharp and try again!`):''};
 }
 
 // ── Leaderboard integration: top 50 Soul Arena ranks (lower rank = better) ──
@@ -18069,6 +18405,17 @@ function triggerPWAInstall(){
 
 <!-- ═══ SOUL ARENA (3v3 NPC LADDER) ═══ -->
 <div class="modal" id="mArenaLadder"><div class="panel"><div class="ph"><span style="font-family:'Cinzel',serif;color:var(--acc);font-size:14px;">🐉 Soul Arena</span><span id="arenaRankBadge" style="font-size:9px;color:var(--acc);font-weight:700;margin-left:auto;margin-right:8px;"></span><button class="xbtn" onclick="closeM('mArenaLadder')">✕</button></div><div class="pb"><div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;"><button class="log-tab on" id="arenatab-fight" onclick="switchArenaTab('fight')">⚔️ Fight</button><button class="log-tab" id="arenatab-squads" onclick="switchArenaTab('squads')">🛡️ Squads</button><button class="log-tab" id="arenatab-rewards" onclick="switchArenaTab('rewards')">🎁 Rewards</button></div><div id="arenaBody"></div></div></div></div>
+<div class="modal" id="mArenaFightAnim"><div class="panel" style="padding:0;overflow:hidden;"><div class="ph" style="background:linear-gradient(135deg,#1a0e2e,#2d1654);"><span style="font-family:'Cinzel',serif;color:#e9d5ff;font-size:13px;">⚔️ Arena Battle</span><button class="xbtn" style="color:#e9d5ff;" onclick="_arenaFightAnimClose()">✕</button></div>
+<div class="pb" style="padding:10px;background:linear-gradient(180deg,#0f0c29,#1a1235);">
+  <button id="arenaFightSkipBtn" onclick="_arenaFightAnimSkip()" style="position:sticky;top:0;z-index:5;width:100%;padding:7px;margin-bottom:8px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);border-radius:8px;color:#e9d5ff;font-size:10px;font-weight:700;cursor:pointer;">⏭️ Skip to Result</button>
+  <div style="display:flex;gap:6px;margin-bottom:8px;">
+    <div id="arenaFightAtkRoster" style="flex:1;display:flex;gap:4px;"></div>
+    <div style="display:flex;align-items:center;font-size:14px;color:#a78bfa;">⚔️</div>
+    <div id="arenaFightDefRoster" style="flex:1;display:flex;gap:4px;"></div>
+  </div>
+  <div id="arenaFightLog" style="background:rgba(0,0,0,.3);border-radius:9px;padding:9px;min-height:140px;max-height:220px;overflow-y:auto;font-size:10px;line-height:1.6;"></div>
+  <div id="arenaFightResult" style="display:none;margin-top:10px;"></div>
+</div></div></div>
 
 
 <!-- ═══ TITLE PICKER ═══ -->
